@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel admin — Rubra</title>
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/admin.css">
+</head>
+<body class="adm">
+
+<!-- ===== LOGIN ===== -->
+<section id="view-login" class="adm-login" hidden>
+  <div class="adm-login-card">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" width="38" height="38" alt=""><span>rubra</span></a>
+    <div>
+      <h1>Área administrativa</h1>
+      <p class="adm-muted">Entre com a conta de administrador.</p>
+    </div>
+    <form class="form" id="login-form" novalidate>
+      <div class="field"><label for="a-email">E-mail</label><input id="a-email" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="a-senha">Senha</label><input id="a-senha" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="login-err" role="alert"></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">Entrar</button>
+      <p class="form-foot"><a href="#" id="forgot">Esqueci minha senha</a></p>
+    </form>
+  </div>
+</section>
+
+<!-- ===== DEFINIR SENHA (convite / redefinição) ===== -->
+<section id="view-password" class="adm-login" hidden>
+  <div class="adm-login-card">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" width="38" height="38" alt=""><span>rubra</span></a>
+    <div>
+      <h1>Defina sua senha</h1>
+      <p class="adm-muted">Use pelo menos 8 caracteres.</p>
+    </div>
+    <form class="form" id="pass-form" novalidate>
+      <div class="field"><label for="p1">Nova senha</label><input id="p1" type="password" autocomplete="new-password" minlength="8" required></div>
+      <div class="field"><label for="p2">Confirme a senha</label><input id="p2" type="password" autocomplete="new-password" minlength="8" required></div>
+      <p class="err" id="pass-err" role="alert"></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">Salvar senha e entrar</button>
+    </form>
+  </div>
+</section>
+
+<!-- ===== SEM PERMISSÃO / CONFIG ===== -->
+<section id="view-message" class="adm-login" hidden>
+  <div class="adm-login-card">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" width="38" height="38" alt=""><span>rubra</span></a>
+    <h1 id="msg-title"></h1>
+    <p class="adm-muted" id="msg-text"></p>
+    <button class="btn btn-outline btn-block" id="msg-btn" type="button">Sair</button>
+  </div>
+</section>
+
+<!-- ===== PAINEL ===== -->
+<div id="view-app" class="adm-app" hidden>
+  <header class="adm-top">
+    <a class="brand" href="index.html"><img src="assets/logo.svg" width="34" height="34" alt=""><span style="font-size:22px">rubra</span></a>
+    <span class="adm-tag">Admin</span>
+    <div class="adm-top-right">
+      <span class="adm-user" id="who"></span>
+      <button class="btn btn-ghost" id="logout" type="button">Sair</button>
+    </div>
+  </header>
+
+  <main class="adm-main">
+    <div class="adm-head">
+      <div>
+        <h1>Leads do site</h1>
+        <p class="adm-muted">Cadastros do teste grátis e pedidos de contato.</p>
+      </div>
+      <div class="adm-actions">
+        <button class="btn btn-outline" id="refresh" type="button">Atualizar</button>
+        <button class="btn btn-primary" id="export" type="button">Exportar CSV</button>
+      </div>
+    </div>
+
+    <section class="adm-kpis" aria-label="Resumo">
+      <div class="adm-kpi"><span>Total</span><b id="k-total">0</b></div>
+      <div class="adm-kpi"><span>Novos</span><b id="k-novo">0</b></div>
+      <div class="adm-kpi"><span>Em contato</span><b id="k-em_contato">0</b></div>
+      <div class="adm-kpi"><span>Convertidos</span><b id="k-convertido">0</b></div>
+      <div class="adm-kpi"><span>Últimos 7 dias</span><b id="k-7d">0</b></div>
+    </section>
+
+    <section class="adm-filters" aria-label="Filtros">
+      <div class="field adm-search"><label for="f-q">Buscar</label><input id="f-q" type="search" placeholder="Nome, estabelecimento, e-mail ou telefone"></div>
+      <div class="field"><label for="f-tipo">Origem</label><select id="f-tipo"><option value="">Todas</option><option value="cadastro">Teste grátis</option><option value="consultor">Especialista</option></select></div>
+      <div class="field"><label for="f-status">Status</label><select id="f-status"><option value="">Todos</option><option value="novo">Novo</option><option value="em_contato">Em contato</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select></div>
+      <div class="field"><label for="f-plano">Plano</label><select id="f-plano"><option value="">Todos</option><option>Essencial</option><option>Profissional</option><option>Completo</option></select></div>
+    </section>
+
+    <div class="adm-table-wrap">
+      <table class="adm-table">
+        <thead><tr><th>Data</th><th>Contato</th><th>Estabelecimento</th><th>Origem</th><th>Plano</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <p class="adm-empty" id="empty" hidden>Nenhum lead encontrado.</p>
+    </div>
+  </main>
+</div>
+
+<!-- ===== DETALHE DO LEAD ===== -->
+<dialog id="lead-dialog" aria-labelledby="ld-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="ld-title"></h2><p id="ld-sub"></p></div>
+      <button class="close" data-close aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <dl class="adm-dl" id="ld-data"></dl>
+    <div class="field"><label for="ld-status">Status</label><select id="ld-status"><option value="novo">Novo</option><option value="em_contato">Em contato</option><option value="convertido">Convertido</option><option value="perdido">Perdido</option></select></div>
+    <div class="field"><label for="ld-notas">Anotações internas</label><textarea id="ld-notas" rows="4" maxlength="4000"></textarea></div>
+    <div class="adm-dialog-actions">
+      <a class="btn btn-outline" id="ld-wa" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn btn-ghost adm-danger" id="ld-delete" type="button">Excluir</button>
+      <button class="btn btn-primary" id="ld-save" type="button">Salvar</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/config.js"></script>
+<script src="assets/admin.js"></script>
+</body>
+</html>

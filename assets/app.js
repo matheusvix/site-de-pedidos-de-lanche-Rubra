@@ -1,16 +1,11 @@
 /* ============================================================
    Rubra — interações da landing page
-   Configure aqui antes de publicar de verdade:
+   Configuração em assets/config.js
    ============================================================ */
-const CONFIG = {
-  // Número do WhatsApp comercial, só dígitos, com DDI 55 + DDD. Ex: '5527999999999'
-  whatsapp: '5500000000000',
-  // Endpoint opcional para receber os cadastros (Formspree, Make, Zapier, Google Apps Script…).
-  // Deixe vazio para apenas guardar localmente e mostrar a confirmação.
-  formEndpoint: '',
-  // URL do painel/app para onde o login deve levar (quando existir)
-  appUrl: '',
-};
+const CONFIG = window.RUBRA_CONFIG || {};
+const sb = (CONFIG.supabaseUrl && CONFIG.supabaseAnonKey && window.supabase)
+  ? window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey)
+  : null;
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -95,19 +90,22 @@ function validate(form) {
 $$('form input, form select').forEach((i) => i.addEventListener('blur', () => { if (i.value) showError(i, fieldError(i)); }));
 
 async function sendLead(type, data) {
-  try {
-    const all = JSON.parse(localStorage.getItem('rubra_leads') || '[]');
-    all.push({ type, ...data, at: new Date().toISOString() });
-    localStorage.setItem('rubra_leads', JSON.stringify(all));
-  } catch (_) { /* armazenamento indisponível */ }
-  if (!CONFIG.formEndpoint) return true;
-  try {
-    const r = await fetch(CONFIG.formEndpoint, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ tipo: type, ...data }),
-    });
-    return r.ok;
-  } catch (_) { return false; }
+  if (!sb) { console.warn('Supabase não configurado em assets/config.js — lead não foi salvo.'); return true; }
+  const clip = (v, n) => (v ? String(v).trim().slice(0, n) : null);
+  const row = {
+    tipo: type,
+    nome: clip(data.nome, 120),
+    loja: clip(data.loja, 160),
+    telefone: clip(data.telefone, 30),
+    email: clip(data.email, 200),
+    segmento: clip(data.segmento, 60),
+    plano: clip(data.plano, 40),
+    assunto: clip(data.assunto, 120),
+    mensagem: clip(data.mensagem, 2000),
+  };
+  const { error } = await sb.from('leads').insert(row);
+  if (error) console.error(error);
+  return !error;
 }
 
 function successView(form, title, text) {
@@ -129,10 +127,10 @@ $$('form[data-form]').forEach((form) => {
     const kind = form.dataset.form;
 
     if (kind === 'login') {
-      await new Promise((r) => setTimeout(r, 600));
-      btn.disabled = false; btn.innerHTML = label;
-      if (CONFIG.appUrl) { location.href = CONFIG.appUrl; return; }
-      toast('Login de demonstração — conecte o painel em CONFIG.appUrl.');
+      if (!sb) { btn.disabled = false; btn.innerHTML = label; toast('Login indisponível: configure o Supabase em assets/config.js.'); return; }
+      const { error } = await sb.auth.signInWithPassword({ email: data.email.trim(), password: data.senha });
+      if (error) { btn.disabled = false; btn.innerHTML = label; toast('E-mail ou senha incorretos.'); return; }
+      location.href = 'admin.html';
       return;
     }
 
@@ -150,10 +148,14 @@ $$('form[data-form]').forEach((form) => {
   });
 });
 
-$('[data-action="forgot"]').addEventListener('click', (e) => {
+$('[data-action="forgot"]').addEventListener('click', async (e) => {
   e.preventDefault();
   const email = $('#l-email').value.trim();
-  toast(email ? `Se ${email} tiver conta, enviaremos o link de redefinição.` : 'Digite seu e-mail acima para redefinir a senha.');
+  if (!email) { toast('Digite seu e-mail acima para redefinir a senha.'); return; }
+  if (sb) {
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: new URL('admin.html', location.href).href });
+  }
+  toast(`Se ${email} tiver conta, enviaremos o link de redefinição.`);
 });
 
 /* ---------- Cardápio interativo no mockup ---------- */

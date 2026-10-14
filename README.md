@@ -17,15 +17,26 @@ Landing page de um sistema fictício de pedidos e cardápio digital para restaur
 - Botão "voltar ao topo", animações ao rolar e respeito a `prefers-reduced-motion`
 - Páginas de Termos e Privacidade (modelos)
 
-## Antes de usar de verdade
+- **Painel administrativo** (`admin.html`): login real, lista de leads com busca e filtros, status (novo, em contato, convertido, perdido), anotações, botão de WhatsApp por lead, exclusão e exportação CSV
 
-Abra `assets/app.js` e ajuste o bloco `CONFIG`:
+## Configurar o banco e o acesso admin (Supabase)
 
-| Campo | O que é |
-|---|---|
-| `whatsapp` | Número comercial com DDI e DDD, só dígitos (ex.: `5527999999999`) |
-| `formEndpoint` | URL que recebe os cadastros em JSON (Formspree, Make, Zapier, Google Apps Script…). Vazio = só confirma na tela |
-| `appUrl` | Endereço do painel para onde o login leva |
+1. Crie uma conta grátis em [supabase.com](https://supabase.com) e um **New project** (região São Paulo).
+2. Em **SQL Editor › New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Isso cria as tabelas, as regras de segurança e registra `mvix.com@gmail.com` como admin.
+3. Em **Authentication › Sign In / Providers**, desative **Allow new users to sign up** (só quem você convidar entra).
+4. Em **Authentication › URL Configuration**, coloque em **Site URL** o endereço do site publicado + `/admin.html`
+   (ex.: `https://matheusvix.github.io/site-de-pedidos-de-lanche-Rubra/admin.html`).
+5. Em **Authentication › Users › Add user › Send invitation**, convide `mvix.com@gmail.com`. Abra o e-mail, clique no link e defina sua senha.
+6. Em **Project Settings › API**, copie a **Project URL** e a **anon public key** para `assets/config.js`.
+
+Para adicionar outro administrador: convide o e-mail em *Authentication › Users* e rode
+`insert into public.admins (email) values ('outro@email.com');` no SQL Editor.
+
+> A chave *anon* é pública por natureza. Visitantes só conseguem **inserir** leads; ler, editar e apagar é exclusivo de quem está na tabela `admins` (Row Level Security).
+
+## Outros ajustes
+
+Em `assets/config.js`, informe também o `whatsapp` comercial (DDI + DDD + número, só dígitos).
 
 Depois substitua os textos entre colchetes (`[00 mil]`, `R$ [00]`, `[Nome do cliente]`, `[N] dias`, CNPJ etc.), troque os preços em `data-m` / `data-a` no `index.html` e coloque o embed do vídeo no modal `#video`.
 
