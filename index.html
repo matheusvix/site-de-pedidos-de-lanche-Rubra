@@ -207,14 +207,17 @@
   <div class="container video-wrap">
     <div class="video-copy reveal">
       <span class="eyebrow">Veja na prática</span>
-      <h2 class="h2">Do pedido à entrega em dois minutos de vídeo.</h2>
-      <p class="lead">Acompanhe um pedido real chegando pelo WhatsApp, sendo pago por Pix e indo direto para a cozinha.</p>
+      <h2 class="h2">Do pedido à entrega em menos de um minuto.</h2>
+      <p class="lead">Veja o cadastro da loja, o cliente montando o lanche no cardápio, o Pix aprovado na hora e o pedido chegando no painel.</p>
       <div class="ctas"><button class="btn btn-primary" data-open="signup">Quero testar</button><a class="btn btn-outline" href="cardapio.html">Ver cardápio de exemplo</a></div>
     </div>
-    <button class="video-thumb reveal" data-open="video" aria-label="Assistir vídeo de demonstração">
-      <span class="play"><svg width="34" height="34" style="color:#fff;margin-left:4px"><use href="#i-play"/></svg></span>
-      <small>Demonstração · 2 min</small>
-    </button>
+    <div class="video-thumb reveal" id="demo">
+      <video id="demo-video" src="assets/video/rubra-demonstracao.mp4" poster="assets/video/rubra-capa.jpg" preload="metadata" playsinline></video>
+      <button class="video-cover" id="demo-play" type="button" aria-label="Assistir vídeo de demonstração">
+        <span class="play"><svg width="34" height="34" style="color:#fff;margin-left:4px"><use href="#i-play"/></svg></span>
+        <small>Demonstração · 48 s</small>
+      </button>
+    </div>
   </div>
 </section>
 
@@ -433,15 +436,6 @@
   </div>
 </dialog>
 
-<!-- MODAL: VIDEO -->
-<dialog id="video" class="wide" aria-labelledby="video-title">
-  <div class="video-modal">
-    <button class="close" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button>
-    <svg width="48" height="48" style="color:var(--red-light)"><use href="#i-play"/></svg>
-    <h2 id="video-title" style="font-size:24px">[Vídeo de demonstração]</h2>
-    <p style="color:#D9C9CA;max-width:420px">Substitua este bloco pelo embed do seu vídeo (YouTube, Vimeo ou arquivo .mp4) — veja o README.</p>
-  </div>
-</dialog>
 
 <div class="toast" role="status" aria-live="polite"></div>
 

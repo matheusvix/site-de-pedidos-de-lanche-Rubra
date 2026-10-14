@@ -33,7 +33,21 @@ menuBtn.addEventListener('click', () => setMenu(!mobileMenu.classList.contains('
 $$('a', mobileMenu).forEach((a) => a.addEventListener('click', () => setMenu(false)));
 
 /* ---------- Modais ---------- */
+function playDemo() {
+  const box = document.getElementById('demo'); const v = document.getElementById('demo-video');
+  if (!box || !v) return;
+  setMenu(false);
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  box.classList.add('playing'); v.controls = true;
+  const p = v.play(); if (p && p.catch) p.catch(() => {});
+}
+const demoBtn = document.getElementById('demo-play');
+if (demoBtn) demoBtn.addEventListener('click', playDemo);
+const demoVid = document.getElementById('demo-video');
+if (demoVid) demoVid.addEventListener('ended', () => { demoVid.controls = false; demoVid.currentTime = 0; document.getElementById('demo').classList.remove('playing'); });
+
 function openModal(id, opts = {}) {
+  if (id === 'video') { playDemo(); return; }
   const d = document.getElementById(id);
   if (!d) return;
   $$('dialog[open]').forEach((o) => o !== d && o.close());
