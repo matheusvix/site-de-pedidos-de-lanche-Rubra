@@ -330,3 +330,33 @@ if ('IntersectionObserver' in window && !reduce) {
 }
 
 $('#year').textContent = new Date().getFullYear();
+
+/* Planos no celular: o cartão no meio da tela fica colorido; os atalhos levam a cada plano */
+(() => {
+  const wrap = document.querySelector('.plans');
+  if (!wrap) return;
+  const cards = [...wrap.querySelectorAll('.plan[data-plan-key]')];
+  const tabs = [...document.querySelectorAll('.plan-tabs button')];
+  const touch = window.matchMedia('(hover: none)');
+  function setOn(card) {
+    cards.forEach((c) => c.classList.toggle('is-on', c === card));
+    wrap.classList.toggle('has-on', !!card);
+    const key = card ? card.dataset.planKey : 'profissional';
+    tabs.forEach((t) => t.setAttribute('aria-current', String(t.dataset.to === key)));
+  }
+  tabs.forEach((t) => t.addEventListener('click', () => {
+    const card = document.getElementById('plano-' + t.dataset.to);
+    setOn(card);
+    card.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  }));
+  cards.forEach((c) => c.addEventListener('click', (e) => { if (touch.matches && !e.target.closest('button,a')) setOn(c); }));
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      if (!touch.matches) return;
+      entries.forEach((en) => { if (en.isIntersecting) setOn(en.target); });
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    cards.forEach((c) => io.observe(c));
+    // esconde os botões flutuantes enquanto os planos ocupam a tela (só no celular, via CSS)
+    new IntersectionObserver(([en]) => document.body.classList.toggle('plans-in-view', en.isIntersecting), { rootMargin: '-20% 0px -20% 0px' }).observe(wrap);
+  }
+})();
