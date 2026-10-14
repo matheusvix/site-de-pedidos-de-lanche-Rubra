@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="assets/admin.css">
 </head>
 <body class="adm">
+<div class="adm-banner" id="demo-banner" hidden>Modo demonstração · dados fictícios · nada é salvo. Configure o Supabase para usar dados reais.</div>
 
 <!-- ===== LOGIN ===== -->
 <section id="view-login" class="adm-login" hidden>
@@ -22,6 +23,7 @@
       <h1>Área administrativa</h1>
       <p class="adm-muted">Entre com a conta de administrador.</p>
     </div>
+    <p class="adm-demo-hint" id="demo-hint" hidden><b>Modo demonstração.</b> Os campos já vêm preenchidos; clique em Entrar. Os dados são fictícios.</p>
     <form class="form" id="login-form" novalidate>
       <div class="field"><label for="a-email">E-mail</label><input id="a-email" type="email" autocomplete="email" required></div>
       <div class="field"><label for="a-senha">Senha</label><input id="a-senha" type="password" autocomplete="current-password" required></div>
