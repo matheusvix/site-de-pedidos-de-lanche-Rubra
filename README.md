@@ -9,9 +9,9 @@ Landing page de um sistema fictício de pedidos e cardápio digital para restaur
 - **Entrar**: modal de login com "esqueci minha senha"
 - **Falar com especialista**: formulário que abre o WhatsApp com a mensagem pronta (também no botão flutuante)
 - Cardápio interativo no mockup do celular (troca de categoria e sacola somando itens)
-- Depoimentos em destaque no topo, com rotação automática, e carrossel com setas
+- Carrossel de depoimentos com setas (e destaque no topo quando houver depoimentos aprovados)
 - Faixa animada de canais e integrações
-- Seção de vídeo de demonstração (abre em modal)
+- Vídeo de demonstração narrado, tocando direto na página
 - Planos com alternância mensal/anual
 - FAQ em acordeão acessível
 - Botão "voltar ao topo", animações ao rolar e respeito a `prefers-reduced-motion`
