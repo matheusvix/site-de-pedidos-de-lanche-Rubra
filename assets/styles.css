@@ -5,6 +5,7 @@
   --radius:24px;--shadow:0 30px 60px -30px rgba(26,17,18,.45);
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
 body{margin:0;background:var(--white);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;line-height:1.5}
 img,svg{display:block}
