@@ -137,8 +137,12 @@ $$('form[data-form]').forEach((form) => {
     if (kind === 'consultor') {
       await sendLead('consultor', data);
       const msg = `Olá! Sou ${data.nome}, do ${data.loja}. Assunto: ${data.assunto}.${data.mensagem ? ' ' + data.mensagem : ''}`;
-      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
-      successView(form, 'Tudo certo!', 'Abrimos o WhatsApp numa nova aba com sua mensagem pronta.');
+      const waUrl = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`;
+      const win = window.open(waUrl, '_blank');
+      if (win) win.opener = null;
+      successView(form, 'Tudo certo!', win
+        ? 'Abrimos o WhatsApp numa nova aba com sua mensagem pronta.'
+        : 'Recebemos seu pedido de contato. Um especialista vai chamar você no WhatsApp informado.');
       return;
     }
 
