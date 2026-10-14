@@ -34,7 +34,7 @@ button{font:inherit;cursor:pointer;color:inherit}
   radial-gradient(circle at 92% -30%,rgba(255,255,255,.10) 0 160px,transparent 161px),
   linear-gradient(120deg,var(--red-dark),var(--red))}
 .store{display:flex;flex-wrap:wrap;gap:16px 20px;align-items:flex-end;margin-top:-48px;padding-bottom:20px}
-.store-logo{width:96px;height:96px;border-radius:24px;background:#fff;border:4px solid #fff;box-shadow:0 12px 30px -14px rgba(26,17,18,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.store-logo{width:96px;height:96px;border-radius:24px;background:#fff;border:4px solid #fff;overflow:hidden;box-shadow:0 12px 30px -14px rgba(26,17,18,.5);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .store-main{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:6px}
 .store-main h1{font-size:clamp(26px,4vw,34px)}
 .store-meta{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--muted);font-size:14px}
@@ -75,6 +75,12 @@ button{font:inherit;cursor:pointer;color:inherit}
 .badge{font-size:11px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:999px;background:var(--red-soft);color:var(--red-dark)}
 .thumb{width:96px;height:96px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .thumb svg{width:70%;height:70%}
+.thumb.photo{object-fit:cover;background:#2A1C1D;box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.prod:hover .thumb.photo{transform:scale(1.03)}
+.thumb.photo{transition:transform .25s}
+.pd-hero.has-photo{height:240px;overflow:hidden;background:#2A1C1D!important}
+.pd-blur{position:absolute;inset:-30px;width:calc(100% + 60px);height:calc(100% + 60px);object-fit:cover;filter:blur(24px) brightness(.55) saturate(1.2)}
+.pd-photo{position:relative;width:200px;height:200px;border-radius:20px;object-fit:cover;box-shadow:0 20px 40px -12px rgba(0,0,0,.6)}
 .empty-search{padding:40px 16px;text-align:center;color:var(--muted)}
 
 /* cart panel */
@@ -218,6 +224,7 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
 </head>
 <body>
 
+
 <div class="demo">Demonstração · loja e pedidos fictícios · nada é cobrado</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -243,7 +250,7 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
 <div id="v-menu">
   <div class="cover" aria-hidden="true"></div>
   <header class="wrap store">
-    <div class="store-logo" aria-hidden="true"><svg width="64" height="64"><use href="#a-burger"/></svg></div>
+    <div class="store-logo" aria-hidden="true"><img src="assets/img/brasa-classico.jpg" alt="" width="88" height="88" style="width:100%;height:100%;object-fit:cover;border-radius:20px"></div>
     <div class="store-main">
       <h1>Brasa &amp; Pão</h1>
       <div class="store-meta">
@@ -393,11 +400,11 @@ const SUCO = { id: 'suco', title: 'Fruta', min: 1, max: 1, opts: [['Laranja', 0]
 
 const CATS = [
   { id: 'lanches', name: 'Lanches', note: 'Pão brioche e blend 150 g', items: [
-    { id: 'classico', n: 'Brasa Clássico', d: 'Blend bovino 150 g, queijo prato, alface, tomate, picles e molho da casa no pão brioche.', p: 24.9, art: 'a-burger', bg: '#FBEDEE', groups: [PONTO, EXTRAS, TIRAR], tag: 'Mais pedido' },
-    { id: 'salada', n: 'Brasa Salada', d: 'Blend 150 g, muçarela, alface americana, tomate, cebola roxa e maionese verde.', p: 26.9, art: 'a-burger', bg: '#EEF5EA', groups: [PONTO, EXTRAS, TIRAR] },
-    { id: 'bacon', n: 'Bacon Brasa', d: 'Blend 150 g, cheddar cremoso, bacon crocante e cebola caramelizada.', p: 29.9, art: 'a-burger', bg: '#FFF2DF', groups: [PONTO, EXTRAS, TIRAR] },
-    { id: 'duplo', n: 'Duplo Rubro', d: 'Dois blends de 150 g, duplo cheddar, bacon e molho barbecue defumado.', p: 36.9, art: 'a-burger', bg: '#FBEDEE', groups: [PONTO, EXTRAS, TIRAR], tag: 'Novo' },
-    { id: 'frango', n: 'Frango Crocante', d: 'Sobrecoxa empanada na farinha panko, coleslaw e maionese de limão.', p: 27.9, art: 'a-chicken', bg: '#FFF2DF', groups: [EXTRAS, TIRAR] },
+    { id: 'classico', n: 'Brasa Clássico', d: 'Blend bovino 150 g, queijo prato, alface, tomate, picles e molho da casa no pão brioche.', p: 24.9, art: 'a-burger', bg: '#FBEDEE', img: 'assets/img/brasa-classico.jpg', groups: [PONTO, EXTRAS, TIRAR], tag: 'Mais pedido' },
+    { id: 'salada', n: 'Brasa Salada', d: 'Blend 150 g, muçarela, alface americana, tomate, cebola roxa e maionese verde.', p: 26.9, art: 'a-burger', bg: '#EEF5EA', img: 'assets/img/brasa-salada.jpg', groups: [PONTO, EXTRAS, TIRAR] },
+    { id: 'bacon', n: 'Bacon Brasa', d: 'Blend 150 g, cheddar cremoso, bacon crocante e cebola caramelizada.', p: 29.9, art: 'a-burger', bg: '#FFF2DF', img: 'assets/img/bacon-brasa.jpg', groups: [PONTO, EXTRAS, TIRAR] },
+    { id: 'duplo', n: 'Duplo Rubro', d: 'Dois blends de 150 g, duplo cheddar, bacon e molho barbecue defumado.', p: 36.9, art: 'a-burger', bg: '#FBEDEE', img: 'assets/img/duplo-rubro.jpg', groups: [PONTO, EXTRAS, TIRAR], tag: 'Novo' },
+    { id: 'frango', n: 'Frango Crocante', d: 'Sobrecoxa empanada na farinha panko, coleslaw e maionese de limão.', p: 27.9, art: 'a-chicken', bg: '#FFF2DF', img: 'assets/img/frango-crocante.jpg', groups: [EXTRAS, TIRAR] },
     { id: 'veggie', n: 'Veggie da Casa', d: 'Hambúrguer de grão-de-bico e cogumelos, queijo coalho, rúcula e tomate assado.', p: 28.9, art: 'a-veggie', bg: '#EEF5EA', groups: [EXTRAS, TIRAR] },
   ]},
   { id: 'combos', name: 'Combos', note: 'Lanche + porção + bebida', items: [
@@ -454,7 +461,7 @@ function renderMenu(filter = '') {
             <b>${esc(i.n)}</b><p>${esc(i.d)}</p>
             <span class="prod-foot"><span class="price">${brl(i.p)}</span>${i.old ? `<s class="price">${brl(i.old)}</s>` : ''}${i.tag ? `<span class="badge">${i.tag}</span>` : ''}</span>
           </span>
-          <span class="thumb" style="background:${i.bg}" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#${i.art}"/></svg></span>
+          ${i.img ? `<img class="thumb photo" src="${i.img}" alt="${esc(i.n)}" width="96" height="96" loading="lazy">` : `<span class="thumb" style="background:${i.bg}" aria-hidden="true"><svg viewBox="0 0 100 100"><use href="#${i.art}"/></svg></span>`}
         </button>`).join('')}</div></section>`;
   }).join('');
   if (!any) menu.innerHTML = `<p class="empty-search">Nada encontrado para “${esc(filter)}”. Tente outro nome.</p>`;
@@ -481,8 +488,8 @@ function openProduct(id) {
   pState = { id, qty: 1, sel: Object.fromEntries(it.groups.map((g) => [g.id, []])), obs: '' };
   const form = $('#pd-form');
   form.innerHTML = `
-    <div class="pd-hero" style="background:${it.bg}">
-      <svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#${it.art}"/></svg>
+    <div class="pd-hero${it.img ? ' has-photo' : ''}" style="background:${it.bg}">
+      ${it.img ? `<img class="pd-blur" src="${it.img}" alt="" aria-hidden="true"><img class="pd-photo" src="${it.img}" alt="${esc(it.n)}">` : `<svg class="art" viewBox="0 0 100 100" aria-hidden="true"><use href="#${it.art}"/></svg>`}
       <button class="x" type="button" data-x aria-label="Fechar"><svg width="20" height="20"><use href="#i-x"/></svg></button>
     </div>
     <div class="pd-body">
@@ -718,5 +725,6 @@ renderMenu(); observe(); renderCart();
 const mo = new MutationObserver(observe); mo.observe($('#menu'), { childList: true });
 })();
 </script>
+
 </body>
 </html>

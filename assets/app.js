@@ -164,27 +164,21 @@ $('[data-action="forgot"]').addEventListener('click', async (e) => {
 
 /* ---------- Cardápio interativo no mockup ---------- */
 const MENU = {
-  massas: [
-    { n: 'Talharim ao sugo', d: 'Molho de tomate da casa', p: 39.9, c: '#F4D9DB' },
-    { n: 'Nhoque de batata', d: 'Manteiga e sálvia', p: 42.9, c: '#EFC9CC' },
-    { n: 'Lasanha bolonhesa', d: 'Porção individual', p: 45.9, c: '#F7E4E5' },
+  classicos: [
+    { n: 'Brasa Clássico', d: 'Blend 150 g, queijo e salada', p: 24.9, img: 'assets/img/brasa-classico.jpg' },
+    { n: 'Brasa Salada', d: 'Muçarela e maionese verde', p: 26.9, img: 'assets/img/brasa-salada.jpg' },
+    { n: 'Bacon Brasa', d: 'Cheddar, bacon e cebola', p: 29.9, img: 'assets/img/bacon-brasa.jpg' },
   ],
-  pizzas: [
-    { n: 'Margherita', d: 'Tomate, muçarela e manjericão', p: 54.9, c: '#F4D9DB' },
-    { n: 'Calabresa', d: 'Calabresa e cebola roxa', p: 52.9, c: '#EFC9CC' },
-    { n: 'Quatro queijos', d: 'Muçarela, provolone, gorgonzola', p: 58.9, c: '#F7E4E5' },
-  ],
-  bebidas: [
-    { n: 'Refrigerante lata', d: '350 ml', p: 7.0, c: '#F7E4E5' },
-    { n: 'Suco natural', d: 'Laranja ou limão, 500 ml', p: 12.0, c: '#F4D9DB' },
-    { n: 'Água com gás', d: '500 ml', p: 5.5, c: '#EFC9CC' },
+  especiais: [
+    { n: 'Duplo Rubro', d: 'Dois blends, cheddar e bacon', p: 36.9, img: 'assets/img/duplo-rubro.jpg' },
+    { n: 'Frango Crocante', d: 'Empanado na panko, coleslaw', p: 27.9, img: 'assets/img/frango-crocante.jpg' },
   ],
 };
 const bag = { count: 0, total: 0 };
 const itemsEl = $('#menu-items');
 function renderMenu(cat) {
   itemsEl.innerHTML = MENU[cat].map((it, i) => `
-    <div class="item"><span class="thumb" style="background:${it.c}"></span>
+    <div class="item"><img class="thumb" src="${it.img}" alt="${it.n}" width="56" height="56" loading="lazy">
       <div><b>${it.n}</b><span>${it.d}</span><strong>${brl(it.p)}</strong></div>
       <button class="add" data-add="${cat}:${i}" aria-label="Adicionar ${it.n}">+</button></div>`).join('');
 }
@@ -200,7 +194,7 @@ itemsEl.addEventListener('click', (e) => {
   $('#bag-count').textContent = `Ver sacola · ${bag.count} ${bag.count === 1 ? 'item' : 'itens'}`;
   $('#bag-total').textContent = brl(bag.total);
 });
-renderMenu('massas');
+renderMenu('classicos');
 
 /* ---------- Depoimentos (carrossel + destaque no hero) ---------- */
 const TESTIMONIALS = [
