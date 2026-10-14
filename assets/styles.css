@@ -31,7 +31,7 @@ button{font:inherit;cursor:pointer}
 .btn-ghost{color:var(--ink);background:transparent}
 .btn-white{background:#fff;color:var(--ink)}
 .btn-white:hover{color:var(--red-dark)}
-.btn-outline-white{border-color:#fff;color:#fff}
+.btn-outline-white{border:2px solid #fff;color:#fff;background:rgba(26,17,18,.18)}
 .btn-outline-white:hover{background:#fff;color:var(--red-dark)}
 .btn-block{width:100%}
 
