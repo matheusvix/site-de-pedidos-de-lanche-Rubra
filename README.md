@@ -25,7 +25,7 @@ Landing page de um sistema fictício de pedidos e cardápio digital para restaur
 2. Em **SQL Editor › New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Isso cria as tabelas, as regras de segurança e registra `mvix.com@gmail.com` como admin.
 3. Em **Authentication › Sign In / Providers**, desative **Allow new users to sign up** (só quem você convidar entra).
 4. Em **Authentication › URL Configuration**, coloque em **Site URL** o endereço do site publicado + `/admin.html`
-   (ex.: `https://matheusvix.github.io/site-de-pedidos-de-lanche-Rubra/admin.html`).
+   (ex.: `https://rubra-pedidos.netlify.app/admin.html`).
 5. Em **Authentication › Users › Add user › Send invitation**, convide `mvix.com@gmail.com`. Abra o e-mail, clique no link e defina sua senha.
 6. Em **Project Settings › API**, copie a **Project URL** e a **anon public key** para `assets/config.js`.
 
@@ -50,4 +50,4 @@ npx serve .
 
 ## Publicação
 
-Publicado via GitHub Pages a partir da branch `main` (pasta raiz).
+Publicado na Netlify (projeto `rubra-pedidos`), configurado em `netlify.toml`.
