@@ -1,18 +1,18 @@
 /* ============================================================
-   Rubra — painel administrativo
+   Tilim — painel administrativo
    Login real via Supabase Auth; dados protegidos por RLS
    (só e-mails da tabela public.admins leem os leads).
    Sem Supabase configurado (ou com ?demo na URL), o painel
    abre em MODO DEMONSTRAÇÃO, com dados fictícios locais.
    ============================================================ */
-const CFG = window.RUBRA_CONFIG || {};
+const CFG = window.TILIM_CONFIG || window.RUBRA_CONFIG || {};
 const $ = (s, el = document) => el.querySelector(s);
 
 const STATUS = { novo: 'Novo', em_contato: 'Em contato', convertido: 'Convertido', perdido: 'Perdido' };
 const ORIGEM = { cadastro: 'Teste grátis', consultor: 'Especialista' };
 
 const configured = Boolean(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
-const DEMO = window.RUBRA_DEMO === true || new URLSearchParams(location.search).has('demo') || !configured;
+const DEMO = window.TILIM_DEMO === true || new URLSearchParams(location.search).has('demo') || !configured;
 const sb = DEMO ? null : window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
 
 // O link do convite/redefinição chega com #...type=invite|recovery
@@ -66,7 +66,7 @@ function demoLeads() {
     { id: 11, created_at: ago(2), tipo: 'consultor', nome: 'Rafael Moura', loja: 'Brasa Burger', telefone: '(27) 98877-1203', assunto: 'Dúvida sobre planos', mensagem: 'Tenho duas lojas, o plano Completo atende as duas?', status: 'novo', notas: null },
     { id: 10, created_at: ago(5), tipo: 'cadastro', nome: 'Camila Freitas', loja: 'Açaí do Porto', telefone: '(27) 99654-3321', email: 'camila@exemplo.com', segmento: 'Açaí e sorveteria', plano: 'Essencial', status: 'em_contato', notas: 'Ligar depois das 14h.' },
     { id: 9, created_at: ago(20), tipo: 'cadastro', nome: 'Diego Santana', loja: 'Pizzaria Forno Vivo', telefone: '(27) 99701-5588', email: 'diego@exemplo.com', segmento: 'Pizzaria', plano: 'Completo', status: 'convertido', notas: 'Fechou plano Completo anual.' },
-    { id: 8, created_at: ago(30), tipo: 'consultor', nome: 'Patrícia Lima', loja: 'Doce Encanto', telefone: '(27) 99234-8890', assunto: 'Quero conhecer a Rubra', status: 'em_contato', notas: 'Agendada demonstração na sexta.' },
+    { id: 8, created_at: ago(30), tipo: 'consultor', nome: 'Patrícia Lima', loja: 'Doce Encanto', telefone: '(27) 99234-8890', assunto: 'Quero conhecer a Tilim', status: 'em_contato', notas: 'Agendada demonstração na sexta.' },
     { id: 7, created_at: ago(52), tipo: 'cadastro', nome: 'Marcos Vieira', loja: 'Sushi Mar', telefone: '(27) 98456-7712', email: 'marcos@exemplo.com', segmento: 'Japonês', plano: 'Profissional', status: 'convertido', notas: null },
     { id: 6, created_at: ago(76), tipo: 'cadastro', nome: 'Fernanda Rocha', loja: 'Lanchonete Ponto 10', telefone: '(27) 99120-6634', email: 'fernanda@exemplo.com', segmento: 'Lanchonete', plano: 'Essencial', status: 'perdido', notas: 'Achou caro neste momento.' },
     { id: 5, created_at: ago(110), tipo: 'cadastro', nome: 'Thiago Nunes', loja: 'Hamburgueria Chapa Quente', telefone: '(27) 99988-0021', email: 'thiago@exemplo.com', segmento: 'Hamburgueria', plano: 'Profissional', status: 'em_contato', notas: null },
@@ -113,7 +113,7 @@ if (!DEMO) {
 
 if (DEMO) {
   $('#demo-hint').hidden = false;
-  $('#a-email').value = 'admin@rubra.demo';
+  $('#a-email').value = 'admin@tilim.demo';
   $('#a-senha').value = 'demonstracao';
 }
 
@@ -281,7 +281,7 @@ $('#export').addEventListener('click', () => {
   };
   const csv = [cols.join(';'), ...filtered().map((l) => cols.map((c) => esc(l[c])).join(';'))].join('\r\n');
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = el('a', { href: URL.createObjectURL(blob), download: `leads-rubra-${new Date().toISOString().slice(0, 10)}.csv` });
+  const a = el('a', { href: URL.createObjectURL(blob), download: `leads-tilim-${new Date().toISOString().slice(0, 10)}.csv` });
   document.body.append(a); a.click(); a.remove();
 });
 

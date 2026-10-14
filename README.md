@@ -1,6 +1,6 @@
-# Rubra — landing page modelo
+# Tilim — cardápio digital e pedidos
 
-Landing page de um sistema fictício de pedidos e cardápio digital para restaurantes e delivery. Identidade vermelho e branco, site estático (HTML + CSS + JS puro, sem build).
+Landing page da Tilim, sistema de pedidos e cardápio digital para restaurantes e delivery. Identidade vermelho e branco (logos em `assets/brand/`), site estático (HTML + CSS + JS puro, sem build).
 
 ## Funcionalidades
 

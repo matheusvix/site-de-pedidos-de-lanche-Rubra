@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="assets/brand/tilim-app-icon.svg" type="image/svg+xml">
 <title>Brasa & Pão</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -280,7 +280,7 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
       <div class="cart" id="cart-panel"></div>
     </aside>
   </div>
-  <p class="powered">Cardápio digital por <b>rubra</b></p>
+  <p class="powered">Cardápio digital por <b>Tilim</b></p>
 </div>
 
 <!-- ===================== CHECKOUT ===================== -->
@@ -431,8 +431,8 @@ const ITEMS = Object.fromEntries(CATS.flatMap((c) => c.items.map((i) => [i.id, i
 /* ---------- estado ---------- */
 let cart = [];
 let coupon = null;
-try { const s = JSON.parse(localStorage.getItem('rubra-demo-cart') || 'null'); if (s && Array.isArray(s.cart)) { cart = s.cart.filter((l) => ITEMS[l.id]); coupon = s.coupon || null; } } catch (_) {}
-function persist() { try { localStorage.setItem('rubra-demo-cart', JSON.stringify({ cart, coupon })); } catch (_) {} }
+try { const s = JSON.parse(localStorage.getItem('tilim-demo-cart') || 'null'); if (s && Array.isArray(s.cart)) { cart = s.cart.filter((l) => ITEMS[l.id]); coupon = s.coupon || null; } } catch (_) {}
+function persist() { try { localStorage.setItem('tilim-demo-cart', JSON.stringify({ cart, coupon })); } catch (_) {} }
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 2600); }
@@ -690,7 +690,7 @@ function placeOrder(o) {
   if (o.pag === 'pix') {
     $('#t-pix').hidden = false;
     $('#t-sub').textContent = `${first}, pague o Pix para a loja começar o preparo.`;
-    const code = `00020126DEMO.RUBRA.PIX0114BRASAEPAO${num}5204000053039865406${o.t.total.toFixed(2)}5802BR6304DEMO`;
+    const code = `00020126DEMO.TILIM.PIX0114BRASAEPAO${num}5204000053039865406${o.t.total.toFixed(2)}5802BR6304DEMO`;
     $('#pix-code').textContent = code;
     drawQR(code);
     $('#paid').onclick = () => { $('#t-pix').hidden = true; $('#t-sub').textContent = `Pagamento aprovado, ${first}! Acompanhe abaixo.`; toast('Pix aprovado'); run(); };

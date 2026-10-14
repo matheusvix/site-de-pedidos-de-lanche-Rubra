@@ -1,5 +1,5 @@
 -- ============================================================
--- Rubra — banco de dados (Supabase / Postgres)
+-- Tilim — banco de dados (Supabase / Postgres)
 -- Rode este arquivo inteiro uma vez em: SQL Editor › New query
 -- ============================================================
 

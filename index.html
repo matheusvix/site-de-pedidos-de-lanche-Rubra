@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rubra — Cardápio digital e sistema de pedidos para restaurantes</title>
+<title>Tilim — Cardápio digital e sistema de pedidos para restaurantes</title>
 <meta name="description" content="Cardápio digital, pedidos pelo WhatsApp, pagamento online e gestão do restaurante em um só painel. Teste grátis, sem cartão e sem taxa por pedido.">
-<meta name="theme-color" content="#B3121E">
-<meta property="og:title" content="Rubra — Seu cardápio vende. Você só cozinha.">
+<meta name="theme-color" content="#E01E2D">
+<meta property="og:title" content="Tilim — Seu cardápio vende. Você só cozinha.">
 <meta property="og:description" content="Pedidos, cardápio digital e gestão para restaurantes e delivery.">
 <meta property="og:type" content="website">
-<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="icon" href="assets/brand/tilim-app-icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -50,9 +50,8 @@
 
 <header class="header">
   <div class="container nav">
-    <a class="brand" href="#topo" aria-label="Rubra — início">
-      <img src="assets/logo.svg" width="38" height="38" alt="">
-      <span>rubra</span>
+    <a class="brand" href="#topo" aria-label="Tilim — início">
+      <img class="wordmark" src="assets/brand/tilim-wordmark.svg" width="82" height="44" alt="Tilim">
     </a>
     <nav class="nav-links" aria-label="Principal">
       <a href="#produto">Produto</a>
@@ -150,7 +149,7 @@
 <!-- STATS -->
 <section class="section-dark" aria-label="Números">
   <div class="container stats">
-    <div class="stat"><b>[00 mil]</b><span>estabelecimentos usando a Rubra</span></div>
+    <div class="stat"><b>[00 mil]</b><span>estabelecimentos usando a Tilim</span></div>
     <div class="stat"><b>[00 mi]</b><span>pedidos processados por mês</span></div>
     <div class="stat"><b>[0,0]/5</b><span>nota média dos clientes</span></div>
     <div class="stat"><b>[00] min</b><span>para colocar o cardápio no ar</span></div>
@@ -172,7 +171,7 @@
         </ul>
       </div>
       <div class="compare-card good reveal">
-        <h3>Com a Rubra</h3>
+        <h3>Com a Tilim</h3>
         <ul class="list">
           <li><svg width="20" height="20"><use href="#i-check"/></svg>Atendente automático responde e organiza cada pedido</li>
           <li><svg width="20" height="20"><use href="#i-check"/></svg>Cardápio online que você altera em segundos</li>
@@ -259,7 +258,7 @@
 <!-- TESTIMONIALS -->
 <section class="section section-paper">
   <div class="container">
-    <div class="head reveal"><span class="eyebrow">Quem usa, recomenda</span><h2 class="h2">O que contam os restaurantes que usam a Rubra.</h2>
+    <div class="head reveal"><span class="eyebrow">Quem usa, recomenda</span><h2 class="h2">O que contam os restaurantes que usam a Tilim.</h2>
       <p class="lead" id="tst-note">Os cartões abaixo são exemplos. Os depoimentos dos nossos clientes aparecem aqui depois de aprovados.</p></div>
     <div class="carousel">
       <div class="slides" id="slides" tabindex="0" aria-label="Depoimentos de clientes"></div>
@@ -356,7 +355,7 @@
   <div class="container">
     <div class="footer-top">
       <div class="footer-brand">
-        <a class="brand" href="#topo"><img src="assets/logo.svg" width="34" height="34" alt=""><span style="font-size:24px">rubra</span></a>
+        <a class="brand" href="#topo"><img class="wordmark" src="assets/brand/tilim-wordmark-on-dark.svg" width="82" height="44" alt="Tilim"></a>
         <p style="font-size:15px">Pedidos, cardápio digital e gestão para restaurantes que querem crescer sem perder o controle.</p>
         <div class="socials">
           <a href="#" aria-label="Instagram"><svg width="20" height="20"><use href="#i-ig"/></svg></a>
@@ -370,7 +369,7 @@
       <nav aria-label="Ajuda"><b>Ajuda</b><a href="#duvidas">Dúvidas frequentes</a><a href="#" data-open="consultor">Suporte</a><a href="#">Central de ajuda</a><a href="admin.html">Área administrativa</a></nav>
     </div>
     <div class="footer-bottom">
-      <span>© <span id="year">2026</span> Rubra</span>
+      <span>© <span id="year">2026</span> Tilim</span>
       <span><a href="termos.html">Termos de uso</a><a href="privacidade.html">Privacidade</a></span>
     </div>
   </div>
@@ -408,7 +407,7 @@
 <dialog id="login" aria-labelledby="login-title">
   <div class="modal">
     <div class="modal-head">
-      <div><h2 id="login-title">Entrar no painel</h2><p>Acesse sua conta Rubra.</p></div>
+      <div><h2 id="login-title">Entrar no painel</h2><p>Acesse sua conta Tilim.</p></div>
       <button class="close" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button>
     </div>
     <form class="form" novalidate data-form="login">
@@ -431,7 +430,7 @@
     <form class="form" novalidate data-form="consultor">
       <div class="field"><label for="c-nome">Seu nome</label><input id="c-nome" name="nome" autocomplete="name" required><span class="err"></span></div>
       <div class="field"><label for="c-loja">Estabelecimento</label><input id="c-loja" name="loja" required><span class="err"></span></div>
-      <div class="field"><label for="c-assunto">Assunto</label><select id="c-assunto" name="assunto"><option>Quero conhecer a Rubra</option><option>Dúvida sobre planos</option><option>Plano Completo / várias lojas</option><option>Já sou cliente — suporte</option></select></div>
+      <div class="field"><label for="c-assunto">Assunto</label><select id="c-assunto" name="assunto"><option>Quero conhecer a Tilim</option><option>Dúvida sobre planos</option><option>Plano Completo / várias lojas</option><option>Já sou cliente — suporte</option></select></div>
       <div class="field"><label for="c-msg">Mensagem (opcional)</label><textarea id="c-msg" name="mensagem" rows="3"></textarea></div>
       <button class="btn btn-primary btn-lg btn-block" type="submit"><svg width="20" height="20"><use href="#i-wa"/></svg> Continuar no WhatsApp</button>
     </form>
@@ -456,7 +455,7 @@
         <div class="field"><label for="d-seg">Segmento</label>
           <select id="d-seg" name="segmento" required><option value="">Selecione</option><option>Restaurante</option><option>Pizzaria</option><option>Hamburgueria</option><option>Lanchonete</option><option>Açaí e sorveteria</option><option>Japonês</option><option>Doceria e café</option><option>Outro</option></select><span class="err"></span></div>
       </div>
-      <div class="field"><label for="d-texto">Seu depoimento</label><textarea id="d-texto" name="texto" rows="4" maxlength="400" minlength="20" required placeholder="O que mudou no seu delivery depois da Rubra?"></textarea><span class="err"></span></div>
+      <div class="field"><label for="d-texto">Seu depoimento</label><textarea id="d-texto" name="texto" rows="4" maxlength="400" minlength="20" required placeholder="O que mudou no seu delivery depois da Tilim?"></textarea><span class="err"></span></div>
       <label class="check"><input type="checkbox" name="autoriza" required> <span>Autorizo a publicação do meu depoimento com meu nome, estabelecimento e cidade.</span></label>
       <span class="err" data-err="autoriza"></span>
       <button class="btn btn-primary btn-lg btn-block" type="submit">Enviar depoimento</button>
