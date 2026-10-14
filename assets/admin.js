@@ -101,6 +101,7 @@ function enterApp(email) {
   $('#who').textContent = email;
   show('app');
   loadLeads();
+  loadTst();
 }
 
 if (!DEMO) {
@@ -283,5 +284,62 @@ $('#export').addEventListener('click', () => {
   const a = el('a', { href: URL.createObjectURL(blob), download: `leads-rubra-${new Date().toISOString().slice(0, 10)}.csv` });
   document.body.append(a); a.click(); a.remove();
 });
+
+/* ---------- depoimentos ---------- */
+let tst = [];
+let tFilter = 'pendente';
+function demoTst() {
+  const ago = (h) => new Date(Date.now() - h * 36e5).toISOString();
+  return [
+    { id: 3, created_at: ago(1), nome: 'Camila Freitas', loja: 'Açaí do Porto', cidade: 'Vitória', segmento: 'Açaí e sorveteria', texto: '(Demonstração) Depoimento enviado pelo formulário do site aguardando sua aprovação.', status: 'pendente' },
+    { id: 2, created_at: ago(9), nome: 'Diego Santana', loja: 'Pizzaria Forno Vivo', cidade: 'Serra', segmento: 'Pizzaria', texto: '(Demonstração) Depoimentos aprovados passam a aparecer no carrossel da página inicial.', status: 'pendente' },
+    { id: 1, created_at: ago(40), nome: 'Marcos Vieira', loja: 'Sushi Mar', cidade: 'Vila Velha', segmento: 'Japonês', texto: '(Demonstração) Depoimentos ocultos ficam guardados aqui e saem do site.', status: 'oculto' },
+  ];
+}
+async function loadTst() {
+  if (DEMO) { if (!tst.length) tst = demoTst(); }
+  else {
+    const { data, error } = await sb.from('testimonials').select('*').order('created_at', { ascending: false }).limit(500);
+    if (error) { toast('Erro ao carregar depoimentos.'); console.error(error); return; }
+    tst = data || [];
+  }
+  renderTst();
+}
+function renderTst() {
+  ['pendente', 'aprovado', 'oculto'].forEach((k) => { $(`#tc-${k}`).textContent = tst.filter((t) => t.status === k).length; });
+  const list = tst.filter((t) => t.status === tFilter);
+  $('#tst-list').replaceChildren(...list.map((t) => {
+    const acts = [];
+    if (t.status !== 'aprovado') acts.push(el('button', { class: 'btn btn-primary', type: 'button', text: 'Aprovar', onclick: () => setTst(t, 'aprovado') }));
+    if (t.status !== 'oculto') acts.push(el('button', { class: 'btn btn-outline', type: 'button', text: t.status === 'aprovado' ? 'Tirar do site' : 'Ocultar', onclick: () => setTst(t, 'oculto') }));
+    const del = el('button', { class: 'btn btn-ghost adm-danger', type: 'button', text: 'Excluir' });
+    del.addEventListener('click', async () => {
+      if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.textContent = 'Clique de novo'; return; }
+      if (!DEMO) { const { error } = await sb.from('testimonials').delete().eq('id', t.id); if (error) { toast('Erro ao excluir.'); return; } }
+      tst = tst.filter((x) => x.id !== t.id); renderTst(); toast('Depoimento excluído.');
+    });
+    acts.push(del);
+    return el('article', { class: 'tcard' },
+      el('div', { class: 'meta' }, el('span', { class: 'origin', text: t.segmento }), el('span', { text: fmtDate(t.created_at) })),
+      el('blockquote', { text: `“${t.texto}”` }),
+      el('div', { class: 'who' }, el('b', { text: t.nome }), ` · ${t.loja} · ${t.cidade}`),
+      el('div', { class: 'acts' }, acts));
+  }));
+  $('#tst-empty').hidden = list.length > 0;
+}
+async function setTst(t, status) {
+  if (!DEMO) {
+    const { error } = await sb.from('testimonials').update({ status }).eq('id', t.id);
+    if (error) { toast('Erro ao salvar.'); console.error(error); return; }
+  }
+  t.status = status; renderTst();
+  toast(status === 'aprovado' ? 'Depoimento aprovado — já aparece no site.' : 'Depoimento retirado do site.');
+}
+document.querySelectorAll('[data-tf]').forEach((b) => b.addEventListener('click', () => {
+  tFilter = b.dataset.tf;
+  document.querySelectorAll('[data-tf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderTst();
+}));
+$('#refresh').addEventListener('click', () => loadTst());
 
 route();

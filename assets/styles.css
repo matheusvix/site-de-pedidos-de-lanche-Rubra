@@ -202,6 +202,15 @@ button{font:inherit;cursor:pointer}
 .car-ctrl{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
 .car-ctrl button{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--ink);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--ink)}
 .car-ctrl button:hover{background:var(--ink);color:#fff}
+.slide .seg-tag{align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 12px;border-radius:999px;background:var(--red-soft);color:var(--red-dark)}
+.slide .ex-tag{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 12px;border-radius:999px;border:1px dashed #C9B3B4;color:var(--muted-2)}
+.slide .tags{display:flex;flex-wrap:wrap;gap:8px}
+.slide.example blockquote{color:var(--muted)}
+.car-ctrl{align-items:center}
+.car-ctrl .tst-cta{margin-right:auto;width:auto;height:auto;min-height:48px;padding:12px 22px;border-radius:999px;background:#fff;color:var(--ink);font-size:15px}
+.car-ctrl .tst-cta:hover{background:var(--ink);color:#fff}
+#tst-note{font-size:15px}
+
 
 /* pricing */
 .billing{display:inline-flex;padding:6px;border-radius:999px;background:var(--paper);border:1px solid var(--line);margin-top:8px}
@@ -281,6 +290,8 @@ dialog.wide{width:min(960px,calc(100% - 32px))}
 .field input[aria-invalid="true"],.field select[aria-invalid="true"]{border-color:#C0392B}
 .err{font-size:13px;color:#A3101B;min-height:0}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row2>*{min-width:0}
+.field input,.field select,.field textarea{width:100%}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
 .check input{width:20px;height:20px;margin-top:1px;accent-color:var(--red)}
 .form-foot{font-size:14px;color:var(--muted);text-align:center}

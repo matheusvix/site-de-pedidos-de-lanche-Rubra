@@ -96,3 +96,41 @@ grant insert on public.leads to anon, authenticated;
 grant select, update, delete on public.leads to authenticated;
 grant select on public.admins to authenticated;
 grant execute on function public.is_admin() to anon, authenticated;
+
+-- ------------------------------------------------------------
+-- Depoimentos de clientes (só aparecem no site depois de aprovados)
+-- ------------------------------------------------------------
+create table if not exists public.testimonials (
+  id          bigint generated always as identity primary key,
+  created_at  timestamptz not null default now(),
+  nome        text not null check (char_length(nome) between 1 and 80),
+  loja        text not null check (char_length(loja) between 1 and 120),
+  cidade      text not null check (char_length(cidade) between 1 and 80),
+  segmento    text not null check (char_length(segmento) between 1 and 40),
+  texto       text not null check (char_length(texto) between 20 and 400),
+  status      text not null default 'pendente' check (status in ('pendente', 'aprovado', 'oculto'))
+);
+create index if not exists testimonials_status_idx on public.testimonials (status, created_at desc);
+
+alter table public.testimonials enable row level security;
+
+-- Visitantes enviam depoimentos (sempre como pendentes)
+drop policy if exists "site envia depoimento" on public.testimonials;
+create policy "site envia depoimento" on public.testimonials
+  for insert to anon, authenticated with check (status = 'pendente');
+
+-- Qualquer visitante lê apenas os aprovados
+drop policy if exists "site le aprovados" on public.testimonials;
+create policy "site le aprovados" on public.testimonials
+  for select to anon, authenticated using (status = 'aprovado' or public.is_admin());
+
+-- Só admins aprovam, ocultam e apagam
+drop policy if exists "admin edita depoimentos" on public.testimonials;
+create policy "admin edita depoimentos" on public.testimonials
+  for update to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "admin apaga depoimentos" on public.testimonials;
+create policy "admin apaga depoimentos" on public.testimonials
+  for delete to authenticated using (public.is_admin());
+
+grant insert, select on public.testimonials to anon, authenticated;
+grant update, delete on public.testimonials to authenticated;

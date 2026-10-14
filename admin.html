@@ -106,6 +106,22 @@
       </table>
       <p class="adm-empty" id="empty" hidden>Nenhum lead encontrado.</p>
     </div>
+
+    <section class="adm-tst" aria-labelledby="tst-title">
+      <div class="adm-head">
+        <div>
+          <h2 id="tst-title">Depoimentos</h2>
+          <p class="adm-muted">Enviados pelo site. Só os aprovados aparecem na página inicial.</p>
+        </div>
+        <div class="adm-seg" role="group" aria-label="Filtrar depoimentos">
+          <button type="button" data-tf="pendente" aria-pressed="true">Pendentes <b id="tc-pendente">0</b></button>
+          <button type="button" data-tf="aprovado" aria-pressed="false">Aprovados <b id="tc-aprovado">0</b></button>
+          <button type="button" data-tf="oculto" aria-pressed="false">Ocultos <b id="tc-oculto">0</b></button>
+        </div>
+      </div>
+      <div class="adm-tst-list" id="tst-list"></div>
+      <p class="adm-empty" id="tst-empty" hidden>Nenhum depoimento nesta lista.</p>
+    </section>
   </main>
 </div>
 

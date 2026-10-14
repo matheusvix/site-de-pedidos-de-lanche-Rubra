@@ -96,9 +96,9 @@
         <li><svg width="16" height="16" style="color:var(--red-ink)"><use href="#i-check"/></svg>Sem taxa por pedido</li>
         <li><svg width="16" height="16" style="color:var(--red-ink)"><use href="#i-check"/></svg>Sem fidelidade</li>
       </ul>
-      <div class="hero-quote" aria-live="polite">
+      <div class="hero-quote" id="hero-quote" aria-live="polite" hidden>
         <span class="avatar" id="hq-avatar">A</span>
-        <p><span id="hq-text">“[Depoimento curto de cliente com resultado.]”</span><small id="hq-who">[Nome] · [Restaurante]</small></p>
+        <p><span id="hq-text"></span><small id="hq-who"></small></p>
       </div>
     </div>
 
@@ -259,10 +259,12 @@
 <!-- TESTIMONIALS -->
 <section class="section section-paper">
   <div class="container">
-    <div class="head reveal"><span class="eyebrow">Quem usa, recomenda</span><h2 class="h2">Histórias reais de quem cresceu com a Rubra.</h2></div>
+    <div class="head reveal"><span class="eyebrow">Quem usa, recomenda</span><h2 class="h2">O que contam os restaurantes que usam a Rubra.</h2>
+      <p class="lead" id="tst-note">Os cartões abaixo são exemplos. Os depoimentos dos nossos clientes aparecem aqui depois de aprovados.</p></div>
     <div class="carousel">
       <div class="slides" id="slides" tabindex="0" aria-label="Depoimentos de clientes"></div>
       <div class="car-ctrl">
+        <button class="btn btn-outline tst-cta" type="button" data-open="depoimento">Conte sua experiência</button>
         <button id="prev" aria-label="Depoimento anterior"><svg width="20" height="20"><use href="#i-left"/></svg></button>
         <button id="next" aria-label="Próximo depoimento"><svg width="20" height="20"><use href="#i-right"/></svg></button>
       </div>
@@ -436,6 +438,31 @@
   </div>
 </dialog>
 
+
+<!-- MODAL: DEPOIMENTO -->
+<dialog id="depoimento" aria-labelledby="dep-title">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="dep-title">Conte sua experiência</h2><p>Seu depoimento aparece no site depois de aprovado pela nossa equipe.</p></div>
+      <button class="close" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button>
+    </div>
+    <form class="form" novalidate data-form="depoimento">
+      <div class="row2">
+        <div class="field"><label for="d-nome">Seu nome</label><input id="d-nome" name="nome" autocomplete="name" maxlength="80" required><span class="err"></span></div>
+        <div class="field"><label for="d-loja">Estabelecimento</label><input id="d-loja" name="loja" maxlength="120" required><span class="err"></span></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="d-cidade">Cidade</label><input id="d-cidade" name="cidade" autocomplete="address-level2" maxlength="80" required><span class="err"></span></div>
+        <div class="field"><label for="d-seg">Segmento</label>
+          <select id="d-seg" name="segmento" required><option value="">Selecione</option><option>Restaurante</option><option>Pizzaria</option><option>Hamburgueria</option><option>Lanchonete</option><option>Açaí e sorveteria</option><option>Japonês</option><option>Doceria e café</option><option>Outro</option></select><span class="err"></span></div>
+      </div>
+      <div class="field"><label for="d-texto">Seu depoimento</label><textarea id="d-texto" name="texto" rows="4" maxlength="400" minlength="20" required placeholder="O que mudou no seu delivery depois da Rubra?"></textarea><span class="err"></span></div>
+      <label class="check"><input type="checkbox" name="autoriza" required> <span>Autorizo a publicação do meu depoimento com meu nome, estabelecimento e cidade.</span></label>
+      <span class="err" data-err="autoriza"></span>
+      <button class="btn btn-primary btn-lg btn-block" type="submit">Enviar depoimento</button>
+    </form>
+  </div>
+</dialog>
 
 <div class="toast" role="status" aria-live="polite"></div>
 

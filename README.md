@@ -17,6 +17,7 @@ Landing page de um sistema fictício de pedidos e cardápio digital para restaur
 - Botão "voltar ao topo", animações ao rolar e respeito a `prefers-reduced-motion`
 - Páginas de Termos e Privacidade (modelos)
 
+- **Depoimentos com aprovação**: o botão "Conte sua experiência" envia o depoimento para o painel; só os aprovados aparecem no carrossel (enquanto não houver nenhum, o site mostra cartões marcados como "Exemplo")
 - **Painel administrativo** (`admin.html`): login real, lista de leads com busca e filtros, status (novo, em contato, convertido, perdido), anotações, botão de WhatsApp por lead, exclusão e exportação CSV
 
 ## Configurar o banco e o acesso admin (Supabase)

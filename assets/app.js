@@ -148,6 +148,13 @@ $$('form[data-form]').forEach((form) => {
       return;
     }
 
+    if (kind === 'depoimento') {
+      const ok = await sendTestimonial(data);
+      if (!ok) { btn.disabled = false; btn.innerHTML = label; toast('Não foi possível enviar agora. Tente de novo.'); return; }
+      successView(form, 'Obrigado pelo depoimento!', 'Ele foi enviado para aprovação e aparece no site assim que for liberado.');
+      return;
+    }
+
     if (kind === 'consultor') {
       await sendLead('consultor', data);
       const msg = `Olá! Sou ${data.nome}, do ${data.loja}. Assunto: ${data.assunto}.${data.mensagem ? ' ' + data.mensagem : ''}`;
@@ -210,20 +217,30 @@ itemsEl.addEventListener('click', (e) => {
 });
 renderMenu('classicos');
 
-/* ---------- Depoimentos (carrossel + destaque no hero) ---------- */
-const TESTIMONIALS = [
-  { r: '[+00%]', q: '[Depoimento real do cliente, contando o resultado obtido.]', n: '[Nome do cliente]', l: '[Restaurante · Cidade]' },
-  { r: '[+00%]', q: '[Depoimento real do cliente, contando o resultado obtido.]', n: '[Nome do cliente]', l: '[Pizzaria · Cidade]' },
-  { r: '[-00%]', q: '[Depoimento real do cliente, contando o resultado obtido.]', n: '[Nome do cliente]', l: '[Hamburgueria · Cidade]' },
-  { r: '[+00%]', q: '[Depoimento real do cliente, contando o resultado obtido.]', n: '[Nome do cliente]', l: '[Açaiteria · Cidade]' },
-  { r: '[+00]', q: '[Depoimento real do cliente, contando o resultado obtido.]', n: '[Nome do cliente]', l: '[Japonês · Cidade]' },
+/* ---------- Depoimentos ----------
+   Mostra só depoimentos reais aprovados no painel (tabela testimonials).
+   Enquanto não houver nenhum, exibe cartões-modelo marcados como "Exemplo". */
+const EXAMPLES = [
+  { texto: 'Os pedidos do WhatsApp passaram a chegar organizados e o cliente já paga no Pix antes de o lanche sair da chapa.', segmento: 'Hamburgueria' },
+  { texto: 'Atualizo o cardápio em segundos quando um ingrediente acaba, sem precisar mandar PDF novo para ninguém.', segmento: 'Restaurante' },
+  { texto: 'O painel mostra o que mais vende em cada dia da semana e ajudou a montar os combos certos.', segmento: 'Pizzaria' },
+  { texto: 'Os clientes pedem pelo QR Code na mesa e o garçom só leva o pedido pronto. O salão ficou muito mais calmo.', segmento: 'Lanchonete' },
 ];
 const slidesEl = $('#slides');
-slidesEl.innerHTML = TESTIMONIALS.map((t) => `
-  <figure class="slide"><span class="result">${t.r}</span>
-    <blockquote>“${t.q}”</blockquote>
-    <figcaption><i aria-hidden="true">${t.n.replace(/\W/g, '').charAt(0) || 'C'}</i><span><b>${t.n}</b><span>${t.l}</span></span></figcaption>
-  </figure>`).join('');
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const initials = (n) => String(n || '').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '•';
+
+function renderTestimonials(list, isExample) {
+  slidesEl.innerHTML = list.map((t) => `
+    <figure class="slide${isExample ? ' example' : ''}">
+      <div class="tags">${isExample ? '<span class="ex-tag">Exemplo</span>' : ''}<span class="seg-tag">${esc(t.segmento)}</span></div>
+      <blockquote>“${esc(t.texto)}”</blockquote>
+      <figcaption><i aria-hidden="true">${isExample ? '?' : esc(initials(t.nome))}</i><span>
+        <b>${isExample ? 'Nome do cliente' : esc(t.nome)}</b>
+        <span>${isExample ? 'Estabelecimento · Cidade' : esc(t.loja) + ' · ' + esc(t.cidade)}</span></span></figcaption>
+    </figure>`).join('');
+  $('#tst-note').hidden = !isExample;
+}
 const step = () => (slidesEl.firstElementChild?.offsetWidth || 300) + 20;
 $('#prev').addEventListener('click', () => slidesEl.scrollBy({ left: -step(), behavior: 'smooth' }));
 $('#next').addEventListener('click', () => {
@@ -231,17 +248,42 @@ $('#next').addEventListener('click', () => {
   slidesEl.scrollTo({ left: end ? 0 : slidesEl.scrollLeft + step(), behavior: 'smooth' });
 });
 
-let hq = 0;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-function heroQuote() {
-  const t = TESTIMONIALS[hq % TESTIMONIALS.length];
-  $('#hq-text').textContent = `“${t.q}”`;
-  $('#hq-who').textContent = `${t.n} · ${t.l}`;
-  $('#hq-avatar').textContent = String((hq % TESTIMONIALS.length) + 1);
-  hq += 1;
+function startHeroQuote(list) { // só com depoimentos reais
+  if (!list.length) return;
+  let hq = 0;
+  const show = () => {
+    const t = list[hq % list.length];
+    $('#hq-text').textContent = `“${t.texto.length > 110 ? t.texto.slice(0, 107) + '…' : t.texto}”`;
+    $('#hq-who').textContent = `${t.nome} · ${t.loja}`;
+    $('#hq-avatar').textContent = initials(t.nome);
+    hq += 1;
+  };
+  $('#hero-quote').hidden = false;
+  show();
+  if (!reduce && list.length > 1) setInterval(show, 5000);
 }
-heroQuote();
-if (!reduce) setInterval(heroQuote, 5000);
+
+async function loadTestimonials() {
+  renderTestimonials(EXAMPLES, true);
+  if (!sb) return;
+  const { data, error } = await sb.from('testimonials').select('nome,loja,cidade,segmento,texto')
+    .eq('status', 'aprovado').order('created_at', { ascending: false }).limit(12);
+  if (error) { console.warn('Depoimentos indisponíveis:', error.message); return; }
+  if (data && data.length) { renderTestimonials(data, false); startHeroQuote(data); }
+}
+loadTestimonials();
+
+async function sendTestimonial(data) {
+  if (!sb) { console.warn('Supabase não configurado em assets/config.js — depoimento não foi salvo.'); return true; }
+  const clip = (v, n) => String(v || '').trim().slice(0, n);
+  const { error } = await sb.from('testimonials').insert({
+    nome: clip(data.nome, 80), loja: clip(data.loja, 120), cidade: clip(data.cidade, 80),
+    segmento: clip(data.segmento, 40), texto: clip(data.texto, 400),
+  });
+  if (error) console.error(error);
+  return !error;
+}
 
 /* ---------- Planos: mensal / anual ---------- */
 $$('[data-billing]').forEach((b) => b.addEventListener('click', () => {
