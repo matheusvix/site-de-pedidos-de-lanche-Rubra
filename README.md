@@ -20,7 +20,22 @@ Landing page do BoraLanchar!, sistema de pedidos e cardápio digital para restau
 - **Depoimentos com aprovação**: o botão "Conte sua experiência" envia o depoimento para o painel; só os aprovados aparecem no carrossel (enquanto não houver nenhum, o site mostra cartões marcados como "Exemplo")
 - **Painel administrativo** (`admin.html`): login real, lista de leads com busca e filtros, status (novo, em contato, convertido, perdido), anotações, botão de WhatsApp por lead, exclusão e exportação CSV
 
-## Configurar o banco e o acesso admin (Supabase)
+
+## Sistema dos restaurantes
+
+- **Cadastro**: o formulário "Teste grátis" cria a conta (e-mail e senha) e a loja com 7 dias de teste, e leva direto ao painel.
+- **Painel da loja** (`painel.html` ou `/painel`): pedidos em tempo real com som, aceitar/preparo/saiu/entregue, WhatsApp do cliente com mensagem pronta, impressão do pedido; editor de cardápio (categorias, produtos, fotos, esgotado); dados da loja (taxa, pedido mínimo, entrega/retirada, abrir/fechar), link e QR Code do cardápio.
+- **Cardápio de cada loja**: `/l/<link-da-loja>` (ex.: `/l/bora-burger`). O cliente monta a sacola, finaliza e acompanha o status; o pedido também pode ser enviado no WhatsApp da loja. Os preços são sempre recalculados no banco (função `place_order`).
+- **Admin** (`admin.html`): leads, depoimentos e a lista de restaurantes, com "Ativar plano", "+7 dias" e "Pausar". Sem plano ativo, o cardápio pausa quando o teste acaba.
+
+### Banco (Supabase)
+
+Rode `supabase/instalar-tudo.sql` inteiro no SQL Editor. Depois, em Authentication:
+- **Sign In / Providers → Email**: deixe "Allow new users to sign up" ligado e desligue "Confirm email".
+- **URL Configuration → Site URL**: `https://boralanchar.netlify.app`.
+- Para o admin: **Users → Add user** com `mvix.com@gmail.com` e uma senha (marque "Auto Confirm User").
+
+## Configurar o banco e o acesso admin (Supabase) — versão antiga
 
 1. Crie uma conta grátis em [supabase.com](https://supabase.com) e um **New project** (região São Paulo).
 2. Em **SQL Editor › New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Isso cria as tabelas, as regras de segurança e registra `mvix.com@gmail.com` como admin.

@@ -161,7 +161,7 @@ $$('form[data-form]').forEach((form) => {
       if (!sb) { btn.disabled = false; btn.innerHTML = label; toast('Login indisponível: configure o Supabase em assets/config.js.'); return; }
       const { error } = await sb.auth.signInWithPassword({ email: data.email.trim(), password: data.senha });
       if (error) { btn.disabled = false; btn.innerHTML = label; toast('E-mail ou senha incorretos.'); return; }
-      location.href = 'admin.html';
+      location.href = 'painel.html';
       return;
     }
 
@@ -184,17 +184,50 @@ $$('form[data-form]').forEach((form) => {
       return;
     }
 
-    const ok = await sendLead('cadastro', data);
-    if (!ok) { btn.disabled = false; btn.innerHTML = label; toast('Não foi possível enviar agora. Tente de novo.'); return; }
+    const ok = await sendLead('cadastro', { ...data, senha: undefined });
     const first = data.nome.trim().split(' ')[0];
-    const msg = `Olá! Sou ${data.nome.trim()}, do ${data.loja.trim()}. Acabei de me cadastrar no BoraLanchar! e quero ativar meu teste grátis de 7 dias do plano ${data.plano}. Meu WhatsApp: ${data.telefone}.`;
-    const waUrl = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`;
+    const waMsg = `Olá! Sou ${data.nome.trim()}, do ${data.loja.trim()}. Acabei de criar minha conta no BoraLanchar! (plano ${data.plano}). Meu WhatsApp: ${data.telefone}.`;
+    const waUrl = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(waMsg)}`;
+
+    // Sem banco configurado: guarda o cadastro e segue pelo WhatsApp
+    if (!sb) {
+      if (!ok) { btn.disabled = false; btn.innerHTML = label; toast('Não foi possível enviar agora. Tente de novo.'); return; }
+      form.innerHTML = `<div class="success">
+        <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
+        <h3 style="font-size:24px">Cadastro recebido, ${escapeHtml(first)}!</h3>
+        <p style="color:var(--muted)">Toque no botão abaixo e envie a mensagem pronta no WhatsApp para liberarmos seu acesso.</p>
+        <a class="btn btn-primary btn-lg btn-block" href="${waUrl}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+        <button class="btn btn-ghost btn-block" type="button" data-close>Fechar</button></div>`;
+      return;
+    }
+
+    // Cria a conta do restaurante (o painel termina de montar a loja no primeiro acesso)
+    const { data: auth, error } = await sb.auth.signUp({
+      email: data.email.trim(),
+      password: data.senha,
+      options: {
+        data: { nome: data.nome.trim(), loja: data.loja.trim(), telefone: data.telefone, segmento: data.segmento, plano: data.plano },
+        emailRedirectTo: new URL('painel.html', location.href).href,
+      },
+    });
+    if (error) {
+      btn.disabled = false; btn.innerHTML = label;
+      const already = /registered|already/i.test(error.message);
+      toast(already ? 'Este e-mail já tem conta. Use "Entrar" para acessar seu painel.' : 'Não foi possível criar a conta: ' + error.message);
+      return;
+    }
+    if (auth.session) {
+      await sb.rpc('create_my_restaurant', { p_name: data.loja.trim(), p_whatsapp: data.telefone, p_segment: data.segmento, p_plan: data.plano });
+      location.href = 'painel.html?bemvindo=1';
+      return;
+    }
+    // Confirmação de e-mail ligada no Supabase
     form.innerHTML = `<div class="success">
       <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
-      <h3 style="font-size:24px">Cadastro recebido, ${escapeHtml(first)}!</h3>
-      <p style="color:var(--muted)">Falta só um passo: toque no botão abaixo e envie a mensagem pronta no WhatsApp. Respondemos por lá com o acesso ao seu teste do plano ${escapeHtml(data.plano)}.</p>
-      <a class="btn btn-primary btn-lg btn-block" href="${waUrl}" target="_blank" rel="noopener"><svg width="20" height="20"><use href="#i-wa"/></svg>Ativar meu teste no WhatsApp</a>
-      <button class="btn btn-ghost btn-block" type="button" data-close>Fechar</button></div>`;
+      <h3 style="font-size:24px">Quase lá, ${escapeHtml(first)}!</h3>
+      <p style="color:var(--muted)">Enviamos um link de confirmação para <b>${escapeHtml(data.email.trim())}</b>. Abra o e-mail, toque no link e seu painel abre com o teste de 7 dias do plano ${escapeHtml(data.plano)}.</p>
+      <a class="btn btn-ghost btn-block" href="${waUrl}" target="_blank" rel="noopener">Não chegou? Fale com a gente no WhatsApp</a>
+      <button class="btn btn-primary btn-block" type="button" data-close>Fechar</button></div>`;
   });
 });
 
@@ -203,7 +236,7 @@ $('[data-action="forgot"]').addEventListener('click', async (e) => {
   const email = $('#l-email').value.trim();
   if (!email) { toast('Digite seu e-mail acima para redefinir a senha.'); return; }
   if (sb) {
-    await sb.auth.resetPasswordForEmail(email, { redirectTo: new URL('admin.html', location.href).href });
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: new URL('painel.html', location.href).href });
   }
   toast(`Se ${email} tiver conta, enviaremos o link de redefinição.`);
 });

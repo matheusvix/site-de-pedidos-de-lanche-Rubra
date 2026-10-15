@@ -6,7 +6,7 @@
    vem das regras (RLS) definidas em supabase/schema.sql.
    ============================================================ */
 window.BORA_CONFIG = {
-  supabaseUrl: '',      // ex.: 'https://abcdefghijklm.supabase.co'
-  supabaseAnonKey: '',  // ex.: 'eyJhbGciOi...'
+  supabaseUrl: 'https://bqjzdtsthhcuynokdzik.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxanpkdHN0aGhjdXlub2tkemlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MTE4NTksImV4cCI6MjEwNzQ4Nzg1OX0.tju-QOY444gh_OK6T99Dycdxv2vrAXp5NQZ830BCyLo',
   whatsapp: '5527936185333', // DDI + DDD + número, só dígitos
 };

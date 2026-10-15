@@ -386,7 +386,7 @@
 <dialog id="signup" aria-labelledby="signup-title">
   <div class="modal">
     <div class="modal-head">
-      <div><h2 id="signup-title">Comece seu teste grátis</h2><p>7 dias com tudo liberado. Sem cartão.</p></div>
+      <div><h2 id="signup-title">Comece seu teste grátis</h2><p>7 dias com tudo liberado. Sem cartão. Você já entra no seu painel.</p></div>
       <button class="close" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button>
     </div>
     <form class="form" novalidate data-form="signup">
@@ -397,7 +397,10 @@
         <div class="field"><label for="s-seg">Segmento</label>
           <select id="s-seg" name="segmento" required><option value="">Selecione</option><option>Restaurante</option><option>Pizzaria</option><option>Hamburgueria</option><option>Lanchonete</option><option>Açaí e sorveteria</option><option>Japonês</option><option>Doceria e café</option><option>Outro</option></select><span class="err"></span></div>
       </div>
-      <div class="field"><label for="s-email">E-mail</label><input id="s-email" name="email" type="email" autocomplete="email" required><span class="err"></span></div>
+      <div class="row2">
+        <div class="field"><label for="s-email">E-mail</label><input id="s-email" name="email" type="email" autocomplete="email" required><span class="err"></span></div>
+        <div class="field"><label for="s-senha">Crie uma senha</label><input id="s-senha" name="senha" type="password" autocomplete="new-password" minlength="8" required placeholder="Mínimo 8 caracteres"><span class="err"></span></div>
+      </div>
       <div class="field"><label for="s-plano">Plano de interesse</label><select id="s-plano" name="plano"><option>Profissional</option><option>Essencial</option><option>Completo</option></select></div>
       <label class="check"><input type="checkbox" name="aceite" required> <span>Li e aceito os <a href="termos.html" target="_blank">Termos de uso</a> e a <a href="privacidade.html" target="_blank">Política de privacidade</a>.</span></label>
       <span class="err" data-err="aceite"></span>

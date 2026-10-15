@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/assets/brand/boralanchar-icone-app.svg" type="image/svg+xml">
+<title>Cardápio digital · BoraLanchar!</title>
+<meta name="theme-color" content="#E01E2D">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/loja.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></g></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></g></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.1 5.1 0 0 0 1.1 2.7 11.6 11.6 0 0 0 4.4 3.9c1.6.7 2.3.8 3.1.6a2.6 2.6 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.2-.2-.5-.3z"/></symbol>
+</svg>
+
+<!-- carregando / erro -->
+<div class="state" id="v-state">
+  <h1 id="st-title">Carregando cardápio…</h1>
+  <p id="st-text"></p>
+</div>
+
+<!-- CARDÁPIO -->
+<div id="v-menu" hidden>
+  <div class="cover"></div>
+  <div class="wrap">
+    <div class="store">
+      <div class="store-logo"><span class="ini" id="s-ini"></span></div>
+      <div class="store-main">
+        <h1 id="s-name"></h1>
+        <div class="store-meta" id="s-meta"></div>
+        <div class="store-tags" id="s-tags"></div>
+      </div>
+    </div>
+    <p class="notice" id="s-notice" hidden></p>
+  </div>
+  <nav class="catnav" aria-label="Categorias">
+    <div class="wrap catnav-in">
+      <div class="search"><svg width="18" height="18"><use href="#i-search"/></svg><label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Buscar no cardápio</label><input id="q" type="search" placeholder="Buscar no cardápio"></div>
+      <div class="cats" id="cats"></div>
+    </div>
+  </nav>
+  <div class="wrap layout">
+    <main class="menu" id="menu"></main>
+    <aside class="side" aria-label="Sacola"><div class="cart" id="cart-panel"></div></aside>
+  </div>
+  <p class="powered">Cardápio digital por <b>BoraLanchar!</b></p>
+</div>
+
+<!-- CHECKOUT -->
+<div id="v-checkout" hidden>
+  <form class="page" id="checkout" novalidate>
+    <button class="back" type="button" data-go="menu"><svg width="20" height="20"><use href="#i-left"/></svg>Voltar ao cardápio</button>
+    <h1 style="font-size:28px">Finalizar pedido</h1>
+
+    <section class="card" id="box-modo" aria-labelledby="h-modo">
+      <h2 id="h-modo">Como você quer receber?</h2>
+      <div class="seg">
+        <label id="opt-ent"><input type="radio" name="modo" value="entrega" checked><b>Entrega</b><small id="m-ent"></small></label>
+        <label id="opt-ret"><input type="radio" name="modo" value="retirada"><b>Retirada</b><small>Busco no balcão</small></label>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-voce">
+      <h2 id="h-voce">Seus dados</h2>
+      <div class="row3">
+        <div class="field"><label for="c-nome">Nome</label><input id="c-nome" name="nome" autocomplete="name" required><span class="err"></span></div>
+        <div class="field"><label for="c-tel">WhatsApp</label><input id="c-tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="(00) 00000-0000" required><span class="err"></span></div>
+      </div>
+    </section>
+
+    <section class="card" id="box-end" aria-labelledby="h-end">
+      <h2 id="h-end">Endereço de entrega</h2>
+      <div class="row2">
+        <div class="field"><label for="c-rua">Rua</label><input id="c-rua" name="rua" autocomplete="address-line1" required><span class="err"></span></div>
+        <div class="field"><label for="c-num">Número</label><input id="c-num" name="num" inputmode="numeric" required><span class="err"></span></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label for="c-bairro">Bairro</label><input id="c-bairro" name="bairro" required><span class="err"></span></div>
+        <div class="field"><label for="c-comp">Complemento (opcional)</label><input id="c-comp" name="comp" placeholder="Apto, bloco, referência"></div>
+      </div>
+    </section>
+
+    <section class="card" id="box-ret" aria-labelledby="h-ret" hidden>
+      <h2 id="h-ret">Retirada no balcão</h2>
+      <p id="ret-end" style="color:var(--muted)"></p>
+    </section>
+
+    <section class="card" aria-labelledby="h-pag">
+      <h2 id="h-pag">Pagamento</h2>
+      <div class="pay">
+        <label><input type="radio" name="pag" value="pix" checked><span><b>Pix</b><small>A loja envia a chave Pix pelo WhatsApp</small></span></label>
+        <label><input type="radio" name="pag" value="cartao"><span><b>Cartão</b><small id="pag-cartao">Na entrega, na maquininha</small></span></label>
+        <label><input type="radio" name="pag" value="dinheiro"><span><b>Dinheiro</b><small id="pag-din">Na entrega</small></span></label>
+      </div>
+      <div class="field" id="box-troco" hidden><label for="c-troco">Troco para quanto? (opcional)</label><input id="c-troco" name="troco" inputmode="decimal" placeholder="Ex.: 100"><span class="err"></span></div>
+      <div class="field"><label for="c-obs">Observação para a loja (opcional)</label><input id="c-obs" name="obs" maxlength="300" placeholder="Ex.: tocar o interfone"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-res">
+      <h2 id="h-res">Resumo</h2>
+      <div class="mini" id="resumo"></div>
+    </section>
+    <p class="err" id="co-err" role="alert"></p>
+    <button class="btn btn-primary btn-block" type="submit" id="confirm"><span>Confirmar pedido</span><span class="price" id="confirm-total"></span></button>
+  </form>
+</div>
+
+<!-- ACOMPANHAMENTO -->
+<div id="v-track" hidden>
+  <div class="page">
+    <div class="track-hero">
+      <small id="t-num"></small>
+      <h1 id="t-title">Pedido recebido!</h1>
+      <p id="t-sub"></p>
+    </div>
+    <a class="btn wa-btn btn-block" id="t-wa" target="_blank" rel="noopener"><svg width="20" height="20"><use href="#i-wa"/></svg>Enviar pedido no WhatsApp da loja</a>
+    <section class="card" aria-labelledby="h-st">
+      <h2 id="h-st">Acompanhe seu pedido</h2>
+      <ol class="steps" id="steps"></ol>
+    </section>
+    <section class="card" aria-labelledby="h-it">
+      <h2 id="h-it">Itens do pedido</h2>
+      <div class="mini" id="t-items"></div>
+    </section>
+    <button class="btn btn-ghost btn-block" type="button" id="again">Fazer outro pedido</button>
+  </div>
+</div>
+
+<div class="bagbar" id="bagbar"><button class="btn btn-primary" type="button" id="open-bag"><span class="count" id="bb-count">0</span><span>Ver sacola</span><span class="price" id="bb-total">R$ 0,00</span></button></div>
+
+<dialog id="d-prod" aria-labelledby="pd-title"><form class="pd" method="dialog" id="pd-form"></form></dialog>
+<dialog id="d-bag" aria-label="Sacola"><div class="cart" id="cart-modal" style="border:0;max-height:calc(100vh - 24px)"></div></dialog>
+<div class="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/assets/config.js"></script>
+<script src="/assets/loja.js"></script>
+</body>
+</html>

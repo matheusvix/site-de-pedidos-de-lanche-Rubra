@@ -102,6 +102,7 @@ function enterApp(email) {
   show('app');
   loadLeads();
   loadTst();
+  loadRest();
 }
 
 if (!DEMO) {
@@ -347,6 +348,59 @@ document.querySelectorAll('[data-tf]').forEach((b) => b.addEventListener('click'
   document.querySelectorAll('[data-tf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   renderTst();
 }));
-$('#refresh').addEventListener('click', () => loadTst());
+$('#refresh').addEventListener('click', () => { loadTst(); loadRest(); });
 
 route();
+
+
+/* ---------- restaurantes (clientes do sistema) ---------- */
+let rests = [];
+function demoRest() {
+  const d = (n) => new Date(Date.now() + n * 86400000).toISOString();
+  return [
+    { id: 'a', name: 'Cantina da Ju', slug: 'cantina-da-ju', plan: 'Profissional', status: 'teste', trial_ends_at: d(5), created_at: d(-2), whatsapp: '27998124410' },
+    { id: 'b', name: 'Pizzaria Forno Vivo', slug: 'pizzaria-forno-vivo', plan: 'Completo', status: 'ativo', trial_ends_at: d(-20), created_at: d(-27), whatsapp: '27997015588' },
+    { id: 'c', name: 'Lanchonete Ponto 10', slug: 'lanchonete-ponto-10', plan: 'Essencial', status: 'teste', trial_ends_at: d(-1), created_at: d(-8), whatsapp: '27991206634' },
+  ];
+}
+async function loadRest() {
+  if (DEMO) { rests = demoRest(); renderRest(); return; }
+  const { data, error } = await sb.from('restaurants').select('*').order('created_at', { ascending: false });
+  if (error) { console.error(error); rests = []; } else rests = data;
+  renderRest();
+}
+function restSituation(r) {
+  if (r.status === 'ativo') return ['Ativo', 'st-convertido'];
+  if (r.status === 'suspenso') return ['Pausado', 'st-perdido'];
+  return new Date(r.trial_ends_at) > new Date() ? ['Em teste', 'st-em_contato'] : ['Teste vencido', 'st-novo'];
+}
+function renderRest() {
+  const tb = $('#rest-rows'); if (!tb) return;
+  tb.replaceChildren(...rests.map((r) => {
+    const [label, cls] = restSituation(r);
+    const link = `${location.origin}/l/${r.slug}`;
+    const acts = el('td', {});
+    const btn = (text, fn, c = 'btn btn-outline row-btn') => el('button', { class: c, type: 'button', text, onclick: fn });
+    if (r.status !== 'ativo') acts.append(btn('Ativar plano', () => setRest(r, { status: 'ativo' }), 'btn btn-primary row-btn'));
+    if (r.status === 'teste') acts.append(btn('+7 dias', () => setRest(r, { trial_ends_at: new Date(Math.max(Date.now(), new Date(r.trial_ends_at)) + 7 * 86400000).toISOString() })));
+    if (r.status !== 'suspenso') acts.append(btn('Pausar', () => { if (confirm(`Pausar ${r.name}? O cardápio deixa de receber pedidos.`)) setRest(r, { status: 'suspenso' }); }));
+    else acts.append(btn('Voltar ao teste', () => setRest(r, { status: 'teste' })));
+    const wa = waLink(r.whatsapp);
+    if (wa) acts.append(el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' }));
+    acts.style.display = 'flex'; acts.style.flexWrap = 'wrap'; acts.style.gap = '6px';
+    return el('tr', {},
+      el('td', {}, el('b', { text: r.name }), el('a', { href: link, target: '_blank', rel: 'noopener', text: '/l/' + r.slug, style: 'font-size:13px' })),
+      el('td', { text: r.plan }),
+      el('td', {}, el('span', { class: 'st ' + cls, text: label })),
+      el('td', { text: r.status === 'teste' ? fmtDate(r.trial_ends_at) : '—' }),
+      el('td', { text: fmtDate(r.created_at) }),
+      acts);
+  }));
+  $('#rest-empty').hidden = rests.length > 0;
+}
+async function setRest(r, patch) {
+  if (DEMO) { Object.assign(r, patch); renderRest(); toast('Demonstração: nada foi salvo.'); return; }
+  const { data, error } = await sb.from('restaurants').update(patch).eq('id', r.id).select().single();
+  if (error) { toast('Não foi possível atualizar.'); return; }
+  Object.assign(r, data); renderRest(); toast('Restaurante atualizado.');
+}

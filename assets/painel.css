@@ -1,0 +1,88 @@
+/* Painel do restaurante (BoraLanchar!) */
+.trial-bar{background:var(--ink);color:#fff;text-align:center;font-size:14px;font-weight:600;padding:10px 16px}
+.trial-bar a{color:#fff;text-decoration:underline}
+.trial-bar.warn{background:var(--red)}
+
+.p-tabs{position:sticky;top:61px;z-index:15;display:flex;gap:6px;padding:10px 24px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.p-tabs button{border:0;background:transparent;border-radius:999px;padding:10px 18px;min-height:44px;font-weight:700;font-size:15px;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
+.p-tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.p-count{background:var(--red);color:#fff;border-radius:999px;font-size:12px;padding:2px 8px}
+
+.open-switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;padding:6px 10px;border-radius:999px;border:1px solid var(--line)}
+.open-switch input{position:absolute;opacity:0;pointer-events:none}
+.open-switch .sw{width:40px;height:24px;border-radius:999px;background:#CDBBBC;position:relative;transition:background .2s}
+.open-switch .sw::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.open-switch input:checked + .sw{background:#1E8A4C}
+.open-switch input:checked + .sw::after{transform:translateX(16px)}
+.open-switch input:focus-visible + .sw{outline:3px solid var(--ink);outline-offset:2px}
+
+.sound-hint{display:flex;align-items:center;gap:8px;background:var(--red-soft);color:var(--red-dark);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600}
+
+/* pedidos */
+.orders{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;align-items:start}
+.ord{background:#fff;border:2px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.ord.st-novo{border-color:var(--red);box-shadow:6px 6px 0 var(--ink)}
+.ord.fresh{animation:pop .6s ease}
+@keyframes pop{0%{transform:scale(.96)}60%{transform:scale(1.02)}100%{transform:none}}
+.ord-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ord-head h3{font-size:22px}
+.ord-head small{display:block;color:var(--muted-2);font-size:13px}
+.ord-st{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.ord-st.novo{background:var(--red);color:#fff}
+.ord-st.preparo{background:#FFF4E0;color:#8A5300}
+.ord-st.pronto,.ord-st.saiu{background:#E7F0FF;color:#1E4FA3}
+.ord-st.entregue{background:#E6F4EA;color:#1E6B3A}
+.ord-st.cancelado{background:#F1EEEE;color:#6E5C5D}
+.ord-items{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.ord-items li{display:flex;justify-content:space-between;gap:10px}
+.ord-items li small{display:block;color:var(--red-ink);font-size:13px}
+.ord-info{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:4px;border-top:1px dashed var(--line);padding-top:10px}
+.ord-info b{color:var(--ink)}
+.ord-total{display:flex;justify-content:space-between;font-weight:800;font-size:17px}
+.ord-acts{display:flex;flex-wrap:wrap;gap:8px}
+.ord-acts .btn{min-height:44px;padding:8px 14px;font-size:14px;flex:1 1 auto}
+.ord-acts .wa{background:#1E8A4C;color:#fff}
+
+/* cardápio */
+.cat-block{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:16px}
+.cat-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.cat-head h2{font-size:22px}
+.cat-head .acts{display:flex;gap:6px}
+.cat-head .acts button{min-height:40px;padding:6px 12px;font-size:13px}
+.p-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #F5ECEC}
+.p-row img,.p-row .ph{width:56px;height:56px;border-radius:12px;object-fit:cover;flex-shrink:0;background:var(--red-soft);color:var(--red);display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--display);font-size:22px}
+.p-row .info{flex:1;min-width:0}
+.p-row .info b{display:block}
+.p-row .info small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-row .price{font-weight:800;white-space:nowrap}
+.p-row.off{opacity:.55}
+.mini-switch{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;min-height:44px}
+.mini-switch input{width:18px;height:18px;accent-color:#1E8A4C}
+.empty-cat{color:var(--muted);font-size:14px;padding:6px 0}
+
+/* produto */
+.pd-photo-row{display:flex;gap:16px;align-items:center}
+.pd-photo{width:120px;height:120px;border-radius:18px;background:var(--red-soft);color:var(--red-dark);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;overflow:hidden;flex-shrink:0}
+.pd-photo img{width:100%;height:100%;object-fit:cover}
+#prod-form{max-height:calc(100vh - 40px);overflow-y:auto}
+
+/* loja */
+.loja-grid{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.loja-grid > form{flex:2 1 460px;min-width:0}
+.loja-grid > aside{flex:1 1 320px;min-width:0}
+.p-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.link-card h2{font-size:22px}
+.link-box{background:var(--paper);border-radius:12px;padding:12px;word-break:break-all;font-size:14px}
+.link-actions{display:flex;flex-wrap:wrap;gap:8px}
+.link-actions .btn{flex:1 1 auto;min-height:44px;font-size:14px}
+.qr{align-self:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.qr img,.qr canvas{display:block;width:180px!important;height:180px!important}
+.plan-box{background:var(--paper);border-radius:14px;padding:14px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.plan-box b{font-size:16px}
+
+@media (max-width:640px){
+  .p-tabs{top:57px;padding:8px 16px}
+  .orders{grid-template-columns:1fr}
+  .open-switch b{display:none}
+  .pd-photo-row{flex-direction:column;align-items:flex-start}
+}

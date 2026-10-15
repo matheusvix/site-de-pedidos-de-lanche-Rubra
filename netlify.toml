@@ -23,3 +23,19 @@
   from = "/admin"
   to = "/admin.html"
   status = 200
+
+[[redirects]]
+  from = "/l/*"
+  to = "/loja.html"
+  status = 200
+
+[[redirects]]
+  from = "/painel"
+  to = "/painel.html"
+  status = 200
+
+[[headers]]
+  for = "/painel.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
