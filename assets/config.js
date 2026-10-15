@@ -8,5 +8,5 @@
 window.BORA_CONFIG = {
   supabaseUrl: '',      // ex.: 'https://abcdefghijklm.supabase.co'
   supabaseAnonKey: '',  // ex.: 'eyJhbGciOi...'
-  whatsapp: '5500000000000', // DDI + DDD + número, só dígitos
+  whatsapp: '5527936185333', // DDI + DDD + número, só dígitos
 };
