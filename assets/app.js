@@ -188,7 +188,7 @@ $$('form[data-form]').forEach((form) => {
       if (!sb) { btn.disabled = false; btn.innerHTML = label; toast('Login indisponível: configure o Supabase em assets/config.js.'); return; }
       const { error } = await sb.auth.signInWithPassword({ email: data.email.trim(), password: data.senha });
       if (error) { btn.disabled = false; btn.innerHTML = label; toast('E-mail ou senha incorretos.'); return; }
-      location.href = 'painel.html';
+      { const { data: isAdm } = await sb.rpc('is_admin'); location.href = isAdm ? 'admin.html' : 'painel.html'; }
       return;
     }
 

@@ -99,6 +99,8 @@ async function loadRestaurant() {
     startApp();
     return;
   }
+  // conta de administrador sempre vai para o admin (para mexer numa loja, use Suporte › Entrar no painel da loja)
+  { const { data: isAdm } = await sb.rpc('is_admin'); if (isAdm) { location.replace('admin.html'); return; } }
   let { data, error } = await sb.from('restaurants').select('*').eq('owner_id', user.id).maybeSingle();
   if (error) return message('Não foi possível carregar', 'Tente novamente em instantes. Se continuar, fale com o suporte.', [['Tentar de novo', () => location.reload()]]);
   if (!data) {
