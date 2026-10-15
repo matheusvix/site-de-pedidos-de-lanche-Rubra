@@ -1039,3 +1039,6 @@ drop policy if exists "admin troca fotos" on storage.objects;
 create policy "admin troca fotos" on storage.objects for update to authenticated using (bucket_id = 'produtos' and public.is_admin());
 drop policy if exists "admin apaga fotos" on storage.objects;
 create policy "admin apaga fotos" on storage.objects for delete to authenticated using (bucket_id = 'produtos' and public.is_admin());
+
+-- e-mail de acesso do administrador do site
+insert into public.admins (email) values ('boralancharadm@gmail.com') on conflict do nothing;
