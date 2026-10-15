@@ -76,3 +76,39 @@
 .tcard .meta{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;color:var(--muted-2)}
 .tcard .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
 .tcard .acts .btn{min-height:40px;padding:8px 14px;font-size:14px}
+
+/* ---------- abas do admin ---------- */
+.adm-tabs{position:sticky;top:61px;z-index:15;display:flex;gap:6px;padding:10px 24px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.adm-tabs button{border:0;background:transparent;border-radius:999px;padding:10px 18px;min-height:44px;font-weight:700;font-size:15px;color:var(--muted);white-space:nowrap}
+.adm-tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.adm-tabs button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+[data-apanel]{display:flex;flex-direction:column;gap:20px}
+[data-apanel][hidden]{display:none}
+
+/* ---------- clientes ---------- */
+.adm-kpi small{font-size:13px;font-weight:600;color:#D9C9CA}
+.cl-kpis .adm-kpi:first-child{background:#1E6B3A;border-color:#1E6B3A}
+.cl-kpis .adm-kpi:first-child span,.cl-kpis .adm-kpi:first-child small{color:#CDEBD7}
+.kpi-warn b{color:#8A5300}
+.kpi-bad b{color:var(--red)}
+.cl-filters{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.cl-filters .adm-search{flex:1 1 280px}
+.cl-table{min-width:1080px}
+.cl-link{font-size:13px;display:block}
+.cl-note{display:block;margin-top:4px}
+.st.warn{background:#FFE7C2;color:#7A4200}
+.cl-plan{font:inherit;font-size:14px;padding:8px 10px;border-radius:10px;border:1.5px solid #E2D3D4;background:#fff;min-height:40px}
+.cl-acts{display:flex;flex-wrap:wrap;gap:6px;min-width:250px}
+
+/* ---------- suporte ---------- */
+.sup-search{max-width:520px}
+.sup-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.sup-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;display:grid;grid-template-columns:56px 1fr;gap:12px 14px;align-items:center}
+.sup-logo{width:56px;height:56px;border-radius:16px;background:var(--red-soft);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:var(--display);font-weight:800;font-size:24px;color:var(--red)}
+.sup-logo img{width:100%;height:100%;object-fit:cover}
+.sup-info{display:flex;flex-direction:column;gap:4px;min-width:0;align-items:flex-start}
+.sup-info small{color:var(--muted-2);font-size:13px;overflow-wrap:anywhere}
+.sup-acts{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px}
+.sup-h2{font-size:20px;margin-top:8px}
+@media (max-width:640px){.adm-tabs{top:57px;padding:8px 16px}.sup-list{grid-template-columns:1fr}}
+.cl-table td small{display:block}

@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=8">
+<link rel="stylesheet" href="assets/painel.css?v=9">
 </head>
 <body class="adm">
 
@@ -65,6 +65,10 @@
 
 <!-- ===== APP ===== -->
 <div id="v-app" class="adm-app" hidden>
+  <div class="support-bar" id="support-bar" hidden role="status">
+    <span><b>Modo suporte</b> · Você está no painel de <b id="sup-store"></b><span id="sup-owner"></span>. O que você mudar vale para a loja do cliente.</span>
+    <a class="btn btn-ghost" href="admin.html" id="sup-exit">Sair do suporte</a>
+  </div>
   <div class="trial-bar" id="trial-bar" hidden></div>
   <header class="adm-top">
     <a class="brand" href="index.html"><img class="wordmark" src="assets/brand/boralanchar-logotipo.svg" width="261" height="30" alt="BoraLanchar!"></a>
@@ -327,6 +331,6 @@
 <script defer src="assets/pix.js?v=6"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/horario.js?v=5"></script>
-<script defer src="assets/painel.js?v=8"></script>
+<script defer src="assets/painel.js?v=9"></script>
 </body>
 </html>

@@ -83,9 +83,22 @@ $('#pass-form').addEventListener('submit', async (e) => {
   history.replaceState(null, '', location.pathname);
   const { data: { session } } = await sb.auth.getSession(); user = session && session.user; await loadRestaurant();
 });
-$('#logout').addEventListener('click', async () => { await sb.auth.signOut(); location.reload(); });
+$('#logout').addEventListener('click', async () => { if (SUPPORT) { location.href = 'admin.html'; return; } await sb.auth.signOut(); location.reload(); });
 
+// Modo suporte: o admin do BoraLanchar! abre o painel de uma loja (painel.html?suporte=<id>)
+const SUPPORT_ID = new URLSearchParams(location.search).get('suporte');
+let SUPPORT = false;
 async function loadRestaurant() {
+  if (SUPPORT_ID) {
+    const { data: isAdm } = await sb.rpc('is_admin');
+    if (!isAdm) return message('Sem permissão', 'O modo suporte é só para a equipe do BoraLanchar!.', [['Ir para o meu painel', () => { location.href = 'painel.html'; }]]);
+    const { data: st, error: e2 } = await sb.from('restaurants').select('*').eq('id', SUPPORT_ID).maybeSingle();
+    if (e2 || !st) return message('Loja não encontrada', 'Volte ao admin e escolha a loja de novo.', [['Voltar ao admin', () => { location.href = 'admin.html'; }]]);
+    R = st; SUPPORT = true;
+    sb.rpc('admin_support_log', { p_rid: R.id }).then(() => {}, () => {});
+    startApp();
+    return;
+  }
   let { data, error } = await sb.from('restaurants').select('*').eq('owner_id', user.id).maybeSingle();
   if (error) return message('Não foi possível carregar', 'Tente novamente em instantes. Se continuar, fale com o suporte.', [['Tentar de novo', () => location.reload()]]);
   if (!data) {
@@ -117,6 +130,11 @@ function renderTrial() {
 
 function startApp() {
   show('v-app');
+  if (SUPPORT) {
+    $('#support-bar').hidden = false; $('#sup-store').textContent = R.name;
+    document.body.classList.add('support-mode'); document.title = `[Suporte] ${R.name} — BoraLanchar!`;
+    $('#logout').textContent = 'Sair do suporte';
+  }
   $('#store-name-tag').textContent = R.name;
   $('#open-toggle').checked = R.is_open;
   renderTrial();
@@ -722,7 +740,14 @@ async function mpCall(action, extra = {}) {
   if (error) { let msg = 'Não foi possível falar com o servidor.'; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {} return { error: msg }; }
   return data || {};
 }
-async function loadMp() { renderMp(R.pix_auto, ''); if (!R.pix_auto) return; const r = await mpCall('account'); if (!r.error) renderMp(r.connected, r.account); }
+async function loadMp() {
+  if (SUPPORT) { // o token é pessoal do dono: só ele conecta pela própria conta
+    renderMp(R.pix_auto, R.pix_auto ? 'conectada pelo dono' : ''); $('#mp-off').hidden = true; $('#mp-on').hidden = !R.pix_auto;
+    $('#mp-disconnect').hidden = true;
+    $('#mp-desc').textContent = 'No modo suporte não dá para conectar ou desconectar o Mercado Pago: o dono precisa fazer isso pela conta dele, na aba Pagamento.';
+    return;
+  }
+  renderMp(R.pix_auto, ''); if (!R.pix_auto) return; const r = await mpCall('account'); if (!r.error) renderMp(r.connected, r.account); }
 $('#mp-connect').addEventListener('click', async () => {
   const token = $('#mp-token').value.trim();
   if (!/^APP_USR-/.test(token)) return toast('Cole o Access Token de produção (começa com APP_USR-).');

@@ -216,3 +216,9 @@
 .mp-help summary{font-size:13px;font-weight:700;cursor:pointer;min-height:36px;display:flex;align-items:center}
 .mp-help ol{margin:4px 0 0;padding-left:20px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .mp-acc{font-size:14px}
+
+/* ---------- modo suporte (admin dentro da loja do cliente) ---------- */
+.support-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;background:#1D4ED8;color:#fff;padding:10px 24px;font-size:14px;position:relative;z-index:30}
+.support-bar .btn{background:#fff;color:#1D4ED8;min-height:40px;padding:6px 14px;font-size:14px}
+.support-mode .adm-top{border-top:3px solid #1D4ED8}
+@media (max-width:640px){.support-bar{padding:10px 16px}}

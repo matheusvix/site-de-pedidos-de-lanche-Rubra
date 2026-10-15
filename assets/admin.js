@@ -102,7 +102,7 @@ function enterApp(email) {
   show('app');
   loadLeads();
   loadTst();
-  loadRest();
+  loadClients();
 }
 
 if (!DEMO) {
@@ -348,59 +348,146 @@ document.querySelectorAll('[data-tf]').forEach((b) => b.addEventListener('click'
   document.querySelectorAll('[data-tf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   renderTst();
 }));
-$('#refresh').addEventListener('click', () => { loadTst(); loadRest(); });
+$('#refresh').addEventListener('click', () => { loadTst(); });
 
 route();
 
 
-/* ---------- restaurantes (clientes do sistema) ---------- */
-let rests = [];
-function demoRest() {
+/* ---------- abas ---------- */
+function selectATab(t) {
+  document.querySelectorAll('[data-atab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.atab === t)));
+  document.querySelectorAll('[data-apanel]').forEach((p) => { p.hidden = p.dataset.apanel !== t; });
+  if (t === 'suporte') { renderSupport(); loadSupportLog(); }
+  try { sessionStorage.setItem('adm-tab', t); } catch (_) {}
+}
+document.querySelectorAll('[data-atab]').forEach((b) => b.addEventListener('click', () => selectATab(b.dataset.atab)));
+
+/* ---------- clientes (lojas com conta no sistema) ---------- */
+const PRICE = { Essencial: 39.99, Profissional: 59.99, Completo: 79.99 };
+const brl = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const SITE = (CFG.siteUrl || location.origin).replace(/\/$/, '');
+let clients = [], cFilter = '';
+function demoClients() {
   const d = (n) => new Date(Date.now() + n * 86400000).toISOString();
   return [
-    { id: 'a', name: 'Cantina da Ju', slug: 'cantina-da-ju', plan: 'Profissional', status: 'teste', trial_ends_at: d(5), created_at: d(-2), whatsapp: '27998124410' },
-    { id: 'b', name: 'Pizzaria Forno Vivo', slug: 'pizzaria-forno-vivo', plan: 'Completo', status: 'ativo', trial_ends_at: d(-20), created_at: d(-27), whatsapp: '27997015588' },
-    { id: 'c', name: 'Lanchonete Ponto 10', slug: 'lanchonete-ponto-10', plan: 'Essencial', status: 'teste', trial_ends_at: d(-1), created_at: d(-8), whatsapp: '27991206634' },
+    { id: 'a', name: 'Cantina da Ju', slug: 'cantina-da-ju', plan: 'Profissional', status: 'teste', trial_ends_at: d(1.5), created_at: d(-5.5), whatsapp: '27998124410', owner_email: 'ju@cantina.com', owner_name: 'Juliana Prates', orders_30d: 14, revenue_30d: 812.5, products: 22, last_order: d(-0.2) },
+    { id: 'b', name: 'Pizzaria Forno Vivo', slug: 'pizzaria-forno-vivo', plan: 'Completo', status: 'ativo', trial_ends_at: d(-20), created_at: d(-27), whatsapp: '27997015588', owner_email: 'diego@fornovivo.com', owner_name: 'Diego Santana', orders_30d: 96, revenue_30d: 6420, products: 41, last_order: d(-0.05) },
+    { id: 'c', name: 'Lanchonete Ponto 10', slug: 'lanchonete-ponto-10', plan: 'Essencial', status: 'teste', trial_ends_at: d(-1), created_at: d(-8), whatsapp: '27991206634', owner_email: 'ponto10@gmail.com', owner_name: 'Carlos Lima', orders_30d: 3, revenue_30d: 96, products: 8, last_order: d(-3) },
+    { id: 'd', name: 'Açaí do Porto', slug: 'acai-do-porto', plan: 'Essencial', status: 'ativo', trial_ends_at: d(-40), created_at: d(-47), whatsapp: '27996543321', owner_email: 'camila@acaidoporto.com', owner_name: 'Camila Freitas', orders_30d: 58, revenue_30d: 2210, products: 17, last_order: d(-0.4) },
+    { id: 'e', name: 'Brasa Burger', slug: 'brasa-burger', plan: 'Profissional', status: 'teste', trial_ends_at: d(6), created_at: d(-1), whatsapp: '27988771203', owner_email: 'rafa@brasaburger.com', owner_name: 'Rafael Moura', orders_30d: 0, revenue_30d: 0, products: 0, last_order: null },
   ];
 }
-async function loadRest() {
-  if (DEMO) { rests = demoRest(); renderRest(); return; }
-  const { data, error } = await sb.from('restaurants').select('*').order('created_at', { ascending: false });
-  if (error) { console.error(error); rests = []; } else rests = data;
-  renderRest();
+async function loadClients() {
+  if (DEMO) { clients = demoClients(); renderClients(); return; }
+  const { data, error } = await sb.rpc('admin_clients');
+  if (error) { console.error(error); toast('Não foi possível carregar os clientes.'); clients = []; }
+  else clients = data || [];
+  renderClients();
 }
-function restSituation(r) {
-  if (r.status === 'ativo') return ['Ativo', 'st-convertido'];
-  if (r.status === 'suspenso') return ['Pausado', 'st-perdido'];
-  return new Date(r.trial_ends_at) > new Date() ? ['Em teste', 'st-em_contato'] : ['Teste vencido', 'st-novo'];
+$('#cl-refresh').addEventListener('click', () => { loadClients(); toast('Lista atualizada.'); });
+const daysTo = (iso) => (new Date(iso) - Date.now()) / 86400000;
+function situation(r) {
+  if (r.status === 'ativo') return { key: 'pagante', label: 'Pagante', cls: 'st-convertido', note: `${brl(PRICE[r.plan])}/mês` };
+  if (r.status === 'suspenso') return { key: 'pausado', label: 'Pausado', cls: 'st-perdido', note: 'Cardápio sem pedidos' };
+  const d = daysTo(r.trial_ends_at);
+  if (d <= 0) return { key: 'vencido', label: 'Teste vencido', cls: 'st-novo', note: `Venceu há ${Math.max(1, Math.round(-d))} dia(s)` };
+  const left = Math.ceil(d);
+  return { key: 'teste', label: 'No teste grátis', cls: left <= 2 ? 'st-em_contato warn' : 'st-em_contato', note: left <= 1 ? 'Acaba hoje/amanhã' : `Faltam ${left} dias` };
 }
-function renderRest() {
-  const tb = $('#rest-rows'); if (!tb) return;
-  tb.replaceChildren(...rests.map((r) => {
-    const [label, cls] = restSituation(r);
-    const link = `${location.origin}/l/${r.slug}`;
-    const acts = el('td', {});
+function clientMatches(r, q) { return !q || [r.name, r.owner_name, r.owner_email, r.whatsapp, r.slug].some((v) => String(v || '').toLowerCase().includes(q)); }
+function waClient(r) {
+  const s = situation(r); const first = (r.owner_name || '').split(' ')[0] || 'tudo bem';
+  const txt = s.key === 'teste' ? `Olá, ${first}! Aqui é do BoraLanchar!. Seu teste grátis da ${r.name} ${s.note.toLowerCase()}. Posso te ajudar a ativar o plano ${r.plan} para não parar de vender?`
+    : s.key === 'vencido' ? `Olá, ${first}! Aqui é do BoraLanchar!. O teste grátis da ${r.name} terminou e o cardápio está pausado. Quer ativar o plano ${r.plan} (${brl(PRICE[r.plan])}/mês) para voltar a receber pedidos?`
+    : `Olá, ${first}! Aqui é do BoraLanchar!. Tudo certo com a ${r.name}? Precisa de alguma ajuda?`;
+  const w = waLink(r.whatsapp); return w ? `${w}${w.includes('?') ? '&' : '?'}text=${encodeURIComponent(txt)}` : null;
+}
+function renderClients() {
+  const tb = $('#cl-rows'); if (!tb) return;
+  const sits = clients.map((r) => [r, situation(r)]);
+  const count = (k) => sits.filter(([, s]) => s.key === k).length;
+  $('#ck-pag').textContent = count('pagante');
+  $('#ck-mrr').textContent = `${brl(sits.filter(([, s]) => s.key === 'pagante').reduce((t, [r]) => t + (PRICE[r.plan] || 0), 0))}/mês`;
+  $('#ck-teste').textContent = count('teste');
+  $('#ck-vence').textContent = sits.filter(([r, s]) => s.key === 'teste' && daysTo(r.trial_ends_at) <= 2).length;
+  $('#ck-vencido').textContent = count('vencido');
+  $('#ck-paus').textContent = count('pausado');
+  $('#cc-todos').textContent = clients.length;
+  ['pagante', 'teste', 'vencido', 'pausado'].forEach((k) => { $('#cc-' + k).textContent = count(k); });
+  const q = $('#cl-q').value.trim().toLowerCase();
+  const list = sits.filter(([r, s]) => (!cFilter || s.key === cFilter) && clientMatches(r, q));
+  tb.replaceChildren(...list.map(([r, s]) => {
     const btn = (text, fn, c = 'btn btn-outline row-btn') => el('button', { class: c, type: 'button', text, onclick: fn });
-    if (r.status !== 'ativo') acts.append(btn('Ativar plano', () => setRest(r, { status: 'ativo' }), 'btn btn-primary row-btn'));
-    if (r.status === 'teste') acts.append(btn('+7 dias', () => setRest(r, { trial_ends_at: new Date(Math.max(Date.now(), new Date(r.trial_ends_at)) + 7 * 86400000).toISOString() })));
-    if (r.status !== 'suspenso') acts.append(btn('Pausar', () => { if (confirm(`Pausar ${r.name}? O cardápio deixa de receber pedidos.`)) setRest(r, { status: 'suspenso' }); }));
-    else acts.append(btn('Voltar ao teste', () => setRest(r, { status: 'teste' })));
-    const wa = waLink(r.whatsapp);
-    if (wa) acts.append(el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' }));
-    acts.style.display = 'flex'; acts.style.flexWrap = 'wrap'; acts.style.gap = '6px';
+    const acts = el('div', { class: 'cl-acts' });
+    if (r.status !== 'ativo') acts.append(btn('Ativar plano', () => { if (confirm(`Confirmar que ${r.name} pagou o plano ${r.plan}?`)) setClient(r, { status: 'ativo' }); }, 'btn btn-primary row-btn'));
+    if (r.status === 'teste') acts.append(btn('+7 dias de teste', () => setClient(r, { trial_ends_at: new Date(Math.max(Date.now(), new Date(r.trial_ends_at)) + 7 * 86400000).toISOString() })));
+    if (r.status !== 'suspenso') acts.append(btn('Pausar', () => { if (confirm(`Pausar ${r.name}? O cardápio deixa de receber pedidos.`)) setClient(r, { status: 'suspenso' }); }, 'btn btn-ghost row-btn'));
+    else acts.append(btn('Voltar ao teste', () => setClient(r, { status: 'teste', trial_ends_at: new Date(Date.now() + 7 * 86400000).toISOString() })));
+    acts.append(btn('Suporte', () => openSupport(r), 'btn btn-ghost row-btn'));
+    const wa = waClient(r); if (wa) acts.append(el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' }));
+    const plan = el('select', { class: 'cl-plan', 'aria-label': 'Plano de ' + r.name, onchange: (e) => setClient(r, { plan: e.target.value }) },
+      ...['Essencial', 'Profissional', 'Completo'].map((p) => { const o = el('option', { value: p, text: `${p} · ${brl(PRICE[p])}` }); if (p === r.plan) o.selected = true; return o; }));
+    const usage = el('td', {}, el('b', { text: `${r.orders_30d || 0} pedidos · ${brl(r.revenue_30d)}` }),
+      el('small', { text: `${r.products || 0} produtos · ${r.last_order ? 'último pedido ' + fmtDate(r.last_order) : 'sem pedidos ainda'}` }));
     return el('tr', {},
-      el('td', {}, el('b', { text: r.name }), el('a', { href: link, target: '_blank', rel: 'noopener', text: '/l/' + r.slug, style: 'font-size:13px' })),
-      el('td', { text: r.plan }),
-      el('td', {}, el('span', { class: 'st ' + cls, text: label })),
-      el('td', { text: r.status === 'teste' ? fmtDate(r.trial_ends_at) : '—' }),
-      el('td', { text: fmtDate(r.created_at) }),
-      acts);
+      el('td', {}, el('b', { text: r.name }), el('a', { href: `${SITE}/l/${r.slug}`, target: '_blank', rel: 'noopener', text: '/l/' + r.slug, class: 'cl-link' }), el('small', { text: 'Cliente desde ' + fmtDate(r.created_at).split(',')[0] })),
+      el('td', {}, el('b', { text: r.owner_name || '—' }), el('small', { text: r.owner_email || '' }), el('small', { text: r.whatsapp ? fmtPhone(r.whatsapp) : '' })),
+      el('td', {}, plan),
+      el('td', {}, el('span', { class: 'st ' + s.cls, text: s.label }), el('small', { class: 'cl-note', text: s.note })),
+      usage, el('td', {}, acts));
   }));
-  $('#rest-empty').hidden = rests.length > 0;
+  $('#cl-empty').hidden = list.length > 0;
+  if (!$('[data-apanel="suporte"]').hidden) renderSupport();
 }
-async function setRest(r, patch) {
-  if (DEMO) { Object.assign(r, patch); renderRest(); toast('Demonstração: nada foi salvo.'); return; }
+const fmtPhone = (w) => { const d = digits(w).replace(/^55(?=\d{10,11}$)/, ''); return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : w; };
+$('#cl-q').addEventListener('input', renderClients);
+document.querySelectorAll('[data-cf]').forEach((b) => b.addEventListener('click', () => {
+  cFilter = b.dataset.cf; document.querySelectorAll('[data-cf]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); renderClients();
+}));
+async function setClient(r, patch) {
+  if (DEMO) { Object.assign(r, patch); renderClients(); toast('Demonstração: nada foi salvo.'); return; }
   const { data, error } = await sb.from('restaurants').update(patch).eq('id', r.id).select().single();
   if (error) { toast('Não foi possível atualizar.'); return; }
-  Object.assign(r, data); renderRest(); toast('Restaurante atualizado.');
+  Object.assign(r, data); renderClients();
+  toast(patch.status === 'ativo' ? `${r.name} agora é cliente pagante!` : 'Cliente atualizado.');
 }
+
+/* ---------- suporte: entrar no painel da loja ---------- */
+function openSupport(r) {
+  if (DEMO) { toast('Na demonstração o modo suporte não abre lojas reais.'); return; }
+  const w = window.open(`painel.html?suporte=${encodeURIComponent(r.id)}`, '_blank');
+  if (w) w.opener = null; else location.href = `painel.html?suporte=${encodeURIComponent(r.id)}`;
+  setTimeout(loadSupportLog, 2500);
+}
+function renderSupport() {
+  const q = $('#sup-q').value.trim().toLowerCase();
+  const list = clients.filter((r) => clientMatches(r, q)).slice(0, q ? 50 : 12);
+  $('#sup-list').replaceChildren(...list.map((r) => {
+    const s = situation(r);
+    const logo = r.logo_url ? el('img', { src: r.logo_url, alt: '' }) : el('span', { text: (r.name || '?').charAt(0).toUpperCase() });
+    const wa = waClient(r);
+    return el('article', { class: 'sup-card' },
+      el('div', { class: 'sup-logo' }, logo),
+      el('div', { class: 'sup-info' }, el('b', { text: r.name }), el('small', { text: [r.owner_name, r.owner_email].filter(Boolean).join(' · ') || '—' }),
+        el('span', { class: 'st ' + s.cls, text: s.label })),
+      el('div', { class: 'sup-acts' },
+        el('button', { class: 'btn btn-primary row-btn', type: 'button', text: 'Entrar no painel da loja', onclick: () => openSupport(r) }),
+        el('a', { class: 'btn btn-outline row-btn', href: `${SITE}/l/${r.slug}`, target: '_blank', rel: 'noopener', text: 'Ver cardápio' }),
+        ...(wa ? [el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' })] : [])));
+  }));
+  $('#sup-empty').hidden = list.length > 0;
+}
+$('#sup-q').addEventListener('input', renderSupport);
+async function loadSupportLog() {
+  let rows = [];
+  if (!DEMO) {
+    const { data } = await sb.from('support_log').select('*').order('created_at', { ascending: false }).limit(30);
+    rows = data || [];
+  }
+  const name = (id) => (clients.find((c) => c.id === id) || {}).name || '—';
+  $('#sup-log').replaceChildren(...rows.map((l) => el('tr', {}, el('td', { text: fmtDate(l.created_at) }), el('td', { text: name(l.restaurant_id) }), el('td', { text: l.admin_email || '—' }))));
+  $('#sup-log-empty').hidden = rows.length > 0;
+}
+
+// volta para a última aba aberta
+try { const t = sessionStorage.getItem('adm-tab'); if (t) selectATab(t); } catch (_) {}

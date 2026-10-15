@@ -11,7 +11,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="assets/admin.css">
+<link rel="stylesheet" href="assets/admin.css?v=5">
 </head>
 <body class="adm">
 <div class="adm-banner" id="demo-banner" hidden>Modo demonstração · dados fictícios · nada é salvo. Configure o Supabase para usar dados reais.</div>
@@ -73,7 +73,63 @@
     </div>
   </header>
 
+  <nav class="p-tabs adm-tabs" role="tablist" aria-label="Seções do admin">
+    <button role="tab" type="button" data-atab="clientes" aria-selected="true">Clientes</button>
+    <button role="tab" type="button" data-atab="suporte" aria-selected="false">Suporte</button>
+    <button role="tab" type="button" data-atab="leads" aria-selected="false">Leads</button>
+    <button role="tab" type="button" data-atab="depoimentos" aria-selected="false">Depoimentos</button>
+  </nav>
+
   <main class="adm-main">
+    <!-- ===== CLIENTES ===== -->
+    <section data-apanel="clientes">
+      <div class="adm-head">
+        <div><h1>Clientes</h1><p class="adm-muted">Quem já paga, quem está no teste grátis e quem precisa de atenção.</p></div>
+        <div class="adm-actions"><button class="btn btn-outline" id="cl-refresh" type="button">Atualizar</button></div>
+      </div>
+      <section class="adm-kpis cl-kpis" aria-label="Resumo dos clientes">
+        <div class="adm-kpi"><span>Pagantes</span><b id="ck-pag">0</b><small id="ck-mrr">R$ 0,00/mês</small></div>
+        <div class="adm-kpi"><span>No teste grátis</span><b id="ck-teste">0</b></div>
+        <div class="adm-kpi kpi-warn"><span>Teste acaba em até 2 dias</span><b id="ck-vence">0</b></div>
+        <div class="adm-kpi kpi-bad"><span>Teste vencido (não pagou)</span><b id="ck-vencido">0</b></div>
+        <div class="adm-kpi"><span>Pausados</span><b id="ck-paus">0</b></div>
+      </section>
+      <section class="adm-filters cl-filters" aria-label="Filtros">
+        <div class="field adm-search"><label for="cl-q">Buscar</label><input id="cl-q" type="search" placeholder="Loja, dono, e-mail ou WhatsApp"></div>
+        <div class="adm-seg" role="group" aria-label="Situação">
+          <button type="button" data-cf="" aria-pressed="true">Todos <b id="cc-todos">0</b></button>
+          <button type="button" data-cf="pagante" aria-pressed="false">Pagantes <b id="cc-pagante">0</b></button>
+          <button type="button" data-cf="teste" aria-pressed="false">No teste <b id="cc-teste">0</b></button>
+          <button type="button" data-cf="vencido" aria-pressed="false">Vencidos <b id="cc-vencido">0</b></button>
+          <button type="button" data-cf="pausado" aria-pressed="false">Pausados <b id="cc-pausado">0</b></button>
+        </div>
+      </section>
+      <div class="adm-table-wrap">
+        <table class="adm-table cl-table">
+          <thead><tr><th>Loja</th><th>Dono</th><th>Plano</th><th>Situação</th><th>Uso (30 dias)</th><th><span class="sr-only">Ações</span></th></tr></thead>
+          <tbody id="cl-rows"></tbody>
+        </table>
+        <p class="adm-empty" id="cl-empty" hidden>Nenhum cliente nesta lista.</p>
+      </div>
+    </section>
+
+    <!-- ===== SUPORTE ===== -->
+    <section data-apanel="suporte" hidden>
+      <div class="adm-head">
+        <div><h1>Suporte</h1><p class="adm-muted">Entre no painel de qualquer loja para ajudar o cliente, sem precisar da senha dele. O que você mudar vale para a loja dele, e cada acesso fica registrado.</p></div>
+      </div>
+      <div class="field adm-search sup-search"><label for="sup-q">Encontrar a loja</label><input id="sup-q" type="search" placeholder="Nome da loja, dono, e-mail ou WhatsApp"></div>
+      <div class="sup-list" id="sup-list"></div>
+      <p class="adm-empty" id="sup-empty" hidden>Nenhuma loja encontrada.</p>
+      <h2 class="sup-h2">Últimos acessos de suporte</h2>
+      <div class="adm-table-wrap">
+        <table class="adm-table"><thead><tr><th>Quando</th><th>Loja</th><th>Quem acessou</th></tr></thead><tbody id="sup-log"></tbody></table>
+        <p class="adm-empty" id="sup-log-empty" hidden>Nenhum acesso ainda.</p>
+      </div>
+    </section>
+
+    <!-- ===== LEADS ===== -->
+    <section data-apanel="leads" hidden>
     <div class="adm-head">
       <div>
         <h1>Leads do site</h1>
@@ -108,22 +164,10 @@
       <p class="adm-empty" id="empty" hidden>Nenhum lead encontrado.</p>
     </div>
 
-    <section class="adm-tst" aria-labelledby="rest-title">
-      <div class="adm-head">
-        <div>
-          <h2 id="rest-title">Restaurantes</h2>
-          <p class="adm-muted">Clientes com conta no sistema. Ative o plano quando o cliente pagar; sem isso o cardápio pausa ao fim do teste.</p>
-        </div>
-      </div>
-      <div class="adm-table-wrap">
-        <table class="adm-table">
-          <thead><tr><th>Loja</th><th>Plano</th><th>Situação</th><th>Fim do teste</th><th>Criada em</th><th><span class="sr-only">Ações</span></th></tr></thead>
-          <tbody id="rest-rows"></tbody>
-        </table>
-        <p class="adm-empty" id="rest-empty" hidden>Nenhum restaurante cadastrado ainda.</p>
-      </div>
     </section>
 
+    <!-- ===== DEPOIMENTOS ===== -->
+    <section data-apanel="depoimentos" hidden>
     <section class="adm-tst" aria-labelledby="tst-title">
       <div class="adm-head">
         <div>
@@ -138,6 +182,7 @@
       </div>
       <div class="adm-tst-list" id="tst-list"></div>
       <p class="adm-empty" id="tst-empty" hidden>Nenhum depoimento nesta lista.</p>
+    </section>
     </section>
   </main>
 </div>
@@ -164,6 +209,6 @@
 
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="assets/config.js"></script>
-<script defer src="assets/admin.js?v=4"></script>
+<script defer src="assets/admin.js?v=5"></script>
 </body>
 </html>
