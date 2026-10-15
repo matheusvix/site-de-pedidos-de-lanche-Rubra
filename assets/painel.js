@@ -118,7 +118,7 @@ function renderTrial() {
 function startApp() {
   show('v-app');
   $('#store-name-tag').textContent = R.name;
-  $('#open-toggle').checked = R.is_open; $('#open-label').textContent = R.is_open ? 'Aberta' : 'Fechada';
+  $('#open-toggle').checked = R.is_open;
   renderTrial();
   fillStore();
   loadMenu();
@@ -135,8 +135,8 @@ $('#open-toggle').addEventListener('change', async (e) => {
   const v = e.target.checked;
   const { error } = await sb.from('restaurants').update({ is_open: v }).eq('id', R.id);
   if (error) { e.target.checked = !v; toast('Não foi possível mudar agora.'); return; }
-  R.is_open = v; $('#open-label').textContent = v ? 'Aberta' : 'Fechada';
-  toast(v ? 'Loja aberta: os pedidos estão liberados.' : 'Loja fechada: o cardápio fica visível, mas sem pedidos.');
+  R.is_open = v; renderOpenLabel(); renderIdentity();
+  toast(!v ? 'Loja fechada: o cardápio fica visível, mas sem pedidos.' : H.status(R).open ? 'Loja aberta: os pedidos estão liberados.' : 'Chave ligada. A loja abre sozinha no próximo horário de funcionamento.');
 });
 
 function selectTab(t) {
@@ -178,9 +178,10 @@ function orderCard(o, fresh) {
   }[o.status] || [];
   return `<article class="ord st-${o.status} ${fresh ? 'fresh' : ''}" data-id="${o.id}">
     <div class="ord-head"><div><h3>#${o.number} · ${esc(o.customer_name)}</h3><small>${t} · ${ent ? 'Entrega' : 'Retirada'}</small></div><span class="ord-st ${o.status}">${ST[o.status]}</span></div>
-    <ul class="ord-items">${(o.items || []).map((i) => `<li><span>${i.qty}× ${esc(i.name)}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></li>`).join('')}</ul>
+    <ul class="ord-items">${(o.items || []).map((i) => `<li><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small class="ord-opts">${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></li>`).join('')}</ul>
     <div class="ord-info">
-      ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}</span>` : ''}
+      ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
+      ${ent && o.delivery_info ? `<span><b>Entrega:</b> ${esc(o.delivery_info)}</span>` : ''}
       <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}</span>
       <span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>
       ${o.notes ? `<span><b>Obs.:</b> ${esc(o.notes)}</span>` : ''}
@@ -226,7 +227,7 @@ function printOrder(o) {
   const w = window.open('', '_blank', 'width=380,height=600'); if (!w) return;
   w.document.write(`<html><head><title>Pedido #${o.number}</title><style>body{font:14px monospace;padding:12px;width:300px}h1{font-size:18px;margin:0 0 6px}hr{border:0;border-top:1px dashed #000}td{vertical-align:top}</style></head><body>
     <h1>${esc(R.name)}</h1><b>Pedido #${o.number}</b><br>${new Date(o.created_at).toLocaleString('pt-BR')}<hr>
-    <table style="width:100%">${(o.items || []).map((i) => `<tr><td>${i.qty}x ${esc(i.name)}${i.note ? `<br><i>${esc(i.note)}</i>` : ''}</td><td style="text-align:right">${brl(i.price * i.qty)}</td></tr>`).join('')}</table><hr>
+    <table style="width:100%">${(o.items || []).map((i) => `<tr><td>${i.qty}x ${esc(i.name)}${(i.opts || []).map((t) => `<br>&nbsp; ${esc(t)}`).join('')}${i.note ? `<br><i>${esc(i.note)}</i>` : ''}</td><td style="text-align:right">${brl(i.price * i.qty)}</td></tr>`).join('')}</table><hr>
     ${Number(o.fee) > 0 ? `Entrega: ${brl(o.fee)}<br>` : ''}<b>TOTAL: ${brl(o.total)}</b><br>Pagamento: ${PAG[o.payment]}${o.change_for ? ` (troco p/ ${brl(o.change_for)})` : ''}<hr>
     ${esc(o.customer_name)} · ${esc(o.customer_phone)}<br>${o.mode === 'entrega' ? esc(o.address) : 'RETIRADA NO BALCÃO'}${o.notes ? `<br>Obs.: ${esc(o.notes)}` : ''}
     <script>print();<\/script></body></html>`);
@@ -327,6 +328,54 @@ $('#add-cat').addEventListener('click', async () => {
 });
 $('#add-prod').addEventListener('click', () => openProduct(null, CATS[0] && CATS[0].id));
 
+/* ---------- opções do produto (tirar / adicionar / escolher) ---------- */
+let OPTS = [];
+const rid = () => Math.random().toString(36).slice(2, 8);
+const KIND = {
+  remove: { title: 'Retirar ingredientes', label: 'Cliente toca no que quer tirar (grátis)', ph: 'Ex.: Cebola', price: false },
+  add: { title: 'Adicionais', label: 'Extras pagos', ph: 'Ex.: Bacon', price: true },
+  choose: { title: 'Ponto da carne', label: 'Cliente escolhe 1 (obrigatório)', ph: 'Ex.: Ao ponto', price: true },
+};
+function renderOpts() {
+  $('#opt-groups').innerHTML = OPTS.map((g, gi) => {
+    const k = KIND[g.kind] || KIND.add;
+    return `<div class="opt-group k-${g.kind}" data-g="${gi}">
+      <div class="opt-group-head">
+        <input class="opt-title" data-f="title" value="${esc(g.title)}" maxlength="40" aria-label="Nome do grupo">
+        <button class="opt-x" type="button" data-delgroup aria-label="Excluir grupo" title="Excluir grupo">×</button>
+      </div>
+      <div class="opt-sub"><span>${k.label}</span>${g.kind === 'add' ? `<label class="opt-max">Máximo <input data-f="max" inputmode="numeric" value="${g.max ?? ''}" placeholder="sem limite" aria-label="Quantidade máxima"></label>` : ''}</div>
+      ${(g.items || []).map((it, ii) => `<div class="opt-item" data-i="${ii}">
+        <input data-f="name" value="${esc(it.name)}" maxlength="40" placeholder="${k.ph}" aria-label="Nome da opção">
+        ${k.price ? `<input class="opt-price" data-f="price" inputmode="decimal" value="${it.price ? money(it.price) : ''}" placeholder="+ R$ 0,00" aria-label="Preço extra">` : ''}
+        <button class="opt-x" type="button" data-delitem aria-label="Remover opção">×</button></div>`).join('')}
+      <button class="btn btn-ghost opt-additem" type="button" data-additem>+ Opção</button>
+    </div>`;
+  }).join('');
+}
+$('#opt-groups').addEventListener('input', (e) => {
+  const gEl = e.target.closest('[data-g]'); if (!gEl) return; const g = OPTS[+gEl.dataset.g];
+  const iEl = e.target.closest('[data-i]'); const f = e.target.dataset.f;
+  if (iEl) { const it = g.items[+iEl.dataset.i]; it[f] = f === 'price' ? num(e.target.value) : e.target.value; }
+  else if (f === 'max') g.max = e.target.value.trim() ? Math.max(1, parseInt(e.target.value, 10) || 1) : null;
+  else if (f) g[f] = e.target.value;
+});
+$('#opt-groups').addEventListener('click', (e) => {
+  const gEl = e.target.closest('[data-g]'); if (!gEl) return; const gi = +gEl.dataset.g;
+  if (e.target.closest('[data-delgroup]')) { OPTS.splice(gi, 1); renderOpts(); return; }
+  if (e.target.closest('[data-additem]')) { OPTS[gi].items.push({ id: rid(), name: '', price: 0 }); renderOpts(); $$(`[data-g="${gi}"] [data-f="name"]`).pop().focus(); return; }
+  const del = e.target.closest('[data-delitem]'); if (del) { OPTS[gi].items.splice(+del.closest('[data-i]').dataset.i, 1); renderOpts(); }
+});
+$$('[data-addgroup]').forEach((b) => b.addEventListener('click', () => {
+  const kind = b.dataset.addgroup;
+  OPTS.push({ id: rid(), kind, title: KIND[kind].title, max: null, items: [{ id: rid(), name: '', price: 0 }] });
+  renderOpts(); $$('#opt-groups [data-f="name"]').pop().focus();
+}));
+function cleanOpts() {
+  return OPTS.map((g) => ({ id: g.id || rid(), kind: g.kind, title: (g.title || KIND[g.kind].title).trim().slice(0, 40), max: g.kind === 'add' && g.max ? g.max : null,
+    items: (g.items || []).filter((it) => String(it.name || '').trim()).map((it) => ({ id: it.id || rid(), name: it.name.trim().slice(0, 40), price: g.kind === 'remove' ? 0 : Math.max(0, Number(it.price) || 0) })) }))
+    .filter((g) => g.items.length);
+}
 /* ---------- produto (formulário) ---------- */
 const dlg = $('#prod-dialog'); const pf = $('#prod-form');
 let editing = null, photo = { url: null, blob: null, removed: false };
@@ -340,6 +389,8 @@ function openProduct(p, catId) {
   pf.category_id.value = p ? (p.category_id || '') : (catId || '');
   $('#pd-delete').hidden = !p; $('#pd-err').textContent = '';
   setPhoto(photo.url); $('#pd-file').value = '';
+  OPTS = JSON.parse(JSON.stringify((p && p.options) || []));
+  renderOpts();
   dlg.showModal();
 }
 dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
@@ -349,11 +400,18 @@ $('#pd-file').addEventListener('change', async (e) => {
   try { photo.blob = await resize(f, 900); photo.removed = false; setPhoto(URL.createObjectURL(photo.blob)); }
   catch (_) { toast('Não foi possível ler esta imagem.'); }
 });
-function resize(file, max) {
+function resize(file, max, square) {
   return new Promise((res, rej) => {
     const img = new Image(); img.onload = () => {
+      const c = document.createElement('canvas');
+      if (square) { // recorte quadrado no centro (foto de perfil)
+        const side = Math.min(img.width, img.height); const out = Math.min(max, side);
+        c.width = c.height = out;
+        c.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, out, out);
+        c.toBlob((b) => (b ? res(b) : rej()), 'image/jpeg', 0.88); return;
+      }
       const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       c.toBlob((b) => (b ? res(b) : rej()), 'image/jpeg', 0.85);
     }; img.onerror = rej; img.src = URL.createObjectURL(file);
@@ -373,7 +431,7 @@ pf.addEventListener('submit', async (e) => {
     image_url = sb.storage.from('produtos').getPublicUrl(path).data.publicUrl;
   }
   const row = { name: name.slice(0, 80), description: pf.description.value.trim().slice(0, 300) || null, price, available: pf.available.checked,
-    category_id: pf.category_id.value ? +pf.category_id.value : null, image_url };
+    category_id: pf.category_id.value ? +pf.category_id.value : null, image_url, options: cleanOpts() };
   const q = editing ? sb.from('products').update(row).eq('id', editing.id)
     : sb.from('products').insert({ ...row, restaurant_id: R.id, position: PRODS.length + 1 });
   const { error } = await q;
@@ -387,41 +445,249 @@ $('#pd-delete').addEventListener('click', async () => {
   if (error) return toast('Não foi possível excluir.'); dlg.close(); await loadMenu();
 });
 
-/* ---------- minha loja ---------- */
-function storeLink() { return `${location.origin}/l/${R.slug}`; }
-function fillStore() {
-  const f = $('#store-form');
-  f.name.value = R.name; f.whatsapp.value = R.whatsapp || ''; f.segment.value = R.segment || ''; f.address.value = R.address || '';
-  f.hours.value = R.hours || ''; f.delivery_time.value = R.delivery_time || ''; f.delivery_fee.value = money(R.delivery_fee); f.min_order.value = money(R.min_order);
-  f.accepts_delivery.checked = R.accepts_delivery; f.accepts_pickup.checked = R.accepts_pickup;
+/* ---------- minha loja (modelo Google Meu Negócio) ---------- */
+const H = window.BoraHoras;
+const SITE = (CFG.siteUrl || location.origin).replace(/\/$/, '');
+function storeLink() { return `${SITE}/l/${R.slug}`; }
+let ZONES = [], WEEK = {};
+const sf = () => $('#store-form');
+
+function selectSec(sec) {
+  $$('.biz-tabs [data-sec]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.sec === sec)));
+  $$('[data-sec-panel]').forEach((p) => { p.hidden = p.dataset.secPanel !== sec; });
+}
+$$('.biz-tabs [data-sec]').forEach((b) => b.addEventListener('click', () => selectSec(b.dataset.sec)));
+
+function renderIdentity() {
+  $('#biz-name').textContent = R.name;
+  $('#biz-cat').textContent = R.segment || 'Categoria não informada';
+  const st = H.status(R);
+  const el = $('#biz-status'); el.textContent = st.text; el.className = 'biz-status ' + (st.open ? 'on' : 'off');
+  const li = $('#logo-img'); li.hidden = !R.logo_url; if (R.logo_url) li.src = R.logo_url;
+  $('#logo-ini').hidden = !!R.logo_url; $('#logo-ini').textContent = R.name.trim().charAt(0).toUpperCase();
+  const ci = $('#cover-img'); ci.hidden = !R.cover_url; if (R.cover_url) ci.src = R.cover_url;
+  $('#store-name-tag').textContent = R.name;
+}
+setInterval(() => { if (R) { renderIdentity(); renderOpenLabel(); } }, 60000);
+function renderOpenLabel() {
+  const st = H.status(R);
+  $('#open-label').textContent = !R.is_open ? 'Fechada' : st.open ? 'Aberta' : 'Fora do horário';
+}
+
+function renderLink() {
   const link = storeLink();
   $('#store-link').textContent = link; $('#open-link').href = link;
   $('#share-link').href = `https://wa.me/?text=${encodeURIComponent(`Bateu a fome? Peça na ${R.name} pelo nosso cardápio digital: ${link}`)}`;
   const q = $('#qr'); q.innerHTML = '';
   if (window.QRCode) new QRCode(q, { text: link, width: 360, height: 360, colorDark: '#1A1112', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+}
+
+function fillStore() {
+  const f = sf();
+  f.name.value = R.name; f.segment.value = R.segment || ''; f.description.value = R.description || '';
+  $('#desc-count').textContent = f.description.value.length;
+  f.whatsapp.value = R.whatsapp || ''; f.phone.value = R.phone || ''; f.instagram.value = R.instagram || ''; f.website.value = R.website || '';
+  f.address.value = R.address || '';
+  f.accepts_delivery.checked = R.accepts_delivery; f.accepts_pickup.checked = R.accepts_pickup;
+  f.delivery_mode.value = R.delivery_mode || 'fixa';
+  f.delivery_fee.value = money(R.delivery_fee); f.delivery_time.value = R.delivery_time || ''; f.min_order.value = money(R.min_order);
+  ZONES = JSON.parse(JSON.stringify(R.delivery_zones || []));
+  f.hours_mode.value = R.opening_hours ? 'normal' : 'livre';
+  WEEK = R.opening_hours ? JSON.parse(JSON.stringify(R.opening_hours))
+    : { 0: [], 1: [['18:00', '23:00']], 2: [['18:00', '23:00']], 3: [['18:00', '23:00']], 4: [['18:00', '23:00']], 5: [['18:00', '23:30']], 6: [['18:00', '23:30']] };
+  const pm = R.payment_methods || ['pix', 'cartao', 'dinheiro'];
+  f.pay_pix.checked = pm.includes('pix'); f.pay_cartao.checked = pm.includes('cartao'); f.pay_dinheiro.checked = pm.includes('dinheiro');
+  f.pix_key.value = R.pix_key || '';
+  renderIdentity(); renderOpenLabel(); renderGeo(); renderDelivery(); renderWeek(); renderLink();
   const plan = $('#plan-box');
   const st = R.status === 'ativo' ? 'Plano ativo' : R.status === 'suspenso' ? 'Loja pausada' : canSell() ? `Teste grátis · ${daysLeft()} dia(s) restante(s)` : 'Teste encerrado';
   plan.innerHTML = `<b>Plano ${esc(R.plan)}</b><span>${st}</span><a href="${waSupport(`Olá! Quero falar sobre o plano da loja ${R.name} (${R.slug}).`)}" target="_blank" rel="noopener">Falar com o BoraLanchar!</a>`;
 }
+sf().description.addEventListener('input', (e) => { $('#desc-count').textContent = e.target.value.length; });
+
+/* fotos de perfil e capa: salvam na hora */
+async function uploadImage(file, kind) {
+  const blob = kind === 'logo' ? await resize(file, 480, true) : await resize(file, 1600);
+  const path = `${R.id}/${kind}-${Date.now()}.jpg`;
+  const up = await sb.storage.from('produtos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (up.error) throw up.error;
+  return sb.storage.from('produtos').getPublicUrl(path).data.publicUrl;
+}
+[['logo-file', 'logo', 'logo_url', 'Foto de perfil atualizada!'], ['cover-file', 'cover', 'cover_url', 'Foto de capa atualizada!']].forEach(([id, kind, col, ok]) => {
+  $('#' + id).addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    toast('Enviando foto…');
+    try {
+      const url = await uploadImage(file, kind);
+      const { data, error } = await sb.from('restaurants').update({ [col]: url }).eq('id', R.id).select().single();
+      if (error) throw error;
+      R = data; renderIdentity(); toast(ok);
+    } catch (_) { toast('Não foi possível enviar a foto. Tente outra imagem.'); }
+  });
+});
+
+/* localização da loja (para entrega por distância) */
+function renderGeo() {
+  $('#geo-text').innerHTML = R.lat != null
+    ? `Marcada ✓ <a href="https://www.google.com/maps/search/?api=1&query=${R.lat},${R.lng}" target="_blank" rel="noopener">conferir no mapa</a>`
+    : 'Ainda não marcada. Precisa para cobrar a entrega por distância.';
+}
+async function saveGeo(lat, lng) {
+  const { data, error } = await sb.from('restaurants').update({ lat: +lat.toFixed(6), lng: +lng.toFixed(6) }).eq('id', R.id).select().single();
+  if (error) { toast('Não foi possível salvar a localização.'); return; }
+  R = data; renderGeo(); toast('Localização da loja salva!');
+}
+$('#geo-here').addEventListener('click', () => {
+  if (!navigator.geolocation) return toast('Este aparelho não informa a localização.');
+  toast('Pegando a localização…');
+  navigator.geolocation.getCurrentPosition((p) => saveGeo(p.coords.latitude, p.coords.longitude),
+    () => toast('Não deu para pegar a localização. Permita o acesso ou use "Buscar pelo endereço".'), { enableHighAccuracy: true, timeout: 15000 });
+});
+$('#geo-addr').addEventListener('click', async () => {
+  const q = sf().address.value.trim(); if (!q) return toast('Preencha o endereço da loja primeiro.');
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`, { headers: { 'Accept-Language': 'pt-BR' } });
+    const [hit] = await r.json();
+    if (!hit) return toast('Endereço não encontrado no mapa. Inclua bairro e cidade, ou use "Estou na loja agora".');
+    saveGeo(+hit.lat, +hit.lon);
+  } catch (_) { toast('Busca indisponível agora. Use "Estou na loja agora".'); }
+});
+
+/* entrega: taxa única, por bairro ou por distância */
+function renderDelivery() {
+  const f = sf(); const mode = f.delivery_mode.value;
+  $('#deliv-box').hidden = !f.accepts_delivery.checked;
+  $('#mode-fixa').hidden = mode !== 'fixa';
+  $('#mode-zones').hidden = mode === 'fixa';
+  if (mode === 'fixa') return;
+  const bairro = mode === 'bairro';
+  $('#zones-head').innerHTML = bairro ? '<span>Bairro</span><span>Taxa (R$)</span><span>Prazo</span><span></span>' : '<span>Até (km)</span><span>Taxa (R$)</span><span>Prazo</span><span></span>';
+  $('#zones').innerHTML = ZONES.map((z, i) => `<div class="zone" data-z="${i}">
+    ${bairro ? `<input data-k="name" value="${esc(z.name || '')}" maxlength="50" placeholder="Ex.: Laranjeiras" aria-label="Bairro">`
+    : `<input data-k="km" inputmode="decimal" value="${z.km != null ? String(z.km).replace('.', ',') : ''}" placeholder="Ex.: 3" aria-label="Até quantos km">`}
+    <input data-k="fee" inputmode="decimal" value="${z.fee != null ? money(z.fee) : ''}" placeholder="0,00" aria-label="Taxa">
+    <input data-k="time" value="${esc(z.time || '')}" maxlength="30" placeholder="30–40 min" aria-label="Prazo">
+    <button type="button" class="opt-x" data-delzone aria-label="Remover">×</button></div>`).join('') || `<p class="adm-muted">Nenhum${bairro ? ' bairro' : 'a faixa'} ainda.</p>`;
+  $('#add-zone').textContent = bairro ? '+ Bairro' : '+ Faixa de distância';
+  $('#zone-hint').innerHTML = bairro
+    ? 'O cliente escolhe o bairro na hora de finalizar e vê a taxa e o prazo daquele bairro.'
+    : `A distância é calculada do endereço do cliente até a loja (aproximada pela rua). ${R.lat == null ? '<b>Marque a localização da loja acima.</b>' : ''} Fora da última faixa, a entrega não é aceita.`;
+}
+const sortZones = () => { if (sf().delivery_mode.value === 'distancia') ZONES.sort((a, b) => (a.km ?? 1e9) - (b.km ?? 1e9)); };
+$('#zones').addEventListener('input', (e) => {
+  const z = ZONES[+e.target.closest('[data-z]').dataset.z]; const k = e.target.dataset.k;
+  z[k] = k === 'fee' || k === 'km' ? (e.target.value.trim() ? num(e.target.value) : null) : e.target.value;
+});
+$('#zones').addEventListener('click', (e) => { const b = e.target.closest('[data-delzone]'); if (b) { ZONES.splice(+b.closest('[data-z]').dataset.z, 1); renderDelivery(); } });
+$('#add-zone').addEventListener('click', () => {
+  const dist = sf().delivery_mode.value === 'distancia';
+  const last = ZONES[ZONES.length - 1];
+  ZONES.push(dist ? { km: last && last.km ? last.km + 2 : 3, fee: last ? (last.fee || 0) + 2 : 5, time: '' } : { name: '', fee: last ? last.fee : 5, time: last ? last.time : '' });
+  renderDelivery(); $$('#zones input').slice(-3)[0].focus();
+});
+sf().addEventListener('change', (e) => {
+  if (e.target.name === 'delivery_mode') { if (e.target.value !== (R.delivery_mode || 'fixa')) ZONES = []; sortZones(); renderDelivery(); }
+  if (e.target.name === 'accepts_delivery') renderDelivery();
+  if (e.target.name === 'hours_mode') renderWeek();
+});
+
+/* horário por dia da semana */
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]; // segunda primeiro, como no Google
+function renderWeek() {
+  const normal = sf().hours_mode.value === 'normal';
+  $('#week').hidden = !normal; $('#copy-week').hidden = !normal;
+  $('#week').innerHTML = WEEK_ORDER.map((d) => {
+    const ivs = WEEK[d] || []; const open = ivs.length > 0;
+    return `<div class="day" data-d="${d}">
+      <label class="day-name"><input type="checkbox" data-open ${open ? 'checked' : ''}> <b>${H.DIAS[d]}</b></label>
+      <div class="day-ivs">${open ? ivs.map((iv, i) => `<div class="iv" data-i="${i}">
+          <input type="time" data-p="0" value="${esc(iv[0])}" aria-label="Abre às"><span>até</span><input type="time" data-p="1" value="${esc(iv[1])}" aria-label="Fecha às">
+          ${ivs.length > 1 ? '<button type="button" class="opt-x" data-deliv aria-label="Remover turno">×</button>' : ''}</div>`).join('')
+        + '<button type="button" class="btn btn-ghost add-iv" data-addiv>+ turno</button>' : '<span class="day-closed">Fechado</span>'}</div>
+    </div>`;
+  }).join('');
+}
+$('#week').addEventListener('input', (e) => {
+  const d = e.target.closest('[data-d]').dataset.d; const iv = e.target.closest('[data-i]');
+  if (iv && e.target.dataset.p) WEEK[d][+iv.dataset.i][+e.target.dataset.p] = e.target.value;
+});
+$('#week').addEventListener('change', (e) => {
+  if (!e.target.matches('[data-open]')) return;
+  const d = e.target.closest('[data-d]').dataset.d;
+  WEEK[d] = e.target.checked ? [['18:00', '23:00']] : []; renderWeek();
+});
+$('#week').addEventListener('click', (e) => {
+  const day = e.target.closest('[data-d]'); if (!day) return; const d = day.dataset.d;
+  if (e.target.closest('[data-addiv]')) { WEEK[d].push(['18:00', '23:00']); renderWeek(); }
+  const del = e.target.closest('[data-deliv]'); if (del) { WEEK[d].splice(+del.closest('[data-i]').dataset.i, 1); renderWeek(); }
+});
+$('#copy-week').addEventListener('click', () => {
+  const base = WEEK[1] || [];
+  if (!base.length) return toast('Marque a segunda-feira como aberta primeiro.');
+  [2, 3, 4, 5, 6, 0].forEach((d) => { if ((WEEK[d] || []).length) WEEK[d] = base.map((iv) => [...iv]); });
+  renderWeek(); toast('Horário copiado. Lembre de salvar.');
+});
+
 $('#copy-link').addEventListener('click', async () => { try { await navigator.clipboard.writeText(storeLink()); toast('Link copiado!'); } catch (_) { toast(storeLink()); } });
 $('#dl-qr').addEventListener('click', () => {
   const c = $('#qr canvas'); const img = $('#qr img');
   const url = c ? c.toDataURL('image/png') : img && img.src; if (!url) return;
   const a = document.createElement('a'); a.href = url; a.download = `qrcode-${R.slug}.png`; a.click();
 });
-$('#store-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = e.target;
+
+function fail(sec, msg) { selectSec(sec); toast(msg); return null; }
+function buildPatch() {
+  const f = sf();
   const wa = digits(f.whatsapp.value);
-  if (!f.name.value.trim()) return toast('Informe o nome da loja.');
-  if (wa && (wa.length < 10 || wa.length > 13)) return toast('WhatsApp inválido: use DDD + número.');
-  if (!f.accepts_delivery.checked && !f.accepts_pickup.checked) return toast('Marque entrega, retirada ou os dois.');
-  const patch = { name: f.name.value.trim().slice(0, 80), whatsapp: wa || null, segment: f.segment.value.trim() || null, address: f.address.value.trim() || null,
-    hours: f.hours.value.trim() || null, delivery_time: f.delivery_time.value.trim() || '30–45 min', delivery_fee: num(f.delivery_fee.value), min_order: num(f.min_order.value),
-    accepts_delivery: f.accepts_delivery.checked, accepts_pickup: f.accepts_pickup.checked };
+  if (f.name.value.trim().length < 2) return fail('sobre', 'Informe o nome da loja.');
+  if (wa && (wa.length < 10 || wa.length > 13)) return fail('contato', 'WhatsApp inválido: use DDD + número.');
+  if (!f.accepts_delivery.checked && !f.accepts_pickup.checked) return fail('local', 'Marque entrega, retirada ou os dois.');
+  const mode = f.delivery_mode.value || 'fixa';
+  let zones = [];
+  if (f.accepts_delivery.checked && mode !== 'fixa') {
+    if (mode === 'bairro') {
+      zones = ZONES.filter((z) => String(z.name || '').trim()).map((z) => ({ name: z.name.trim().slice(0, 50), fee: Math.max(0, z.fee || 0), time: String(z.time || '').trim().slice(0, 30) }));
+      const names = zones.map((z) => z.name.toLowerCase());
+      if (new Set(names).size !== names.length) return fail('local', 'Há bairros repetidos na lista.');
+    } else {
+      zones = ZONES.filter((z) => z.km > 0).map((z) => ({ km: Math.round(z.km * 10) / 10, fee: Math.max(0, z.fee || 0), time: String(z.time || '').trim().slice(0, 30) })).sort((a, b) => a.km - b.km);
+      if (R.lat == null) return fail('local', 'Para cobrar por distância, marque a localização da loja.');
+    }
+    if (!zones.length) return fail('local', mode === 'bairro' ? 'Adicione pelo menos um bairro com a taxa.' : 'Adicione pelo menos uma faixa de distância.');
+  }
+  let hours = null;
+  if (f.hours_mode.value === 'normal') {
+    hours = {};
+    for (let d = 0; d < 7; d++) {
+      const ivs = (WEEK[d] || []).filter((iv) => iv[0] && iv[1]).map((iv) => [iv[0].slice(0, 5), iv[1].slice(0, 5)]);
+      hours[d] = ivs;
+    }
+    if (!Object.values(hours).some((v) => v.length)) return fail('horario', 'Marque pelo menos um dia aberto, ou escolha "Sem horário definido".');
+  }
+  const pay = ['pix', 'cartao', 'dinheiro'].filter((k) => f['pay_' + k].checked);
+  if (!pay.length) return fail('mais', 'Marque pelo menos uma forma de pagamento.');
+  let ig = f.instagram.value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/.*$/, '');
+  return {
+    name: f.name.value.trim().slice(0, 80), segment: f.segment.value.trim() || null, description: f.description.value.trim().slice(0, 750) || null,
+    whatsapp: wa || null, phone: f.phone.value.trim() || null, instagram: ig ? '@' + ig.slice(0, 58) : null, website: f.website.value.trim() || null,
+    address: f.address.value.trim() || null,
+    accepts_delivery: f.accepts_delivery.checked, accepts_pickup: f.accepts_pickup.checked,
+    delivery_mode: mode, delivery_zones: zones,
+    delivery_fee: num(f.delivery_fee.value), delivery_time: f.delivery_time.value.trim() || '30–45 min', min_order: num(f.min_order.value),
+    opening_hours: hours, hours: null,
+    payment_methods: pay, pix_key: f.pix_key.value.trim() || null,
+  };
+}
+sf().addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const patch = buildPatch(); if (!patch) return;
+  const btn = $('.biz-save button'); btn.disabled = true; btn.textContent = 'Salvando…';
+  const oldSlug = R.slug;
   const { data, error } = await sb.from('restaurants').update(patch).eq('id', R.id).select().single();
-  if (error) return toast('Não foi possível salvar. Confira os dados.');
-  R = data; $('#store-name-tag').textContent = R.name; fillStore(); toast('Dados da loja salvos!');
+  btn.disabled = false; btn.textContent = 'Salvar alterações';
+  if (error) return toast(/link/.test(error.message || '') ? error.message : 'Não foi possível salvar. Confira os dados.');
+  R = data; fillStore();
+  toast(R.slug !== oldSlug ? 'Salvo! Seu link agora é ' + storeLink().replace(/^https?:\/\//, '') : 'Informações da loja salvas!');
 });
 
 boot();
