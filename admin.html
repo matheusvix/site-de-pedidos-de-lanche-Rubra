@@ -11,7 +11,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="assets/admin.css?v=6">
+<link rel="stylesheet" href="assets/admin.css?v=7">
 </head>
 <body class="adm">
 <div class="adm-banner" id="demo-banner" hidden>Modo demonstração · dados fictícios · nada é salvo. Configure o Supabase para usar dados reais.</div>
@@ -249,11 +249,30 @@
   </div>
 </dialog>
 
+<!-- ===== EXCLUIR LOJA ===== -->
+<dialog id="del-dialog" aria-labelledby="del-title">
+  <form class="modal" id="del-form" method="dialog" novalidate>
+    <div class="modal-head">
+      <div><h2 id="del-title">Excluir loja</h2><p class="adm-muted">Isso não pode ser desfeito.</p></div>
+      <button class="close" type="button" data-close aria-label="Fechar"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="del-warn">Vão ser apagados de vez: a loja <b id="del-name"></b>, o cardápio, as fotos, todos os pedidos e o histórico de pagamentos. O link do cardápio para de funcionar.</div>
+    <p class="adm-muted del-alt">Se o cliente só deixou de pagar, prefira <b>Cancelar assinatura</b>: a loja para de vender, mas os dados ficam guardados para reativar depois.</p>
+    <label class="check"><input type="checkbox" id="del-account"> <span>Apagar também a conta de login do dono (<b id="del-email"></b>). Sem isso, ele ainda consegue entrar e criar uma loja nova.</span></label>
+    <div class="field"><label for="del-confirm">Para confirmar, digite o nome da loja: <b id="del-name2"></b></label><input id="del-confirm" autocomplete="off" spellcheck="false"></div>
+    <p class="err" id="del-err" role="alert"></p>
+    <div class="adm-dialog-actions">
+      <button class="btn btn-ghost" type="button" data-close>Voltar</button>
+      <button class="btn del-btn" type="button" id="del-go" disabled>Excluir loja de vez</button>
+    </div>
+  </form>
+</dialog>
+
 <div class="toast" role="status" aria-live="polite"></div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/pix.js?v=6"></script>
-<script defer src="assets/admin.js?v=6"></script>
+<script defer src="assets/admin.js?v=7"></script>
 </body>
 </html>

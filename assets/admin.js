@@ -395,6 +395,7 @@ function situation(r) {
     return { key: 'pagante', label: 'Pagante', cls: 'st-convertido', note: `${brl(PRICE[r.plan])}/mês${r.paid_until ? ' · pago até ' + new Date(r.paid_until).toLocaleDateString('pt-BR') : ''}` };
   }
   if (r.status === 'suspenso') return { key: 'pausado', label: 'Pausado', cls: 'st-perdido', note: 'Cardápio sem pedidos' };
+  if (r.status === 'cancelado') return { key: 'pausado', label: 'Cancelado', cls: 'st-perdido', note: r.canceled_at ? 'Cancelado em ' + new Date(r.canceled_at).toLocaleDateString('pt-BR') : 'Assinatura cancelada' };
   const d = daysTo(r.trial_ends_at);
   if (d <= 0) return { key: 'vencido', label: 'Teste vencido', cls: 'st-novo', note: `Venceu há ${Math.max(1, Math.round(-d))} dia(s)` };
   const left = Math.ceil(d);
@@ -427,8 +428,9 @@ function renderClients() {
     const acts = el('div', { class: 'cl-acts' });
     if (r.status !== 'ativo') acts.append(btn('Ativar plano', () => { if (confirm(`Confirmar que ${r.name} pagou o plano ${r.plan}?`)) setClient(r, { status: 'ativo' }); }, 'btn btn-primary row-btn'));
     if (r.status === 'teste') acts.append(btn('+7 dias de teste', () => setClient(r, { trial_ends_at: new Date(Math.max(Date.now(), new Date(r.trial_ends_at)) + 7 * 86400000).toISOString() })));
-    if (r.status !== 'suspenso') acts.append(btn('Pausar', () => { if (confirm(`Pausar ${r.name}? O cardápio deixa de receber pedidos.`)) setClient(r, { status: 'suspenso' }); }, 'btn btn-ghost row-btn'));
-    else acts.append(btn('Voltar ao teste', () => setClient(r, { status: 'teste', trial_ends_at: new Date(Date.now() + 7 * 86400000).toISOString() })));
+    if (r.status === 'teste' || r.status === 'ativo') acts.append(btn('Pausar', () => { if (confirm(`Pausar ${r.name}? O cardápio deixa de receber pedidos.`)) setClient(r, { status: 'suspenso' }); }, 'btn btn-ghost row-btn'));
+    else if (r.status === 'suspenso') acts.append(btn('Voltar ao teste', () => setClient(r, { status: 'teste', trial_ends_at: new Date(Date.now() + 7 * 86400000).toISOString() })));
+    else acts.append(btn('Reativar', () => reactivate(r)));
     acts.append(btn('Suporte', () => openSupport(r), 'btn btn-ghost row-btn'));
     const wa = waClient(r); if (wa) acts.append(el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' }));
     const plan = el('select', { class: 'cl-plan', 'aria-label': 'Plano de ' + r.name, onchange: (e) => setClient(r, { plan: e.target.value }) },
@@ -480,11 +482,56 @@ function renderSupport() {
       el('div', { class: 'sup-acts' },
         el('button', { class: 'btn btn-primary row-btn', type: 'button', text: 'Entrar no painel da loja', onclick: () => openSupport(r) }),
         el('a', { class: 'btn btn-outline row-btn', href: `${SITE}/l/${r.slug}`, target: '_blank', rel: 'noopener', text: 'Ver cardápio' }),
-        ...(wa ? [el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' })] : [])));
+        ...(wa ? [el('a', { class: 'btn btn-ghost row-btn', href: wa, target: '_blank', rel: 'noopener', text: 'WhatsApp' })] : [])),
+      el('div', { class: 'sup-danger' },
+        r.status === 'cancelado'
+          ? el('button', { class: 'btn btn-outline row-btn', type: 'button', text: 'Reativar loja', onclick: () => reactivate(r) })
+          : el('button', { class: 'btn btn-ghost row-btn sup-cancel', type: 'button', text: 'Cancelar assinatura', onclick: () => cancelStore(r) }),
+        el('button', { class: 'btn btn-ghost row-btn adm-danger', type: 'button', text: 'Excluir loja', onclick: () => openDelete(r) })));
   }));
   $('#sup-empty').hidden = list.length > 0;
 }
 $('#sup-q').addEventListener('input', renderSupport);
+
+/* ---------- cancelar / reativar / excluir loja ---------- */
+async function cancelStore(r) {
+  if (!confirm(`Cancelar a assinatura de ${r.name}?\n\nO cardápio para de receber pedidos e a loja fecha. Os dados ficam guardados e você pode reativar depois.`)) return;
+  if (DEMO) { Object.assign(r, { status: 'cancelado', canceled_at: new Date().toISOString() }); renderClients(); renderSupport(); return toast('Demonstração: nada foi salvo.'); }
+  const { error } = await sb.rpc('admin_cancel_restaurant', { p_rid: r.id });
+  if (error) return toast('Não foi possível cancelar.');
+  Object.assign(r, { status: 'cancelado', canceled_at: new Date().toISOString(), is_open: false });
+  renderClients(); renderSupport(); toast(`Assinatura de ${r.name} cancelada.`);
+}
+async function reactivate(r) {
+  if (!confirm(`Reativar ${r.name} com 7 dias de teste? Depois disso, o cliente assina pela página de planos.`)) return;
+  await setClient(r, { status: 'teste', trial_ends_at: new Date(Date.now() + 7 * 86400000).toISOString(), canceled_at: null });
+  renderSupport();
+}
+const delDlg = $('#del-dialog'); let delTarget = null;
+function openDelete(r) {
+  delTarget = r;
+  $('#del-name').textContent = r.name; $('#del-name2').textContent = r.name; $('#del-email').textContent = r.owner_email || 'e-mail do dono';
+  $('#del-confirm').value = ''; $('#del-account').checked = false; $('#del-err').textContent = ''; $('#del-go').disabled = true;
+  delDlg.showModal(); setTimeout(() => $('#del-confirm').focus(), 50);
+}
+delDlg.addEventListener('click', (e) => { if (e.target === delDlg || e.target.closest('[data-close]')) delDlg.close(); });
+$('#del-confirm').addEventListener('input', (e) => { $('#del-go').disabled = !delTarget || e.target.value.trim().toLowerCase() !== delTarget.name.trim().toLowerCase(); });
+$('#del-go').addEventListener('click', async () => {
+  const r = delTarget; if (!r) return;
+  const b = $('#del-go'); b.disabled = true; b.textContent = 'Excluindo…';
+  let res = { error: null, data: null };
+  if (DEMO) res.data = { ok: true };
+  else {
+    const { data, error } = await sb.functions.invoke('admin-loja', { body: { action: 'delete', restaurant_id: r.id, confirm_name: $('#del-confirm').value, delete_account: $('#del-account').checked } });
+    res = { data, error };
+    if (error) { try { const j = await error.context.json(); res.msg = j.error; } catch (_) {} }
+  }
+  b.textContent = 'Excluir loja de vez';
+  if (res.error || !res.data || !res.data.ok) { b.disabled = false; $('#del-err').textContent = res.msg || 'Não foi possível excluir agora.'; return; }
+  delDlg.close();
+  clients = clients.filter((c) => c.id !== r.id); renderClients(); renderSupport();
+  toast(`${r.name} foi excluída${res.data.account_deleted ? ' junto com a conta de login do dono' : ''}.`);
+});
 async function loadSupportLog() {
   let rows = [];
   if (!DEMO) {

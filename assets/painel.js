@@ -131,6 +131,7 @@ function renderTrial() {
     return;
   }
   bar.hidden = false;
+  if (R.status === 'cancelado') { bar.hidden = false; bar.className = 'trial-bar warn'; bar.innerHTML = `Sua assinatura foi cancelada e o cardápio não recebe pedidos. <a href="${ask}">Assinar de novo</a>`; return; }
   if (R.status === 'suspenso') { bar.className = 'trial-bar warn'; bar.innerHTML = `Sua loja está pausada e não recebe pedidos. <a href="${ask}">Assinar um plano para reativar</a>.`; return; }
   if (canSell()) { const d = daysLeft(); bar.className = 'trial-bar'; bar.innerHTML = `Teste grátis do plano ${esc(R.plan)}: ${d === 1 ? 'falta 1 dia' : `faltam ${d} dias`}. <a href="${ask}">Ativar meu plano</a>`; }
   else { bar.className = 'trial-bar warn'; bar.innerHTML = `Seu teste grátis terminou e o cardápio está pausado. <a href="${ask}">Ative seu plano para voltar a vender</a>.`; }

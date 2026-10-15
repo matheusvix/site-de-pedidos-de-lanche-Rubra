@@ -127,3 +127,13 @@
 .mp-help summary{font-size:13px;font-weight:700;cursor:pointer;min-height:36px;display:flex;align-items:center}
 .mp-help ol{margin:4px 0 0;padding-left:20px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 .adm-tabs .p-count{background:var(--red);color:#fff;border-radius:999px;font-size:12px;padding:2px 8px;margin-left:6px}
+
+/* ---------- cancelar / excluir loja ---------- */
+.sup-danger{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;border-top:1px dashed var(--line);padding-top:10px}
+.sup-cancel{color:#8A5300}
+.del-warn{background:var(--red-soft,#FFE8E9);color:var(--red-dark,#A3101B);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.5}
+.del-alt{font-size:13px}
+#del-form .check span{font-size:14px;color:var(--ink)}
+.del-btn{background:var(--red);color:#fff}
+.del-btn:disabled{opacity:.45;cursor:not-allowed}
+#del-dialog{max-width:520px;width:calc(100% - 32px)}
