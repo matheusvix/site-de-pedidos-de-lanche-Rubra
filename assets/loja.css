@@ -308,3 +308,12 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
 .pix-code code{display:block;font-size:12px;word-break:break-all;background:#F7F1F1;border-radius:10px;padding:10px;user-select:all}
 .pix-to{font-size:13px;color:var(--muted);margin:0}
 .pix-paid{background:#E6F4EA;color:#1E6B3A;font-weight:800;border-radius:12px;padding:12px;margin-top:10px}
+.pay-hero{text-align:center;padding:8px 0 4px}
+.pay-hero small{display:inline-block;font-weight:800;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--red);background:var(--red-soft);border-radius:999px;padding:4px 10px}
+.pay-hero h1{font-size:30px;margin:8px 0 4px}
+.pay-hero p{color:var(--muted)}
+.paid-btn{background:#1E8A4C!important;border-color:#1E8A4C!important;min-height:58px;font-size:17px;gap:10px}
+.paid-btn:hover{background:#176E3C!important}
+.pay-note{text-align:center;color:var(--muted);font-size:13px;margin-top:-6px}
+.pix-state{background:#FFF4E0;color:#8A5300;font-weight:700;border-radius:14px;padding:12px 14px;font-size:14px}
+.pix-state.ok{background:#E6F4EA;color:#1E6B3A}

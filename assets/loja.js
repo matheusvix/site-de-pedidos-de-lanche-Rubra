@@ -294,7 +294,7 @@ $('#d-bag').addEventListener('click', (e) => { if (e.target.id === 'd-bag') e.ta
 
 /* ---------- navegação ---------- */
 function go(view) {
-  ['menu', 'checkout', 'track'].forEach((v) => { $('#v-' + v).hidden = v !== view; });
+  ['menu', 'checkout', 'pay', 'track'].forEach((v) => { $('#v-' + v).hidden = v !== view; });
   $('#bagbar').style.display = view === 'menu' ? '' : 'none';
   if (view === 'checkout') prepareCheckout();
   if (view === 'menu') renderCart();
@@ -322,7 +322,7 @@ function prepareCheckout() {
   const pm = R.payment_methods || ['pix', 'cartao', 'dinheiro'];
   ['pix', 'cartao', 'dinheiro'].forEach((k) => { $('#pay-' + k).hidden = !pm.includes(k); });
   if (!pm.includes(co.pag.value)) co.pag.value = pm[0];
-  $('#pag-pix').textContent = R.pix_key ? `QR Code ou copia e cola na hora · cai direto na conta da loja` : 'A loja envia a chave Pix pelo WhatsApp';
+  $('#pag-pix').textContent = R.pix_key ? 'QR Code ou copia e cola na hora' : 'A loja envia a chave Pix pelo WhatsApp';
   try {
     const s = JSON.parse(localStorage.getItem('bora-cliente') || '{}');
     ['nome', 'tel', 'rua', 'num', 'bairro', 'comp'].forEach((k) => { if (s[k] && !co[k].value) co[k].value = s[k]; });
@@ -350,6 +350,7 @@ function syncCheckout() {
     + (ent ? `<div><span>Taxa de entrega</span><span class="price">${q.out || (q.pending && R.delivery_mode === 'bairro') ? '—' : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : '')
     + `<div style="font-weight:800;font-size:16px"><span style="color:var(--ink)">Total</span><span class="price">${brl(t.total)}</span></div>`;
   $('#confirm-total').textContent = brl(t.total);
+  $('#confirm span').textContent = co.pag.value === 'pix' && R.pix_key ? 'Ir para o pagamento' : 'Confirmar pedido';
   $('#confirm').disabled = ent && !!q.out;
 }
 co.addEventListener('change', syncCheckout);
@@ -420,8 +421,9 @@ co.addEventListener('submit', async (e) => {
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
   const order = { ...data, customer: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: troco, notes: co.obs.value.trim() };
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
-  cart = []; persist(); renderCart();
   location.hash = 'pedido';
+  if (data.status === 'pagamento') { showPay(data.public_id, order); return; }
+  cart = []; persist(); renderCart();
   showTrack(data.public_id, order);
 });
 
@@ -435,6 +437,7 @@ function waText(o) {
 async function showTrack(publicId, order) {
   if (!order) { try { order = JSON.parse(localStorage.getItem('bora-order-' + publicId) || 'null'); } catch (_) {} }
   if (!order) return;
+  if (order.status === 'pagamento') { showPay(publicId, order); return; }
   go('track');
   $('#t-num').textContent = `Pedido #${order.number}`;
   $('#t-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? ` <small style="color:var(--muted-2)">(${esc(i.note)})</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
@@ -465,30 +468,53 @@ async function showTrack(publicId, order) {
   clearInterval(poll);
   const tick = async () => {
     const { data } = await sb.rpc('order_status', { p_public_id: publicId });
-    if (data && data.paid) { $('#t-pix-paid').hidden = false; $('#t-pix-pay').hidden = true; }
+    if (data && order.payment === 'pix' && R.pix_key) { const el = $('#t-pix'); el.hidden = false; el.className = 'pix-state' + (data.paid ? ' ok' : ''); el.textContent = data.paid ? 'Pagamento confirmado pela loja ✓' : 'Pix enviado. A loja confere o pagamento no app do banco.'; }
     if (data && render(data.status)) clearInterval(poll);
   };
   tick(); poll = setInterval(tick, 15000);
 }
-/* ---------- Pix: QR Code + copia e cola com o valor do pedido ---------- */
-function renderPix(order, publicId) {
-  const box = $('#t-pix');
-  const ok = order.payment === 'pix' && R.pix_key && R.pix_name && window.BoraPix && window.BoraQR && order.status !== 'cancelado';
-  box.hidden = !ok; if (!ok) return;
+/* ---------- Pix: pagar primeiro, depois o pedido vai para a loja ---------- */
+function renderPix() { $('#t-pix').hidden = true; }
+let PAYING = null;
+function showPay(publicId, order) {
+  PAYING = { publicId, order };
+  go('pay');
   const code = window.BoraPix.payload({
     key: R.pix_key, name: R.pix_name, city: R.pix_city || 'BRASIL', amount: Number(order.total),
-    txid: `BL${order.number}${String(publicId).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
-    info: `Pedido ${order.number} ${R.name}`,
+    txid: `BL${String(publicId).replace(/[^a-z0-9]/gi, '').slice(0, 16)}`,
+    info: `Pedido ${R.name}`,
   });
-  $('#t-pix-amount').textContent = brl(order.total);
-  $('#t-pix-qr').innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix do pedido', color: '#1A1112' });
-  $('#t-pix-code').textContent = code;
-  $('#t-pix-to').innerHTML = `Você vai pagar para <b>${esc(R.pix_name)}</b>${R.pix_bank ? ` · ${esc(R.pix_bank)}` : ''}. Depois de pagar, se quiser, mande o comprovante no WhatsApp da loja.`;
+  $('#p-amount').textContent = brl(order.total);
+  $('#p-qr').innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix do pedido', color: '#1A1112' });
+  $('#p-code').textContent = code;
+  $('#p-to').innerHTML = `Você vai pagar para <b>${esc(R.pix_name)}</b>${R.pix_bank ? ` · ${esc(R.pix_bank)}` : ''}.`;
+  $('#p-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
+    + (order.mode === 'entrega' ? `<div><span>Entrega</span><span class="price">${Number(order.fee) > 0 ? brl(order.fee) : 'Grátis'}</span></div>` : '')
+    + `<div style="font-weight:800"><span style="color:var(--ink)">Total</span><span class="price">${brl(order.total)}</span></div>`;
+  $('#pay-err').textContent = '';
 }
-$('#t-pix-copy').addEventListener('click', async () => {
-  const code = $('#t-pix-code').textContent;
-  try { await navigator.clipboard.writeText(code); toast('Código Pix copiado! Cole no app do banco em Pix › Copia e cola.'); $('#t-pix-copy').textContent = 'Código copiado ✓'; setTimeout(() => { $('#t-pix-copy').textContent = 'Copiar código Pix'; }, 3000); }
-  catch (_) { $('.pix-code').open = true; toast('Toque e segure o código abaixo para copiar.'); }
+$('#p-copy').addEventListener('click', async () => {
+  const code = $('#p-code').textContent;
+  try { await navigator.clipboard.writeText(code); toast('Código Pix copiado! Cole no app do banco em Pix › Copia e cola.'); $('#p-copy').textContent = 'Código copiado ✓'; setTimeout(() => { $('#p-copy').textContent = 'Copiar código Pix'; }, 3000); }
+  catch (_) { $('#v-pay .pix-code').open = true; toast('Toque e segure o código abaixo para copiar.'); }
+});
+$('#p-done').addEventListener('click', async () => {
+  if (!PAYING) return;
+  const btn = $('#p-done'); btn.disabled = true;
+  const { data, error } = await sb.rpc('confirm_pix_paid', { p_public_id: PAYING.publicId });
+  btn.disabled = false;
+  if (error || !data) { $('#pay-err').textContent = 'Não foi possível enviar agora. Confira sua internet e toque de novo.'; return; }
+  const order = { ...PAYING.order, number: data.number, status: data.status };
+  try { localStorage.setItem('bora-order-' + PAYING.publicId, JSON.stringify(order)); } catch (_) {}
+  cart = []; persist(); renderCart();
+  const id = PAYING.publicId; PAYING = null;
+  toast('Pedido enviado para a loja!');
+  showTrack(id, order);
+});
+$('#pay-back').addEventListener('click', async () => {
+  if (PAYING) { await sb.rpc('cancel_pending_order', { p_public_id: PAYING.publicId }); try { localStorage.removeItem(LAST); localStorage.removeItem('bora-order-' + PAYING.publicId); } catch (_) {} PAYING = null; }
+  history.replaceState(null, '', location.pathname + location.search);
+  go('checkout');
 });
 $('#again').addEventListener('click', () => { clearInterval(poll); history.replaceState(null, '', location.pathname + location.search); go('menu'); });
 

@@ -146,12 +146,14 @@ function selectTab(t) {
 $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 
 /* ---------- pedidos ---------- */
+// pedido em Pix só aparece depois que o cliente paga (antes disso ele não tem número)
+const visibleOrder = (o) => o.status !== 'pagamento' && !(o.status === 'cancelado' && !o.number);
 const ST = { novo: 'Novo', preparo: 'Em preparo', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' };
 const PAG = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro' };
 async function loadOrders() {
   const since = new Date(Date.now() - 3 * 86400000).toISOString();
   const { data } = await sb.from('orders').select('*').eq('restaurant_id', R.id).gte('created_at', since).order('created_at', { ascending: false }).limit(200);
-  ORDERS = data || [];
+  ORDERS = (data || []).filter(visibleOrder);
   renderOrders();
 }
 function renderOrders(freshId) {
@@ -182,7 +184,7 @@ function orderCard(o, fresh) {
     <div class="ord-info">
       ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
       ${ent && o.delivery_info ? `<span><b>Entrega:</b> ${esc(o.delivery_info)}</span>` : ''}
-      <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}${o.payment === 'pix' ? (o.paid ? ' <em class="paid yes">Pix recebido ✓</em>' : ' <em class="paid">Aguardando Pix: confira no app do banco</em>') : ''}</span>
+      <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}${o.payment === 'pix' ? (o.paid ? ' <em class="paid yes">Pix recebido ✓</em>' : o.pix_informed_at ? ` <em class="paid">Cliente pagou às ${new Date(o.pix_informed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: confira no app do banco</em>` : ' <em class="paid">Aguardando Pix: confira no app do banco</em>') : ''}</span>
       <span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>
       ${o.notes ? `<span><b>Obs.:</b> ${esc(o.notes)}</span>` : ''}
     </div>
@@ -245,7 +247,10 @@ function subscribe() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('pedidos-' + R.id)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${R.id}` }, (p) => {
-      if (p.eventType === 'INSERT') {
+      const known = ORDERS.some((o) => o.id === p.new.id);
+      if (!visibleOrder(p.new)) return;
+      if (p.eventType === 'INSERT' || (p.eventType === 'UPDATE' && !known && p.new.status === 'novo')) {
+        if (known) return;
         ORDERS.unshift(p.new); ding(); toast(`Pedido novo #${p.new.number} de ${p.new.customer_name}!`);
         if (filter !== 'ativos') { filter = 'ativos'; $$('[data-of]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.of === 'ativos'))); }
         selectTab('pedidos'); renderOrders(p.new.id);
@@ -259,7 +264,7 @@ function subscribe() {
   setInterval(async () => {
     const since = ORDERS[0] ? ORDERS[0].created_at : new Date(Date.now() - 3 * 86400000).toISOString();
     const { data } = await sb.from('orders').select('*').eq('restaurant_id', R.id).gt('created_at', since).order('created_at', { ascending: false });
-    if (data && data.length) { const fresh = data.filter((d) => !ORDERS.some((o) => o.id === d.id)); if (fresh.length) { ORDERS.unshift(...fresh); ding(); renderOrders(fresh[0].id); } }
+    if (data && data.length) { const fresh = data.filter((d) => visibleOrder(d) && !ORDERS.some((o) => o.id === d.id)); if (fresh.length) { ORDERS.unshift(...fresh); ding(); renderOrders(fresh[0].id); } }
   }, 30000);
   if ('Notification' in window && Notification.permission === 'default') document.addEventListener('pointerdown', () => Notification.requestPermission(), { once: true });
 }
