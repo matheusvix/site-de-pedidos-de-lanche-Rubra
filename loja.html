@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="/assets/loja.css?v=5">
+<link rel="stylesheet" href="/assets/loja.css?v=6">
 </head>
 <body>
 
@@ -116,7 +116,7 @@
     <section class="card" aria-labelledby="h-pag">
       <h2 id="h-pag">Pagamento</h2>
       <div class="pay">
-        <label id="pay-pix"><input type="radio" name="pag" value="pix" checked><span><b>Pix</b><small>A loja envia a chave Pix pelo WhatsApp</small></span></label>
+        <label id="pay-pix"><input type="radio" name="pag" value="pix" checked><span><b>Pix</b><small id="pag-pix">A loja envia a chave Pix pelo WhatsApp</small></span></label>
         <label id="pay-cartao"><input type="radio" name="pag" value="cartao"><span><b>Cartão</b><small id="pag-cartao">Na entrega, na maquininha</small></span></label>
         <label id="pay-dinheiro"><input type="radio" name="pag" value="dinheiro"><span><b>Dinheiro</b><small id="pag-din">Na entrega</small></span></label>
       </div>
@@ -141,7 +141,17 @@
       <h1 id="t-title">Pedido recebido!</h1>
       <p id="t-sub"></p>
     </div>
-    <div class="card pix-box" id="t-pix" hidden><h2>Pagamento por Pix</h2><p>Chave Pix da loja:</p><div class="pix-key"><code id="t-pix-key"></code><button class="btn btn-ghost" type="button" id="t-pix-copy">Copiar</button></div></div>
+    <section class="card pix-box" id="t-pix" hidden aria-labelledby="h-pix">
+      <div class="pix-top"><h2 id="h-pix">Pague com Pix</h2><span class="pix-amount" id="t-pix-amount"></span></div>
+      <p class="pix-paid" id="t-pix-paid" hidden>Pagamento confirmado pela loja ✓</p>
+      <div class="pix-pay" id="t-pix-pay">
+        <div class="pix-qr" id="t-pix-qr"></div>
+        <ol class="pix-steps"><li>Abra o app do seu banco e escolha <b>Pix</b>.</li><li>Leia o QR Code ou use o <b>Pix copia e cola</b>.</li><li>Confira o nome e o valor e confirme.</li></ol>
+        <button class="btn btn-primary btn-block" type="button" id="t-pix-copy">Copiar código Pix</button>
+        <details class="pix-code"><summary>Ver código copia e cola</summary><code id="t-pix-code"></code></details>
+        <p class="pix-to" id="t-pix-to"></p>
+      </div>
+    </section>
     <a class="btn wa-btn btn-block" id="t-wa" target="_blank" rel="noopener"><svg width="20" height="20"><use href="#i-wa"/></svg>Enviar pedido no WhatsApp da loja</a>
     <section class="card" aria-labelledby="h-st">
       <h2 id="h-st">Acompanhe seu pedido</h2>
@@ -164,6 +174,8 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="/assets/config.js"></script>
 <script defer src="/assets/horario.js?v=5"></script>
-<script defer src="/assets/loja.js?v=5"></script>
+<script defer src="/assets/vendor/qr.js"></script>
+<script defer src="/assets/pix.js?v=6"></script>
+<script defer src="/assets/loja.js?v=6"></script>
 </body>
 </html>

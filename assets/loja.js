@@ -322,6 +322,7 @@ function prepareCheckout() {
   const pm = R.payment_methods || ['pix', 'cartao', 'dinheiro'];
   ['pix', 'cartao', 'dinheiro'].forEach((k) => { $('#pay-' + k).hidden = !pm.includes(k); });
   if (!pm.includes(co.pag.value)) co.pag.value = pm[0];
+  $('#pag-pix').textContent = R.pix_key ? `QR Code ou copia e cola na hora · cai direto na conta da loja` : 'A loja envia a chave Pix pelo WhatsApp';
   try {
     const s = JSON.parse(localStorage.getItem('bora-cliente') || '{}');
     ['nome', 'tel', 'rua', 'num', 'bairro', 'comp'].forEach((k) => { if (s[k] && !co[k].value) co[k].value = s[k]; });
@@ -439,8 +440,7 @@ async function showTrack(publicId, order) {
   $('#t-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? ` <small style="color:var(--muted-2)">(${esc(i.note)})</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
     + (order.mode === 'entrega' ? `<div><span>Entrega${order.delivery_info ? ` <small>${esc(order.delivery_info)}</small>` : ''}</span><span class="price">${Number(order.fee) > 0 ? brl(order.fee) : 'Grátis'}</span></div>` : '')
     + `<div style="font-weight:800"><span style="color:var(--ink)">Total</span><span class="price">${brl(order.total)}</span></div>`;
-  const pix = order.payment === 'pix' && (order.pix_key || R.pix_key);
-  $('#t-pix').hidden = !pix; if (pix) $('#t-pix-key').textContent = pix;
+  renderPix(order, publicId);
   const wa = (R.whatsapp || '').replace(/\D/g, '');
   const waBtn = $('#t-wa');
   waBtn.hidden = !wa;
@@ -465,11 +465,31 @@ async function showTrack(publicId, order) {
   clearInterval(poll);
   const tick = async () => {
     const { data } = await sb.rpc('order_status', { p_public_id: publicId });
+    if (data && data.paid) { $('#t-pix-paid').hidden = false; $('#t-pix-pay').hidden = true; }
     if (data && render(data.status)) clearInterval(poll);
   };
   tick(); poll = setInterval(tick, 15000);
 }
-$('#t-pix-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#t-pix-key').textContent); toast('Chave Pix copiada!'); } catch (_) { toast($('#t-pix-key').textContent); } });
+/* ---------- Pix: QR Code + copia e cola com o valor do pedido ---------- */
+function renderPix(order, publicId) {
+  const box = $('#t-pix');
+  const ok = order.payment === 'pix' && R.pix_key && R.pix_name && window.BoraPix && window.BoraQR && order.status !== 'cancelado';
+  box.hidden = !ok; if (!ok) return;
+  const code = window.BoraPix.payload({
+    key: R.pix_key, name: R.pix_name, city: R.pix_city || 'BRASIL', amount: Number(order.total),
+    txid: `BL${order.number}${String(publicId).replace(/[^a-z0-9]/gi, '').slice(0, 10)}`,
+    info: `Pedido ${order.number} ${R.name}`,
+  });
+  $('#t-pix-amount').textContent = brl(order.total);
+  $('#t-pix-qr').innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix do pedido', color: '#1A1112' });
+  $('#t-pix-code').textContent = code;
+  $('#t-pix-to').innerHTML = `Você vai pagar para <b>${esc(R.pix_name)}</b>${R.pix_bank ? ` · ${esc(R.pix_bank)}` : ''}. Depois de pagar, se quiser, mande o comprovante no WhatsApp da loja.`;
+}
+$('#t-pix-copy').addEventListener('click', async () => {
+  const code = $('#t-pix-code').textContent;
+  try { await navigator.clipboard.writeText(code); toast('Código Pix copiado! Cole no app do banco em Pix › Copia e cola.'); $('#t-pix-copy').textContent = 'Código copiado ✓'; setTimeout(() => { $('#t-pix-copy').textContent = 'Copiar código Pix'; }, 3000); }
+  catch (_) { $('.pix-code').open = true; toast('Toque e segure o código abaixo para copiar.'); }
+});
 $('#again').addEventListener('click', () => { clearInterval(poll); history.replaceState(null, '', location.pathname + location.search); go('menu'); });
 
 load();

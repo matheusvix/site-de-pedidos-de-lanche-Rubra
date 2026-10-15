@@ -175,3 +175,21 @@
   #store-form{padding:18px 16px}
   .biz-cover{height:120px}
 }
+
+/* ---------- Pagamento / Pix ---------- */
+.pix-cfg{display:flex;flex-direction:column;gap:14px;border:1.5px solid var(--line);border-radius:18px;padding:16px;background:#fff}
+.pix-cfg.off{opacity:.55}
+.pix-cfg-head{display:flex;gap:12px;align-items:flex-start}
+.pix-cfg-head svg{color:#32BCAD;flex-shrink:0}
+.pix-cfg-head div{display:flex;flex-direction:column;gap:2px;font-size:14px}
+.pix-cfg-head b{font-size:16px}
+.pix-cfg select{font:inherit;font-size:15px;width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #E2D3D4;background:#fff;min-height:48px}
+.pix-test{display:flex;gap:16px;align-items:center;background:var(--paper);border-radius:14px;padding:14px}
+.pix-test-qr{width:150px;height:150px;flex-shrink:0;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:12px;color:var(--muted);padding:6px}
+.pix-test-qr svg{width:100%;height:100%}
+.pix-test p{font-size:13px;margin:4px 0 10px}
+.pix-test .btn{min-height:42px;font-size:14px}
+.paid{font-style:normal;font-size:12px;font-weight:800;background:#FFF4E0;color:#8A5300;border-radius:999px;padding:2px 8px;margin-left:4px;white-space:nowrap}
+.paid.yes{background:#E6F4EA;color:#1E6B3A}
+.qr canvas{display:block;width:180px!important;height:180px!important}
+@media (max-width:640px){.pix-test{flex-direction:column;align-items:flex-start}}

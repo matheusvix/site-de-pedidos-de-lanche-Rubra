@@ -27,7 +27,7 @@ const waSupport = (txt) => `https://wa.me/${SUPORTE}?text=${encodeURIComponent(t
 
 /* ---------- som de pedido novo ---------- */
 let audio = null;
-function unlockSound() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} } if (audio && audio.state === 'suspended') audio.resume(); $('#sound-hint').hidden = true; }
+function unlockSound() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} } if (audio && audio.state === 'suspended') audio.resume(); setTimeout(() => { $('#sound-hint').hidden = true; }, 600); } // espera o clique terminar, senão a tela pula e o toque erra o botão
 document.addEventListener('pointerdown', unlockSound, { once: false });
 function ding() {
   if (!audio) return;
@@ -182,13 +182,14 @@ function orderCard(o, fresh) {
     <div class="ord-info">
       ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
       ${ent && o.delivery_info ? `<span><b>Entrega:</b> ${esc(o.delivery_info)}</span>` : ''}
-      <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}</span>
+      <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}${o.payment === 'pix' ? (o.paid ? ' <em class="paid yes">Pix recebido ✓</em>' : ' <em class="paid">Aguardando Pix: confira no app do banco</em>') : ''}</span>
       <span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>
       ${o.notes ? `<span><b>Obs.:</b> ${esc(o.notes)}</span>` : ''}
     </div>
     <div class="ord-total"><span>Total${Number(o.fee) > 0 ? ` (com entrega ${brl(o.fee)})` : ''}</span><span>${brl(o.total)}</span></div>
     <div class="ord-acts">
       ${next.map(([s, l, c]) => `<button class="btn ${c}" type="button" data-st="${s}">${l}</button>`).join('')}
+      ${o.payment === 'pix' && o.status !== 'cancelado' ? `<button class="btn ${o.paid ? 'btn-ghost' : 'btn-outline'}" type="button" data-paid="${o.paid ? 0 : 1}">${o.paid ? 'Desfazer Pix recebido' : 'Pix recebido'}</button>` : ''}
       <a class="btn wa" href="${waCustomer(o)}" target="_blank" rel="noopener"><svg width="18" height="18"><use href="#i-wa"/></svg>Cliente</a>
       <button class="btn btn-ghost" type="button" data-print>Imprimir</button>
     </div></article>`;
@@ -217,6 +218,13 @@ $('#orders').addEventListener('click', async (e) => {
     if (error) { b.disabled = false; toast('Não foi possível atualizar.'); return; }
     o.status = b.dataset.st; renderOrders();
     return;
+  }
+  const pb = e.target.closest('[data-paid]');
+  if (pb) {
+    const v = pb.dataset.paid === '1'; pb.disabled = true;
+    const { error } = await sb.from('orders').update({ paid: v }).eq('id', o.id);
+    if (error) { pb.disabled = false; toast('Não foi possível atualizar.'); return; }
+    o.paid = v; renderOrders(); toast(v ? 'Pagamento marcado como recebido.' : 'Pagamento desmarcado.'); return;
   }
   if (e.target.closest('[data-print]')) printOrder(o);
 });
@@ -479,7 +487,7 @@ function renderLink() {
   $('#store-link').textContent = link; $('#open-link').href = link;
   $('#share-link').href = `https://wa.me/?text=${encodeURIComponent(`Bateu a fome? Peça na ${R.name} pelo nosso cardápio digital: ${link}`)}`;
   const q = $('#qr'); q.innerHTML = '';
-  if (window.QRCode) new QRCode(q, { text: link, width: 360, height: 360, colorDark: '#1A1112', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  if (window.BoraQR) q.appendChild(window.BoraQR.canvas(link, 600, { color: '#1A1112', level: 'M' }));
 }
 
 function fillStore() {
@@ -497,7 +505,9 @@ function fillStore() {
     : { 0: [], 1: [['18:00', '23:00']], 2: [['18:00', '23:00']], 3: [['18:00', '23:00']], 4: [['18:00', '23:00']], 5: [['18:00', '23:30']], 6: [['18:00', '23:30']] };
   const pm = R.payment_methods || ['pix', 'cartao', 'dinheiro'];
   f.pay_pix.checked = pm.includes('pix'); f.pay_cartao.checked = pm.includes('cartao'); f.pay_dinheiro.checked = pm.includes('dinheiro');
-  f.pix_key.value = R.pix_key || '';
+  f.pix_key.value = R.pix_key || ''; f.pix_key_type.value = R.pix_key_type || (R.pix_key ? window.BoraPix.guessType(R.pix_key) : 'celular');
+  f.pix_name.value = R.pix_name || ''; f.pix_city.value = R.pix_city || ''; f.pix_bank.value = R.pix_bank || '';
+  renderPixCfg();
   renderIdentity(); renderOpenLabel(); renderGeo(); renderDelivery(); renderWeek(); renderLink();
   const plan = $('#plan-box');
   const st = R.status === 'ativo' ? 'Plano ativo' : R.status === 'suspenso' ? 'Loja pausada' : canSell() ? `Teste grátis · ${daysLeft()} dia(s) restante(s)` : 'Teste encerrado';
@@ -635,6 +645,24 @@ $('#dl-qr').addEventListener('click', () => {
   const a = document.createElement('a'); a.href = url; a.download = `qrcode-${R.slug}.png`; a.click();
 });
 
+/* Pix: pré-visualização com QR de teste */
+const PIX_PH = { celular: '(27) 99999-9999', cpf: '000.000.000-00', cnpj: '00.000.000/0001-00', email: 'voce@email.com', aleatoria: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' };
+function renderPixCfg() {
+  const f = sf();
+  $('#pix-cfg').classList.toggle('off', !f.pay_pix.checked);
+  f.pix_key.placeholder = PIX_PH[f.pix_key_type.value];
+  f.pix_key.inputMode = ['celular', 'cpf', 'cnpj'].includes(f.pix_key_type.value) ? 'numeric' : f.pix_key_type.value === 'email' ? 'email' : 'text';
+  const key = f.pix_key.value.trim() ? window.BoraPix.normalizeKey(f.pix_key_type.value, f.pix_key.value) : null;
+  $('#pix-key-err').textContent = f.pix_key.value.trim() && !key ? 'Confira a chave: ela não combina com o tipo escolhido.' : '';
+  const ok = key && f.pix_name.value.trim() && f.pix_city.value.trim();
+  const box = $('#pix-test-qr');
+  if (!ok) { box.innerHTML = '<span>Preencha chave, nome e cidade para ver o QR de teste</span>'; $('#pix-test-copy').disabled = true; return; }
+  const code = window.BoraPix.payload({ key, name: f.pix_name.value, city: f.pix_city.value, amount: 1, txid: 'TESTEBORA', info: 'Teste BoraLanchar' });
+  box.innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix de teste' }); box.dataset.code = code; $('#pix-test-copy').disabled = false;
+}
+['pix_key', 'pix_name', 'pix_city', 'pix_key_type', 'pay_pix'].forEach((n) => { sf()[n].addEventListener('input', renderPixCfg); sf()[n].addEventListener('change', renderPixCfg); });
+$('#pix-test-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#pix-test-qr').dataset.code); toast('Código de teste copiado. Cole no app do banco em Pix › Copia e cola.'); } catch (_) {} });
+
 function fail(sec, msg) { selectSec(sec); toast(msg); return null; }
 function buildPatch() {
   const f = sf();
@@ -665,7 +693,14 @@ function buildPatch() {
     if (!Object.values(hours).some((v) => v.length)) return fail('horario', 'Marque pelo menos um dia aberto, ou escolha "Sem horário definido".');
   }
   const pay = ['pix', 'cartao', 'dinheiro'].filter((k) => f['pay_' + k].checked);
-  if (!pay.length) return fail('mais', 'Marque pelo menos uma forma de pagamento.');
+  if (!pay.length) return fail('pagamento', 'Marque pelo menos uma forma de pagamento.');
+  let pixKey = null;
+  if (f.pix_key.value.trim()) {
+    pixKey = window.BoraPix.normalizeKey(f.pix_key_type.value, f.pix_key.value);
+    if (!pixKey) return fail('pagamento', 'Chave Pix inválida para o tipo escolhido.');
+    if (!f.pix_name.value.trim()) return fail('pagamento', 'Informe o nome de quem recebe o Pix.');
+    if (!f.pix_city.value.trim()) return fail('pagamento', 'Informe a cidade da conta Pix.');
+  } else if (pay.includes('pix')) return fail('pagamento', 'Para aceitar Pix, cadastre a chave Pix que vai receber os pagamentos.');
   let ig = f.instagram.value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/.*$/, '');
   return {
     name: f.name.value.trim().slice(0, 80), segment: f.segment.value.trim() || null, description: f.description.value.trim().slice(0, 750) || null,
@@ -675,7 +710,9 @@ function buildPatch() {
     delivery_mode: mode, delivery_zones: zones,
     delivery_fee: num(f.delivery_fee.value), delivery_time: f.delivery_time.value.trim() || '30–45 min', min_order: num(f.min_order.value),
     opening_hours: hours, hours: null,
-    payment_methods: pay, pix_key: f.pix_key.value.trim() || null,
+    payment_methods: pay, pix_key: pixKey, pix_key_type: pixKey ? f.pix_key_type.value : null,
+    pix_name: pixKey ? window.BoraPix.plain(f.pix_name.value).slice(0, 25) : null, pix_city: pixKey ? window.BoraPix.plain(f.pix_city.value).slice(0, 15) : null,
+    pix_bank: f.pix_bank.value.trim().slice(0, 40) || null,
   };
 }
 sf().addEventListener('submit', async (e) => {
