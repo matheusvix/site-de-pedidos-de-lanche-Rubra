@@ -1,6 +1,6 @@
-# Tilim — cardápio digital e pedidos
+# BoraLanchar! — cardápio digital e pedidos
 
-Landing page da Tilim, sistema de pedidos e cardápio digital para restaurantes e delivery. Identidade vermelho e branco (logos em `assets/brand/`), site estático (HTML + CSS + JS puro, sem build).
+Landing page do BoraLanchar!, sistema de pedidos e cardápio digital para restaurantes e delivery. Identidade vermelho e branco (logos em `assets/brand/`), site estático (HTML + CSS + JS puro, sem build).
 
 ## Funcionalidades
 

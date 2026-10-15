@@ -1,8 +1,8 @@
 /* ============================================================
-   Tilim — interações da landing page
+   BoraLanchar! — interações da landing page
    Configuração em assets/config.js
    ============================================================ */
-const CONFIG = window.TILIM_CONFIG || window.RUBRA_CONFIG || {};
+const CONFIG = window.BORA_CONFIG || window.TILIM_CONFIG || window.RUBRA_CONFIG || {};
 const sb = (CONFIG.supabaseUrl && CONFIG.supabaseAnonKey && window.supabase)
   ? window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey)
   : null;
