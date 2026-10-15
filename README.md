@@ -33,16 +33,16 @@ Landing page do BoraLanchar!, sistema de pedidos e cardápio digital para restau
 Rode `supabase/instalar-tudo.sql` inteiro no SQL Editor. Depois, em Authentication:
 - **Sign In / Providers → Email**: deixe "Allow new users to sign up" ligado e desligue "Confirm email".
 - **URL Configuration → Site URL**: `https://boralanchar.netlify.app`.
-- Para o admin: **Users → Add user** com `mvix.com@gmail.com` e uma senha (marque "Auto Confirm User").
+- Para o admin: **Users → Add user** com `boralancharadm@gmail.com` e uma senha (marque "Auto Confirm User").
 
 ## Configurar o banco e o acesso admin (Supabase) — versão antiga
 
 1. Crie uma conta grátis em [supabase.com](https://supabase.com) e um **New project** (região São Paulo).
-2. Em **SQL Editor › New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Isso cria as tabelas, as regras de segurança e registra `mvix.com@gmail.com` como admin.
+2. Em **SQL Editor › New query**, cole todo o conteúdo de `supabase/schema.sql` e clique em **Run**. Isso cria as tabelas, as regras de segurança e registra `boralancharadm@gmail.com` como admin.
 3. Em **Authentication › Sign In / Providers**, desative **Allow new users to sign up** (só quem você convidar entra).
 4. Em **Authentication › URL Configuration**, coloque em **Site URL** o endereço do site publicado + `/admin.html`
    (ex.: `https://rubra-pedidos.netlify.app/admin.html`).
-5. Em **Authentication › Users › Add user › Send invitation**, convide `mvix.com@gmail.com`. Abra o e-mail, clique no link e defina sua senha.
+5. Em **Authentication › Users › Add user › Send invitation**, convide `boralancharadm@gmail.com`. Abra o e-mail, clique no link e defina sua senha.
 6. Em **Project Settings › API**, copie a **Project URL** e a **anon public key** para `assets/config.js`.
 
 Para adicionar outro administrador: convide o e-mail em *Authentication › Users* e rode

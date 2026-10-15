@@ -32,7 +32,7 @@ create table if not exists public.admins (
   email text primary key
 );
 
-insert into public.admins (email) values ('mvix.com@gmail.com')
+insert into public.admins (email) values ('boralancharadm@gmail.com')
 on conflict (email) do nothing;
 
 -- Função usada pelas regras: o usuário logado é admin?
