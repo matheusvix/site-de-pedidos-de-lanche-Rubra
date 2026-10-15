@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=6">
+<link rel="stylesheet" href="assets/painel.css?v=8">
 </head>
 <body class="adm">
 
@@ -94,6 +94,7 @@
         </div>
       </div>
       <p class="sound-hint" id="sound-hint"><svg width="18" height="18"><use href="#i-bell"/></svg> Toque em qualquer lugar da tela para ativar o som de pedido novo.</p>
+      <div class="pending" id="pending" hidden></div>
       <div class="orders" id="orders"></div>
       <p class="adm-empty" id="orders-empty" hidden></p>
     </section>
@@ -234,6 +235,21 @@
                 </div>
                 <div class="field"><label for="f-pixbank">Banco ou conta (opcional)</label><input id="f-pixbank" name="pix_bank" maxlength="40" list="banks-list" placeholder="Ex.: Nubank, Inter, Caixa, Mercado Pago">
                   <datalist id="banks-list"><option>Nubank</option><option>Banco Inter</option><option>Caixa Econômica</option><option>Banco do Brasil</option><option>Itaú</option><option>Bradesco</option><option>Santander</option><option>Mercado Pago</option><option>PicPay</option><option>PagBank</option><option>C6 Bank</option><option>Sicoob</option><option>Banestes</option><option>Sicredi</option></datalist></div>
+                <div class="mp-box" id="mp-box">
+                  <div class="mp-head"><b>Confirmação automática</b><span class="mp-state" id="mp-state">Desligada</span></div>
+                  <p class="adm-muted" id="mp-desc">Hoje você confirma no painel quando o Pix cai na sua conta, e só então o pedido entra na fila. Conecte sua conta do <b>Mercado Pago</b> para o pedido entrar sozinho assim que o cliente pagar. O dinheiro cai na sua conta Mercado Pago, que cobra uma taxa por Pix recebido.</p>
+                  <div id="mp-off">
+                    <div class="field"><label for="mp-token">Access Token de produção do Mercado Pago</label><input id="mp-token" type="password" autocomplete="off" placeholder="APP_USR-…" spellcheck="false"></div>
+                    <details class="mp-help"><summary>Onde encontro o Access Token?</summary>
+                      <ol><li>Entre em <b>mercadopago.com.br/developers</b> com a conta que vai receber.</li><li>Vá em <b>Suas integrações › Criar aplicação</b> (pagamentos online, sem plataforma).</li><li>Abra a aplicação e entre em <b>Credenciais de produção</b>.</li><li>Copie o <b>Access Token</b> (começa com APP_USR-) e cole aqui.</li></ol>
+                    </details>
+                    <button class="btn btn-primary" type="button" id="mp-connect">Conectar Mercado Pago</button>
+                  </div>
+                  <div id="mp-on" hidden>
+                    <p class="mp-acc">Conta conectada: <b id="mp-acc"></b></p>
+                    <button class="btn btn-ghost adm-danger" type="button" id="mp-disconnect">Desconectar</button>
+                  </div>
+                </div>
                 <div class="pix-test">
                   <div class="pix-test-qr" id="pix-test-qr"></div>
                   <div><b>Teste antes de salvar</b><p class="adm-muted">Abra o app do seu banco, vá em Pix › Ler QR Code e aponte para este código de R$ 1,00. Confira se aparece o seu nome. Não precisa concluir o pagamento.</p><button class="btn btn-outline" type="button" id="pix-test-copy">Copiar código de teste</button></div>
@@ -311,6 +327,6 @@
 <script defer src="assets/pix.js?v=6"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/horario.js?v=5"></script>
-<script defer src="assets/painel.js?v=7"></script>
+<script defer src="assets/painel.js?v=8"></script>
 </body>
 </html>

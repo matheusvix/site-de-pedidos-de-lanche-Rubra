@@ -62,7 +62,7 @@ async function load() {
   setInterval(() => { renderHeader(); renderCart(); }, 60000);
 
   const last = localStorage.getItem(LAST);
-  if (last && location.hash === '#pedido') showTrack(last);
+  if (last && location.hash === '#pedido') showTrack(last); else renderResume();
 }
 
 /* ---------- cabeçalho no estilo Google Meu Negócio ---------- */
@@ -419,7 +419,7 @@ co.addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
-  const order = { ...data, customer: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  const order = { ...data, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: troco, notes: co.obs.value.trim() };
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';
   if (data.status === 'pagamento') { showPay(data.public_id, order); return; }
@@ -468,54 +468,105 @@ async function showTrack(publicId, order) {
   clearInterval(poll);
   const tick = async () => {
     const { data } = await sb.rpc('order_status', { p_public_id: publicId });
-    if (data && order.payment === 'pix' && R.pix_key) { const el = $('#t-pix'); el.hidden = false; el.className = 'pix-state' + (data.paid ? ' ok' : ''); el.textContent = data.paid ? 'Pagamento confirmado pela loja ✓' : 'Pix enviado. A loja confere o pagamento no app do banco.'; }
+    if (data && order.payment === 'pix' && R.pix_key) { const el = $('#t-pix'); el.hidden = false; el.className = 'pix-state ok'; el.textContent = 'Pagamento Pix confirmado ✓'; }
+    if (data) { order.status = data.status; saveOrder(publicId, order); }
     if (data && render(data.status)) clearInterval(poll);
   };
   tick(); poll = setInterval(tick, 15000);
 }
-/* ---------- Pix: pagar primeiro, depois o pedido vai para a loja ---------- */
+/* ---------- Pix: pagar primeiro; quando o pagamento é confirmado, a tela muda sozinha ---------- */
 function renderPix() { $('#t-pix').hidden = true; }
-let PAYING = null;
-function showPay(publicId, order) {
-  PAYING = { publicId, order };
-  go('pay');
-  const code = window.BoraPix.payload({
+let PAYING = null, payPoll = null;
+const saveOrder = (id, o) => { try { localStorage.setItem('bora-order-' + id, JSON.stringify(o)); } catch (_) {} };
+function staticPix(publicId, order) {
+  return window.BoraPix.payload({
     key: R.pix_key, name: R.pix_name, city: R.pix_city || 'BRASIL', amount: Number(order.total),
-    txid: `BL${String(publicId).replace(/[^a-z0-9]/gi, '').slice(0, 16)}`,
-    info: `Pedido ${R.name}`,
+    txid: `BL${String(publicId).replace(/[^a-z0-9]/gi, '').slice(0, 16)}`, info: `Pedido ${R.name}`,
   });
+}
+async function showPay(publicId, order) {
+  clearInterval(poll); clearInterval(payPoll);
+  PAYING = { publicId, order, mode: 'manual' };
+  go('pay');
+  $('#pay-err').textContent = '';
   $('#p-amount').textContent = brl(order.total);
-  $('#p-qr').innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix do pedido', color: '#1A1112' });
-  $('#p-code').textContent = code;
-  $('#p-to').innerHTML = `Você vai pagar para <b>${esc(R.pix_name)}</b>${R.pix_bank ? ` · ${esc(R.pix_bank)}` : ''}.`;
   $('#p-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
     + (order.mode === 'entrega' ? `<div><span>Entrega</span><span class="price">${Number(order.fee) > 0 ? brl(order.fee) : 'Grátis'}</span></div>` : '')
     + `<div style="font-weight:800"><span style="color:var(--ink)">Total</span><span class="price">${brl(order.total)}</span></div>`;
-  $('#pay-err').textContent = '';
+  $('#p-qr').innerHTML = '<span class="spin" aria-label="Gerando o Pix"></span>'; $('#p-copy').disabled = true; $('#p-code').textContent = '';
+  // loja com Mercado Pago conectado: Pix gerado por lá (confirmação automática)
+  let code = null, mode = 'manual';
+  if (R.pix_auto && sb.functions) {
+    try {
+      const { data } = await sb.functions.invoke('pix', { body: { action: 'create', public_id: publicId } });
+      if (data && data.status && data.status !== 'pagamento') { paidDone(publicId, order, data.status); return; }
+      if (data && data.mode === 'auto' && data.qr_code) { mode = 'auto'; code = data.qr_code; }
+    } catch (_) {}
+  }
+  if (!PAYING || PAYING.publicId !== publicId) return;
+  if (!code) code = staticPix(publicId, order);
+  PAYING.mode = mode;
+  $('#p-qr').innerHTML = window.BoraQR.svg(code, { label: 'QR Code Pix do pedido', color: '#1A1112' });
+  $('#p-code').textContent = code; $('#p-copy').disabled = false;
+  $('#p-to').innerHTML = `Você vai pagar para <b>${esc(R.pix_name || R.name)}</b>${R.pix_bank && mode === 'manual' ? ` · ${esc(R.pix_bank)}` : ''}.`;
+  $('#p-wait-text').textContent = mode === 'auto'
+    ? 'Assim que o Pix for aprovado, esta tela muda sozinha e o pedido vai direto para a loja.'
+    : 'Assim que a loja confirmar o recebimento do Pix, esta tela muda sozinha.';
+  const tick = async () => {
+    if (!PAYING || PAYING.publicId !== publicId) { clearInterval(payPoll); return; }
+    let st = null;
+    try {
+      if (PAYING.mode === 'auto') { const { data } = await sb.functions.invoke('pix', { body: { action: 'status', public_id: publicId } }); st = data && data.status; }
+      else { const { data } = await sb.rpc('order_status', { p_public_id: publicId }); st = data && data.status; }
+    } catch (_) {}
+    if (st && st !== 'pagamento' && PAYING && PAYING.publicId === publicId) paidDone(publicId, PAYING.order, st);
+  };
+  payPoll = setInterval(tick, 4000);
+}
+async function paidDone(publicId, order, st) {
+  clearInterval(payPoll); PAYING = null;
+  if (st === 'cancelado') {
+    try { localStorage.removeItem(LAST); localStorage.removeItem('bora-order-' + publicId); } catch (_) {}
+    toast('A loja cancelou este pedido. Fale com ela pelo WhatsApp se tiver dúvidas.');
+    go('menu'); renderResume(); return;
+  }
+  const { data } = await sb.rpc('order_status', { p_public_id: publicId });
+  const done = { ...order, status: (data && data.status) || st, number: (data && data.number) || order.number, paid: true };
+  saveOrder(publicId, done);
+  cart = []; persist(); renderCart();
+  toast('Pagamento confirmado! Seu pedido foi enviado para a loja.');
+  showTrack(publicId, done);
 }
 $('#p-copy').addEventListener('click', async () => {
   const code = $('#p-code').textContent;
   try { await navigator.clipboard.writeText(code); toast('Código Pix copiado! Cole no app do banco em Pix › Copia e cola.'); $('#p-copy').textContent = 'Código copiado ✓'; setTimeout(() => { $('#p-copy').textContent = 'Copiar código Pix'; }, 3000); }
   catch (_) { $('#v-pay .pix-code').open = true; toast('Toque e segure o código abaixo para copiar.'); }
 });
-$('#p-done').addEventListener('click', async () => {
-  if (!PAYING) return;
-  const btn = $('#p-done'); btn.disabled = true;
-  const { data, error } = await sb.rpc('confirm_pix_paid', { p_public_id: PAYING.publicId });
-  btn.disabled = false;
-  if (error || !data) { $('#pay-err').textContent = 'Não foi possível enviar agora. Confira sua internet e toque de novo.'; return; }
-  const order = { ...PAYING.order, number: data.number, status: data.status };
-  try { localStorage.setItem('bora-order-' + PAYING.publicId, JSON.stringify(order)); } catch (_) {}
-  cart = []; persist(); renderCart();
-  const id = PAYING.publicId; PAYING = null;
-  toast('Pedido enviado para a loja!');
-  showTrack(id, order);
-});
 $('#pay-back').addEventListener('click', async () => {
-  if (PAYING) { await sb.rpc('cancel_pending_order', { p_public_id: PAYING.publicId }); try { localStorage.removeItem(LAST); localStorage.removeItem('bora-order-' + PAYING.publicId); } catch (_) {} PAYING = null; }
+  if (PAYING) {
+    const id = PAYING.publicId; clearInterval(payPoll); PAYING = null;
+    await sb.rpc('cancel_pending_order', { p_public_id: id });
+    try { localStorage.removeItem(LAST); localStorage.removeItem('bora-order-' + id); } catch (_) {}
+  }
   history.replaceState(null, '', location.pathname + location.search);
   go('checkout');
 });
-$('#again').addEventListener('click', () => { clearInterval(poll); history.replaceState(null, '', location.pathname + location.search); go('menu'); });
+
+/* ---------- botão Início e aviso de pedido em andamento ---------- */
+function renderResume() {
+  const b = $('#resume'); b.hidden = true;
+  let id = null, o = null;
+  try { id = localStorage.getItem(LAST); o = id && JSON.parse(localStorage.getItem('bora-order-' + id) || 'null'); } catch (_) {}
+  if (!o || ['entregue', 'cancelado'].includes(o.status) || Date.now() - (o.ts || Date.now()) > 12 * 3600e3) return;
+  $('#resume-txt').textContent = o.status === 'pagamento' ? `Seu pedido de ${brl(o.total)} está esperando o pagamento.` : `Pedido #${o.number} em andamento.`;
+  b.hidden = false; b.onclick = () => { location.hash = 'pedido'; showTrack(id); };
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-home]')) return;
+  clearInterval(payPoll); clearInterval(poll); PAYING = null;
+  history.replaceState(null, '', location.pathname + location.search);
+  go('menu'); renderResume();
+});
+$('#again').addEventListener('click', () => { clearInterval(poll); history.replaceState(null, '', location.pathname + location.search); go('menu'); renderResume(); });
 
 load();

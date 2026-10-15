@@ -148,13 +148,46 @@ $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => select
 /* ---------- pedidos ---------- */
 // pedido em Pix só aparece depois que o cliente paga (antes disso ele não tem número)
 const visibleOrder = (o) => o.status !== 'pagamento' && !(o.status === 'cancelado' && !o.number);
+const isPending = (o) => o.status === 'pagamento' && Date.now() - new Date(o.created_at) < 3 * 3600e3;
+let PENDING = [];
+function renderPending() {
+  const box = $('#pending');
+  box.hidden = !PENDING.length;
+  if (!PENDING.length) { box.innerHTML = ''; return; }
+  const ago = (t) => { const m = Math.max(0, Math.round((Date.now() - new Date(t)) / 60000)); return m < 1 ? 'agora' : `há ${m} min`; };
+  box.innerHTML = `<div class="pending-head"><b>Aguardando Pix</b><span>${R.pix_auto ? 'Entram sozinhos quando o Mercado Pago aprovar.' : 'Confira no app do banco e libere o pedido quando o dinheiro cair.'}</span></div>`
+    + PENDING.map((o) => `<div class="pend" data-pid="${o.id}">
+      <div class="pend-info"><b>${esc(o.customer_name)} · ${brl(o.total)}</b><small>${(o.items || []).map((i) => `${i.qty}× ${esc(i.name)}`).join(', ')} · ${ago(o.created_at)}</small></div>
+      <div class="pend-acts">${R.pix_auto ? '' : '<button class="btn btn-primary" type="button" data-release>Pix caiu, liberar pedido</button>'}<button class="btn btn-ghost" type="button" data-discard>Descartar</button></div>
+    </div>`).join('');
+}
+$('#pending').addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-pid]'); if (!el) return;
+  const o = PENDING.find((x) => x.id === +el.dataset.pid); if (!o) return;
+  const b = e.target.closest('button'); if (!b) return; b.disabled = true;
+  if (b.matches('[data-release]')) {
+    const { error } = await sb.rpc('owner_confirm_pix', { p_order_id: o.id });
+    if (error) { b.disabled = false; toast('Não foi possível liberar agora.'); return; }
+    PENDING = PENDING.filter((x) => x.id !== o.id); renderPending();
+    const { data } = await sb.from('orders').select('*').eq('id', o.id).maybeSingle();
+    if (data && !ORDERS.some((x) => x.id === data.id)) ORDERS.unshift(data);
+    renderOrders(o.id); toast('Pedido liberado. O cliente já vê que o pagamento foi confirmado.');
+  } else if (b.matches('[data-discard]')) {
+    if (!confirm(`Descartar o pedido de ${o.customer_name}? Use só se o cliente desistiu.`)) { b.disabled = false; return; }
+    const { error } = await sb.from('orders').update({ status: 'cancelado' }).eq('id', o.id);
+    if (error) { b.disabled = false; toast('Não foi possível descartar.'); return; }
+    PENDING = PENDING.filter((x) => x.id !== o.id); renderPending();
+  }
+});
+setInterval(() => { if (PENDING.length) { PENDING = PENDING.filter(isPending); renderPending(); } }, 60000);
 const ST = { novo: 'Novo', preparo: 'Em preparo', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' };
 const PAG = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro' };
 async function loadOrders() {
   const since = new Date(Date.now() - 3 * 86400000).toISOString();
   const { data } = await sb.from('orders').select('*').eq('restaurant_id', R.id).gte('created_at', since).order('created_at', { ascending: false }).limit(200);
   ORDERS = (data || []).filter(visibleOrder);
-  renderOrders();
+  PENDING = (data || []).filter(isPending);
+  renderOrders(); renderPending();
 }
 function renderOrders(freshId) {
   const act = ['novo', 'preparo', 'pronto', 'saiu'];
@@ -248,6 +281,11 @@ function subscribe() {
   channel = sb.channel('pedidos-' + R.id)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${R.id}` }, (p) => {
       const known = ORDERS.some((o) => o.id === p.new.id);
+      if (isPending(p.new)) { // pedido esperando o Pix
+        if (!PENDING.some((o) => o.id === p.new.id)) { PENDING.unshift(p.new); renderPending(); if (!R.pix_auto) toast(`${p.new.customer_name} está pagando um pedido no Pix.`); }
+        return;
+      }
+      if (PENDING.some((o) => o.id === p.new.id)) { PENDING = PENDING.filter((o) => o.id !== p.new.id); renderPending(); }
       if (!visibleOrder(p.new)) return;
       if (p.eventType === 'INSERT' || (p.eventType === 'UPDATE' && !known && p.new.status === 'novo')) {
         if (known) return;
@@ -264,7 +302,10 @@ function subscribe() {
   setInterval(async () => {
     const since = ORDERS[0] ? ORDERS[0].created_at : new Date(Date.now() - 3 * 86400000).toISOString();
     const { data } = await sb.from('orders').select('*').eq('restaurant_id', R.id).gt('created_at', since).order('created_at', { ascending: false });
-    if (data && data.length) { const fresh = data.filter((d) => visibleOrder(d) && !ORDERS.some((o) => o.id === d.id)); if (fresh.length) { ORDERS.unshift(...fresh); ding(); renderOrders(fresh[0].id); } }
+    if (data && data.length) {
+      const pend = data.filter((d) => isPending(d) && !PENDING.some((o) => o.id === d.id)); if (pend.length) { PENDING.unshift(...pend); renderPending(); }
+      const fresh = data.filter((d) => visibleOrder(d) && !ORDERS.some((o) => o.id === d.id)); if (fresh.length) { PENDING = PENDING.filter((o) => !fresh.some((f) => f.id === o.id)); renderPending(); ORDERS.unshift(...fresh); ding(); renderOrders(fresh[0].id); }
+    }
   }, 30000);
   if ('Notification' in window && Notification.permission === 'default') document.addEventListener('pointerdown', () => Notification.requestPermission(), { once: true });
 }
@@ -512,7 +553,7 @@ function fillStore() {
   f.pay_pix.checked = pm.includes('pix'); f.pay_cartao.checked = pm.includes('cartao'); f.pay_dinheiro.checked = pm.includes('dinheiro');
   f.pix_key.value = R.pix_key || ''; f.pix_key_type.value = R.pix_key_type || (R.pix_key ? window.BoraPix.guessType(R.pix_key) : 'celular');
   f.pix_name.value = R.pix_name || ''; f.pix_city.value = R.pix_city || ''; f.pix_bank.value = R.pix_bank || '';
-  renderPixCfg();
+  renderPixCfg(); loadMp();
   renderIdentity(); renderOpenLabel(); renderGeo(); renderDelivery(); renderWeek(); renderLink();
   const plan = $('#plan-box');
   const st = R.status === 'ativo' ? 'Plano ativo' : R.status === 'suspenso' ? 'Loja pausada' : canSell() ? `Teste grátis · ${daysLeft()} dia(s) restante(s)` : 'Teste encerrado';
@@ -667,6 +708,36 @@ function renderPixCfg() {
 }
 ['pix_key', 'pix_name', 'pix_city', 'pix_key_type', 'pay_pix'].forEach((n) => { sf()[n].addEventListener('input', renderPixCfg); sf()[n].addEventListener('change', renderPixCfg); });
 $('#pix-test-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#pix-test-qr').dataset.code); toast('Código de teste copiado. Cole no app do banco em Pix › Copia e cola.'); } catch (_) {} });
+
+/* Mercado Pago: confirmação automática do Pix */
+function renderMp(connected, account) {
+  $('#mp-state').textContent = connected ? 'Ligada' : 'Desligada';
+  $('#mp-state').classList.toggle('on', !!connected);
+  $('#mp-off').hidden = !!connected; $('#mp-on').hidden = !connected;
+  $('#mp-acc').textContent = account || '';
+}
+async function mpCall(action, extra = {}) {
+  if (!sb.functions) return { error: 'indisponível' };
+  const { data, error } = await sb.functions.invoke('pix', { body: { action, ...extra } });
+  if (error) { let msg = 'Não foi possível falar com o servidor.'; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {} return { error: msg }; }
+  return data || {};
+}
+async function loadMp() { renderMp(R.pix_auto, ''); if (!R.pix_auto) return; const r = await mpCall('account'); if (!r.error) renderMp(r.connected, r.account); }
+$('#mp-connect').addEventListener('click', async () => {
+  const token = $('#mp-token').value.trim();
+  if (!/^APP_USR-/.test(token)) return toast('Cole o Access Token de produção (começa com APP_USR-).');
+  const b = $('#mp-connect'); b.disabled = true; b.textContent = 'Conectando…';
+  const r = await mpCall('connect', { token });
+  b.disabled = false; b.textContent = 'Conectar Mercado Pago';
+  if (r.error) return toast(r.error);
+  $('#mp-token').value = ''; R.pix_auto = true; renderMp(true, r.account); renderPending();
+  toast('Mercado Pago conectado! Os pedidos em Pix agora entram sozinhos quando o cliente paga.');
+});
+$('#mp-disconnect').addEventListener('click', async () => {
+  if (!confirm('Desconectar o Mercado Pago? Os pedidos em Pix voltam a precisar da sua confirmação.')) return;
+  const r = await mpCall('disconnect'); if (r.error) return toast(r.error);
+  R.pix_auto = false; renderMp(false, ''); renderPending(); toast('Mercado Pago desconectado.');
+});
 
 function fail(sec, msg) { selectSec(sec); toast(msg); return null; }
 function buildPatch() {

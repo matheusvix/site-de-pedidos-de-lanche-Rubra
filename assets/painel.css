@@ -193,3 +193,26 @@
 .paid.yes{background:#E6F4EA;color:#1E6B3A}
 .qr canvas{display:block;width:180px!important;height:180px!important}
 @media (max-width:640px){.pix-test{flex-direction:column;align-items:flex-start}}
+
+/* ---------- Aguardando Pix ---------- */
+.pending{border:2px solid #32BCAD;background:#EAF8F6;border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.pending-head{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.pending-head b{font-size:17px;color:#11685F}
+.pending-head span{font-size:13px;color:var(--muted)}
+.pend{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:12px 14px}
+.pend-info{display:flex;flex-direction:column;min-width:0;flex:1 1 240px}
+.pend-info small{color:var(--muted);font-size:13px}
+.pend-acts{display:flex;gap:8px;flex-wrap:wrap}
+.pend-acts .btn{min-height:44px;font-size:14px;padding:8px 14px}
+/* Mercado Pago */
+.mp-box{border:1.5px dashed #9BD8D0;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#F6FCFB}
+.mp-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mp-head b{font-size:15px}
+.mp-state{font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px;background:#F1EEEE;color:var(--muted)}
+.mp-state.on{background:#E6F4EA;color:#1E6B3A}
+.mp-box p{font-size:13px;margin:0}
+#mp-off{display:flex;flex-direction:column;gap:10px}
+#mp-off .btn{align-self:flex-start}
+.mp-help summary{font-size:13px;font-weight:700;cursor:pointer;min-height:36px;display:flex;align-items:center}
+.mp-help ol{margin:4px 0 0;padding-left:20px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.mp-acc{font-size:14px}
