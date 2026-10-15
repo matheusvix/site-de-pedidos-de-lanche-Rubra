@@ -15,7 +15,9 @@ const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SITE = "https://boralanchar.netlify.app";
+// endereços oficiais do site (o cliente volta do Mercado Pago para o mesmo endereço em que estava)
+const SITES = ["https://boralanchar.com.br", "https://www.boralanchar.com.br", "https://boralanchar.netlify.app"];
+const siteFrom = (o: unknown) => (SITES.includes(String(o)) ? String(o) : SITES[0]);
 const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 const MP = "https://api.mercadopago.com";
 const WEBHOOK = `${SUPABASE_URL}/functions/v1/assinatura?action=webhook`;
@@ -113,7 +115,7 @@ Deno.serve(async (req) => {
 
       // cartão ou boleto: página de pagamento segura do Mercado Pago
       if (!token) return json({ error: "Cartão e boleto ainda não estão disponíveis. Use o Pix ou fale com a gente." }, 400);
-      const back = `${SITE}/assinar.html?ref=${sp.public_id}`;
+      const back = `${siteFrom(body.origin)}/assinar.html?ref=${sp.public_id}`;
       const excluded = sp.method === "cartao"
         ? [{ id: "ticket" }, { id: "bank_transfer" }, { id: "atm" }]
         : [{ id: "credit_card" }, { id: "debit_card" }, { id: "bank_transfer" }];

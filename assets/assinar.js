@@ -150,7 +150,7 @@ $('#acc-login').addEventListener('submit', async (e) => {
 /* ---------- pagar ---------- */
 async function fn(action, extra) {
   if (!sb.functions) return { error: 'indisponível' };
-  const { data, error } = await sb.functions.invoke('assinatura', { body: { action, ...extra } });
+  const { data, error } = await sb.functions.invoke('assinatura', { body: { action, origin: location.origin, ...extra } });
   if (error) { let msg = 'Não foi possível falar com o servidor.'; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {} return { error: msg }; }
   return data || {};
 }
