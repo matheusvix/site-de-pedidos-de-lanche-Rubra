@@ -99,18 +99,50 @@ async function ensureAccount() {
     return false;
   }
   try { await sb.from('leads').insert({ tipo: 'cadastro', nome: meta.nome, loja: meta.loja, telefone: meta.telefone, email: f.email.value.trim(), segmento: meta.segmento, plano: plan }); } catch (_) {}
-  if (!auth.session) { $('#pay-err').textContent = `Enviamos um link de confirmação para ${f.email.value.trim()}. Abra o e-mail, confirme e você volta para esta página para pagar.`; return false; }
+  if (!auth.session) {
+    const email = f.email.value.trim();
+    // e-mail que já tem conta: o Supabase não manda nada e não avisa — então tentamos entrar com a senha digitada
+    const { data: li, error: le } = await sb.auth.signInWithPassword({ email, password: f.senha.value });
+    if (!le && li && li.session) { user = li.user; await loadMine(); renderAccount(); return ensureAccount(); }
+    if (auth.user && Array.isArray(auth.user.identities) && auth.user.identities.length === 0) {
+      showLogin(email, 'Este e-mail já tem conta no BoraLanchar!. Digite a senha dele para entrar e continuar.');
+      return false;
+    }
+    showConfirm(email); return false;
+  }
   user = auth.user;
   const { data, error: e2 } = await sb.rpc('create_my_restaurant', { p_name: meta.loja, p_whatsapp: meta.telefone, p_segment: meta.segmento, p_plan: plan });
   if (e2) { $('#pay-err').textContent = 'Conta criada, mas não deu para montar a loja. Fale com a gente no WhatsApp.'; return false; }
   R = data; renderAccount(); return true;
+}
+function showLogin(email, msg) {
+  $('#acc-signup').hidden = true; $('#acc-login').hidden = false;
+  $('#l-email').value = email || ''; $('#l-senha').value = ''; $('#l-senha').focus();
+  fieldErr($('#l-senha'), ''); $('#pay-err').textContent = msg || '';
+}
+function showConfirm(email) {
+  const box = $('#pay-err');
+  box.innerHTML = `Falta confirmar o e-mail <b>${esc(email)}</b>: abra o link que enviamos (veja também a caixa de spam e promoções). `
+    + '<button class="as-link" type="button" id="resend">Reenviar e-mail</button> · '
+    + `<a class="as-link" target="_blank" rel="noopener" href="https://wa.me/${esc(CFG.whatsapp || '')}?text=${encodeURIComponent('Olá! Criei minha conta no BoraLanchar! com o e-mail ' + email + ', mas o e-mail de confirmação não chegou.')}">Não chegou? Fale no WhatsApp</a>`;
+  $('#resend').onclick = async () => {
+    const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: new URL(`assinar.html?plano=${plan.toLowerCase()}`, location.href).href } });
+    toast(error ? 'Aguarde alguns minutos para pedir outro e-mail.' : 'E-mail reenviado! Confira também o spam.');
+  };
 }
 $('#acc-login').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = $('#l-email').value.trim(), password = $('#l-senha').value;
   if (!email || !password) { fieldErr($('#l-senha'), 'Preencha e-mail e senha.'); return; }
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { fieldErr($('#l-senha'), /confirm/i.test(error.message) ? 'Confirme seu e-mail pelo link que enviamos.' : 'E-mail ou senha incorretos.'); return; }
+  if (error) {
+    if (/confirm/i.test(error.message)) { fieldErr($('#l-senha'), ''); showConfirm(email); return; }
+    fieldErr($('#l-senha'), 'E-mail ou senha incorretos.');
+    $('#pay-err').innerHTML = `Esqueceu a senha? <button class="as-link" type="button" id="forgot">Receber link para criar nova senha</button>`;
+    $('#forgot').onclick = async () => { await sb.auth.resetPasswordForEmail(email, { redirectTo: new URL('painel.html', location.href).href }); toast('Se o e-mail tiver conta, enviamos o link. Confira também o spam.'); };
+    return;
+  }
+  $('#pay-err').textContent = '';
   user = data.user; await loadMine(); renderAccount();
   if (!R) toast('Conta encontrada. Vamos criar sua loja ao pagar.');
 });

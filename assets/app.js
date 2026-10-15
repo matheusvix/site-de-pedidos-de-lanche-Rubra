@@ -248,6 +248,16 @@ $$('form[data-form]').forEach((form) => {
       location.href = 'painel.html?bemvindo=1';
       return;
     }
+    // e-mail que já tem conta: o Supabase não manda e-mail nenhum — tenta entrar com a senha digitada
+    {
+      const { data: li } = await sb.auth.signInWithPassword({ email: data.email.trim(), password: data.senha });
+      if (li && li.session) { location.href = 'painel.html'; return; }
+      if (auth.user && Array.isArray(auth.user.identities) && auth.user.identities.length === 0) {
+        btn.disabled = false; btn.innerHTML = label;
+        toast('Este e-mail já tem conta. Use "Entrar" para acessar seu painel.');
+        return;
+      }
+    }
     // Confirmação de e-mail ligada no Supabase
     form.innerHTML = `<div class="success">
       <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
