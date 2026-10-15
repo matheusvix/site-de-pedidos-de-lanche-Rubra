@@ -103,8 +103,23 @@ function validate(form) {
 }
 $$('form input, form select').forEach((i) => i.addEventListener('blur', () => { if (i.value) showError(i, fieldError(i)); }));
 
+/* Envia uma cópia para a Netlify Forms (aparece no painel da Netlify e pode avisar por e-mail).
+   Funciona sozinha mesmo sem o Supabase configurado. */
+async function netlifySave(formName, fields) {
+  if (location.protocol === 'file:') return false;
+  try {
+    const body = new URLSearchParams({ 'form-name': formName });
+    Object.entries(fields).forEach(([k, v]) => { if (v != null && v !== '') body.append(k, String(v).slice(0, 2000)); });
+    const r = await fetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() });
+    return r.ok;
+  } catch (e) { console.warn('Netlify Forms indisponível', e); return false; }
+}
+
 async function sendLead(type, data) {
-  if (!sb) { console.warn('Supabase não configurado em assets/config.js — lead não foi salvo.'); return true; }
+  const pick = (keys) => Object.fromEntries(keys.map((k) => [k, data[k]]));
+  const netOk = await netlifySave(type === 'cadastro' ? 'cadastro' : 'contato',
+    type === 'cadastro' ? pick(['nome', 'loja', 'telefone', 'segmento', 'email', 'plano']) : pick(['nome', 'loja', 'assunto', 'mensagem']));
+  if (!sb) { if (!netOk) console.warn('Nem Supabase nem Netlify Forms disponíveis — lead não foi salvo.'); return netOk; }
   const clip = (v, n) => (v ? String(v).trim().slice(0, n) : null);
   const row = {
     tipo: type,
@@ -119,8 +134,10 @@ async function sendLead(type, data) {
   };
   const { error } = await sb.from('leads').insert(row);
   if (error) console.error(error);
-  return !error;
+  return !error || netOk;
 }
+
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function successView(form, title, text) {
   form.innerHTML = `<div class="success">
@@ -169,7 +186,15 @@ $$('form[data-form]').forEach((form) => {
 
     const ok = await sendLead('cadastro', data);
     if (!ok) { btn.disabled = false; btn.innerHTML = label; toast('Não foi possível enviar agora. Tente de novo.'); return; }
-    successView(form, `Bem-vindo, ${data.nome.split(' ')[0]}!`, `Recebemos o cadastro do ${data.loja}. Em instantes você recebe no WhatsApp o acesso ao seu teste do plano ${data.plano}.`);
+    const first = data.nome.trim().split(' ')[0];
+    const msg = `Olá! Sou ${data.nome.trim()}, do ${data.loja.trim()}. Acabei de me cadastrar no BoraLanchar! e quero ativar meu teste grátis de 7 dias do plano ${data.plano}. Meu WhatsApp: ${data.telefone}.`;
+    const waUrl = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`;
+    form.innerHTML = `<div class="success">
+      <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
+      <h3 style="font-size:24px">Cadastro recebido, ${escapeHtml(first)}!</h3>
+      <p style="color:var(--muted)">Falta só um passo: toque no botão abaixo e envie a mensagem pronta no WhatsApp. Respondemos por lá com o acesso ao seu teste do plano ${escapeHtml(data.plano)}.</p>
+      <a class="btn btn-primary btn-lg btn-block" href="${waUrl}" target="_blank" rel="noopener"><svg width="20" height="20"><use href="#i-wa"/></svg>Ativar meu teste no WhatsApp</a>
+      <button class="btn btn-ghost btn-block" type="button" data-close>Fechar</button></div>`;
   });
 });
 
@@ -275,14 +300,15 @@ async function loadTestimonials() {
 loadTestimonials();
 
 async function sendTestimonial(data) {
-  if (!sb) { console.warn('Supabase não configurado em assets/config.js — depoimento não foi salvo.'); return true; }
+  const netOk = await netlifySave('depoimento', { nome: data.nome, loja: data.loja, cidade: data.cidade, segmento: data.segmento, texto: data.texto });
+  if (!sb) return netOk;
   const clip = (v, n) => String(v || '').trim().slice(0, n);
   const { error } = await sb.from('testimonials').insert({
     nome: clip(data.nome, 80), loja: clip(data.loja, 120), cidade: clip(data.cidade, 80),
     segmento: clip(data.segmento, 40), texto: clip(data.texto, 400),
   });
   if (error) console.error(error);
-  return !error;
+  return !error || netOk;
 }
 
 /* ---------- Planos: mensal / anual ---------- */

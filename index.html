@@ -469,6 +469,10 @@
 
 <div class="toast" role="status" aria-live="polite"></div>
 
+<!-- Formulários "espelho" para a Netlify Forms detectar os campos no deploy (não aparecem na tela) -->
+<form name="cadastro" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="telefone"><input name="segmento"><input name="email"><input name="plano"><input name="bot-field"></form>
+<form name="contato" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="assunto"><textarea name="mensagem"></textarea><input name="bot-field"></form>
+<form name="depoimento" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="cidade"><input name="segmento"><textarea name="texto"></textarea><input name="bot-field"></form>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="assets/config.js"></script>
 <script src="assets/app.js"></script>

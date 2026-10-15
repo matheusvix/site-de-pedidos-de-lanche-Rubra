@@ -238,8 +238,15 @@ function openLead(l) {
   $('#ld-notas').value = l.notas || '';
   const wa = waLink(l.telefone);
   const waBtn = $('#ld-wa');
-  waBtn.hidden = !wa || DEMO;
-  if (wa) waBtn.href = wa;
+  waBtn.hidden = !wa;
+  if (wa) {
+    const first = (l.nome || '').trim().split(' ')[0];
+    const txt = l.tipo === 'cadastro'
+      ? `Olá, ${first}! Aqui é do BoraLanchar! 🍔 Seu teste grátis de 7 dias do plano ${l.plano || 'Profissional'} para o ${l.loja || 'seu estabelecimento'} está liberado. Vamos montar seu cardápio juntos? Me conta quais são os itens mais vendidos e eu já deixo tudo no ar hoje.`
+      : `Olá, ${first}! Aqui é do BoraLanchar!. Recebemos seu contato${l.assunto ? ` sobre "${l.assunto}"` : ''}. Como posso te ajudar?`;
+    waBtn.href = `${wa}?text=${encodeURIComponent(txt)}`;
+    waBtn.textContent = l.tipo === 'cadastro' ? 'Enviar acesso no WhatsApp' : 'Responder no WhatsApp';
+  }
   dlg.showModal();
 }
 
