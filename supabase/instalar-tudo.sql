@@ -171,7 +171,7 @@ create unique index if not exists restaurants_owner_uidx on public.restaurants (
 
 -- O restaurante pode receber pedidos? (teste dentro do prazo ou plano ativo)
 create or replace function public.restaurant_can_sell(r public.restaurants)
-returns boolean language sql stable as $$
+returns boolean language sql stable set search_path = public as $$
   select r.status = 'ativo' or (r.status = 'teste' and r.trial_ends_at > now());
 $$;
 
@@ -406,6 +406,9 @@ grant execute on function public.place_order(text, jsonb, jsonb) to anon, authen
 grant execute on function public.order_status(uuid) to anon, authenticated;
 grant execute on function public.restaurant_can_sell(public.restaurants) to anon, authenticated;
 grant execute on function public.owns_restaurant(uuid) to authenticated;
+revoke execute on function public.owns_restaurant(uuid) from public, anon;
+revoke execute on function public.restaurants_guard() from public, anon, authenticated;
+revoke execute on function public.touch_updated_at() from public, anon, authenticated;
 
 -- Pedidos novos aparecem no painel na hora (Realtime)
 do $$ begin
