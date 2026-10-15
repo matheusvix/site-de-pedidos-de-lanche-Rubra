@@ -41,7 +41,7 @@ async function load() {
   }
   if (error || !r) return state('Cardápio não encontrado', 'Confira o link que a loja enviou para você.');
   R = r;
-  sellable = r.status === 'ativo' || (r.status === 'teste' && new Date(r.trial_ends_at) > new Date());
+  sellable = (r.status === 'ativo' && (!r.paid_until || new Date(r.paid_until) > new Date(Date.now() - 3 * 864e5))) || (r.status === 'teste' && new Date(r.trial_ends_at) > new Date());
   const [{ data: cats }, { data: prods }] = await Promise.all([
     sb.from('categories').select('*').eq('restaurant_id', r.id).order('position').order('id'),
     sb.from('products').select('*').eq('restaurant_id', r.id).order('position').order('id'),

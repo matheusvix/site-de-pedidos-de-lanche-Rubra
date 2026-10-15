@@ -11,7 +11,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="assets/admin.css?v=5">
+<link rel="stylesheet" href="assets/admin.css?v=6">
 </head>
 <body class="adm">
 <div class="adm-banner" id="demo-banner" hidden>Modo demonstração · dados fictícios · nada é salvo. Configure o Supabase para usar dados reais.</div>
@@ -75,6 +75,7 @@
 
   <nav class="p-tabs adm-tabs" role="tablist" aria-label="Seções do admin">
     <button role="tab" type="button" data-atab="clientes" aria-selected="true">Clientes</button>
+    <button role="tab" type="button" data-atab="cobranca" aria-selected="false">Cobrança <b class="p-count" id="pend-count" hidden>0</b></button>
     <button role="tab" type="button" data-atab="suporte" aria-selected="false">Suporte</button>
     <button role="tab" type="button" data-atab="leads" aria-selected="false">Leads</button>
     <button role="tab" type="button" data-atab="depoimentos" aria-selected="false">Depoimentos</button>
@@ -110,6 +111,49 @@
           <tbody id="cl-rows"></tbody>
         </table>
         <p class="adm-empty" id="cl-empty" hidden>Nenhum cliente nesta lista.</p>
+      </div>
+    </section>
+
+    <!-- ===== COBRANÇA ===== -->
+    <section data-apanel="cobranca" hidden>
+      <div class="adm-head">
+        <div><h1>Cobrança</h1><p class="adm-muted">Pagamentos dos planos feitos na página de assinatura e onde o dinheiro cai.</p></div>
+        <div class="adm-actions"><button class="btn btn-outline" id="pay-refresh" type="button">Atualizar</button></div>
+      </div>
+      <section class="adm-kpis" aria-label="Resumo de cobrança">
+        <div class="adm-kpi"><span>Recebido neste mês</span><b id="pk-mes">R$ 0,00</b></div>
+        <div class="adm-kpi kpi-warn"><span>Aguardando confirmação</span><b id="pk-pend">0</b></div>
+        <div class="adm-kpi"><span>Pagamentos confirmados</span><b id="pk-pagos">0</b></div>
+      </section>
+      <div class="adm-table-wrap">
+        <table class="adm-table"><thead><tr><th>Data</th><th>Loja</th><th>Plano</th><th>Forma</th><th>Valor</th><th>Situação</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="pay-rows"></tbody></table>
+        <p class="adm-empty" id="pay-empty" hidden>Nenhum pagamento ainda.</p>
+      </div>
+      <div class="cob-grid">
+        <form class="cob-card form" id="cob-form" novalidate>
+          <h2>Receber no Pix</h2>
+          <p class="adm-muted">Chave Pix que recebe as assinaturas. Sem o Mercado Pago, você confirma aqui em cima quando o dinheiro cair.</p>
+          <div class="row2">
+            <div class="field"><label for="cb-type">Tipo de chave</label><select id="cb-type" name="pix_key_type"><option value="celular">Celular</option><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="aleatoria">Chave aleatória</option></select></div>
+            <div class="field"><label for="cb-key">Chave Pix</label><input id="cb-key" name="pix_key" maxlength="77" autocomplete="off"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label for="cb-name">Nome de quem recebe</label><input id="cb-name" name="pix_name" maxlength="25" placeholder="Como está no banco"></div>
+            <div class="field"><label for="cb-city">Cidade</label><input id="cb-city" name="pix_city" maxlength="15" placeholder="Ex.: Serra"></div>
+          </div>
+          <div class="field"><label for="cb-bank">Banco (opcional)</label><input id="cb-bank" name="pix_bank" maxlength="40" placeholder="Ex.: Nubank"></div>
+          <button class="btn btn-primary" type="submit">Salvar chave Pix</button>
+        </form>
+        <div class="cob-card">
+          <div class="mp-head"><h2>Mercado Pago</h2><span class="mp-state" id="cmp-state">Desligado</span></div>
+          <p class="adm-muted">Conecte para aceitar <b>cartão de crédito e boleto</b> e para o Pix ativar o plano sozinho, sem você confirmar. O Mercado Pago cobra uma taxa por venda.</p>
+          <div id="cmp-off">
+            <div class="field"><label for="cmp-token">Access Token de produção</label><input id="cmp-token" type="password" autocomplete="off" placeholder="APP_USR-…" spellcheck="false"></div>
+            <details class="mp-help"><summary>Onde encontro o Access Token?</summary><ol><li>Entre em <b>mercadopago.com.br/developers</b> com a conta que vai receber.</li><li><b>Suas integrações › Criar aplicação</b>.</li><li>Abra a aplicação › <b>Credenciais de produção</b>.</li><li>Copie o <b>Access Token</b> (começa com APP_USR-).</li></ol></details>
+            <button class="btn btn-primary" type="button" id="cmp-connect">Conectar Mercado Pago</button>
+          </div>
+          <div id="cmp-on" hidden><p>Conta conectada: <b id="cmp-acc"></b></p><button class="btn btn-ghost adm-danger" type="button" id="cmp-disconnect">Desconectar</button></div>
+        </div>
       </div>
     </section>
 
@@ -209,6 +253,7 @@
 
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="assets/config.js"></script>
-<script defer src="assets/admin.js?v=5"></script>
+<script defer src="assets/pix.js?v=6"></script>
+<script defer src="assets/admin.js?v=6"></script>
 </body>
 </html>

@@ -115,17 +115,25 @@ async function loadRestaurant() {
 }
 
 /* ---------- app ---------- */
-function canSell() { return R.status === 'ativo' || (R.status === 'teste' && new Date(R.trial_ends_at) > new Date()); }
+const paidOk = () => !R.paid_until || new Date(R.paid_until) > new Date(Date.now() - 3 * 86400000);
+function canSell() { return (R.status === 'ativo' && paidOk()) || (R.status === 'teste' && new Date(R.trial_ends_at) > new Date()); }
 function daysLeft() { return Math.max(0, Math.ceil((new Date(R.trial_ends_at) - Date.now()) / 86400000)); }
 
 function renderTrial() {
   const bar = $('#trial-bar');
-  const ask = waSupport(`Olá! Quero ativar o plano ${R.plan} do BoraLanchar! para a loja ${R.name} (${R.slug}).`);
-  if (R.status === 'ativo') { bar.hidden = true; return; }
+  const ask = SUPPORT ? waSupport('') : `assinar.html?plano=${String(R.plan).toLowerCase()}`;
+  if (R.status === 'ativo') {
+    const left = R.paid_until ? Math.ceil((new Date(R.paid_until) - Date.now()) / 86400000) : null;
+    if (left === null || left > 5) { bar.hidden = true; return; }
+    bar.hidden = false;
+    bar.className = 'trial-bar' + (left <= 0 ? ' warn' : '');
+    bar.innerHTML = left > 0 ? `Seu plano ${esc(R.plan)} vence em ${left} dia(s). <a href="${ask}">Renovar agora</a>` : (paidOk() ? `Seu plano ${esc(R.plan)} venceu. <a href="${ask}">Renove para não pausar o cardápio</a>.` : `Seu plano venceu e o cardápio está pausado. <a href="${ask}">Renovar e voltar a vender</a>.`);
+    return;
+  }
   bar.hidden = false;
-  if (R.status === 'suspenso') { bar.className = 'trial-bar warn'; bar.innerHTML = `Sua loja está pausada e não recebe pedidos. <a href="${ask}" target="_blank" rel="noopener">Fale com a gente para reativar</a>.`; return; }
-  if (canSell()) { const d = daysLeft(); bar.className = 'trial-bar'; bar.innerHTML = `Teste grátis do plano ${esc(R.plan)}: ${d === 1 ? 'falta 1 dia' : `faltam ${d} dias`}. <a href="${ask}" target="_blank" rel="noopener">Ativar meu plano</a>`; }
-  else { bar.className = 'trial-bar warn'; bar.innerHTML = `Seu teste grátis terminou e o cardápio está pausado. <a href="${ask}" target="_blank" rel="noopener">Ative seu plano para voltar a vender</a>.`; }
+  if (R.status === 'suspenso') { bar.className = 'trial-bar warn'; bar.innerHTML = `Sua loja está pausada e não recebe pedidos. <a href="${ask}">Assinar um plano para reativar</a>.`; return; }
+  if (canSell()) { const d = daysLeft(); bar.className = 'trial-bar'; bar.innerHTML = `Teste grátis do plano ${esc(R.plan)}: ${d === 1 ? 'falta 1 dia' : `faltam ${d} dias`}. <a href="${ask}">Ativar meu plano</a>`; }
+  else { bar.className = 'trial-bar warn'; bar.innerHTML = `Seu teste grátis terminou e o cardápio está pausado. <a href="${ask}">Ative seu plano para voltar a vender</a>.`; }
 }
 
 function startApp() {

@@ -103,6 +103,8 @@ function enterApp(email) {
   loadLeads();
   loadTst();
   loadClients();
+  loadPays();
+  loadCob();
 }
 
 if (!DEMO) {
@@ -358,6 +360,7 @@ function selectATab(t) {
   document.querySelectorAll('[data-atab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.atab === t)));
   document.querySelectorAll('[data-apanel]').forEach((p) => { p.hidden = p.dataset.apanel !== t; });
   if (t === 'suporte') { renderSupport(); loadSupportLog(); }
+  if (t === 'cobranca') renderPays();
   try { sessionStorage.setItem('adm-tab', t); } catch (_) {}
 }
 document.querySelectorAll('[data-atab]').forEach((b) => b.addEventListener('click', () => selectATab(b.dataset.atab)));
@@ -387,7 +390,10 @@ async function loadClients() {
 $('#cl-refresh').addEventListener('click', () => { loadClients(); toast('Lista atualizada.'); });
 const daysTo = (iso) => (new Date(iso) - Date.now()) / 86400000;
 function situation(r) {
-  if (r.status === 'ativo') return { key: 'pagante', label: 'Pagante', cls: 'st-convertido', note: `${brl(PRICE[r.plan])}/mês` };
+  if (r.status === 'ativo') {
+    if (r.paid_until && daysTo(r.paid_until) < -3) return { key: 'vencido', label: 'Assinatura vencida', cls: 'st-novo', note: `Venceu em ${new Date(r.paid_until).toLocaleDateString('pt-BR')}` };
+    return { key: 'pagante', label: 'Pagante', cls: 'st-convertido', note: `${brl(PRICE[r.plan])}/mês${r.paid_until ? ' · pago até ' + new Date(r.paid_until).toLocaleDateString('pt-BR') : ''}` };
+  }
   if (r.status === 'suspenso') return { key: 'pausado', label: 'Pausado', cls: 'st-perdido', note: 'Cardápio sem pedidos' };
   const d = daysTo(r.trial_ends_at);
   if (d <= 0) return { key: 'vencido', label: 'Teste vencido', cls: 'st-novo', note: `Venceu há ${Math.max(1, Math.round(-d))} dia(s)` };
@@ -437,6 +443,7 @@ function renderClients() {
       usage, el('td', {}, acts));
   }));
   $('#cl-empty').hidden = list.length > 0;
+  if (pays.length) renderPays();
   if (!$('[data-apanel="suporte"]').hidden) renderSupport();
 }
 const fmtPhone = (w) => { const d = digits(w).replace(/^55(?=\d{10,11}$)/, ''); return d.length >= 10 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : w; };
@@ -488,6 +495,93 @@ async function loadSupportLog() {
   $('#sup-log').replaceChildren(...rows.map((l) => el('tr', {}, el('td', { text: fmtDate(l.created_at) }), el('td', { text: name(l.restaurant_id) }), el('td', { text: l.admin_email || '—' }))));
   $('#sup-log-empty').hidden = rows.length > 0;
 }
+
+/* ---------- cobrança (assinaturas dos planos) ---------- */
+let pays = [];
+const MET = { pix: 'Pix', cartao: 'Cartão', boleto: 'Boleto' };
+async function loadPays() {
+  if (DEMO) { pays = []; renderPays(); return; }
+  const { data } = await sb.from('subscription_payments').select('*').neq('status', 'cancelado').order('created_at', { ascending: false }).limit(300);
+  pays = data || []; renderPays();
+}
+function renderPays() {
+  const name = (id) => (clients.find((c) => c.id === id) || {}).name || '—';
+  const pend = pays.filter((p) => p.status === 'pendente');
+  const pagos = pays.filter((p) => p.status === 'pago');
+  const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
+  $('#pk-mes').textContent = brl(pagos.filter((p) => new Date(p.paid_at) >= m0).reduce((t, p) => t + Number(p.amount), 0));
+  $('#pk-pend').textContent = pend.length; $('#pk-pagos').textContent = pagos.length;
+  $('#pend-count').hidden = !pend.length; $('#pend-count').textContent = pend.length;
+  $('#pay-rows').replaceChildren(...pays.map((p) => {
+    const acts = el('div', { class: 'cl-acts' });
+    if (p.status === 'pendente') {
+      acts.append(el('button', { class: 'btn btn-primary row-btn', type: 'button', text: 'Confirmar recebimento', onclick: () => confirmPay(p) }));
+      acts.append(el('button', { class: 'btn btn-ghost row-btn', type: 'button', text: 'Cancelar', onclick: () => cancelPay(p) }));
+    }
+    return el('tr', {}, el('td', { text: fmtDate(p.created_at) }), el('td', {}, el('b', { text: name(p.restaurant_id) })), el('td', { text: p.plan }),
+      el('td', { text: MET[p.method] || p.method }), el('td', { text: brl(p.amount) }),
+      el('td', {}, el('span', { class: 'st ' + (p.status === 'pago' ? 'st-convertido' : 'st-em_contato'), text: p.status === 'pago' ? 'Pago' : 'Aguardando' }),
+        el('small', { text: p.status === 'pago' ? 'em ' + fmtDate(p.paid_at) : (p.method === 'pix' ? 'Confira no app do banco' : 'Mercado Pago confirma sozinho') })),
+      el('td', {}, acts));
+  }));
+  $('#pay-empty').hidden = pays.length > 0;
+}
+async function confirmPay(p) {
+  if (!confirm(`Confirmar que recebeu ${brl(p.amount)} do plano ${p.plan}? O plano da loja é ativado por 30 dias.`)) return;
+  const { error } = await sb.rpc('admin_confirm_subscription', { p_id: p.id });
+  if (error) return toast('Não foi possível confirmar.');
+  toast('Pagamento confirmado e plano ativado!'); loadPays(); loadClients();
+}
+async function cancelPay(p) {
+  if (!confirm('Cancelar este pagamento pendente?')) return;
+  const { error } = await sb.rpc('admin_cancel_subscription', { p_id: p.id });
+  if (error) return toast('Não foi possível cancelar.'); loadPays();
+}
+$('#pay-refresh').addEventListener('click', () => { loadPays(); loadCob(); toast('Atualizado.'); });
+
+async function loadCob() {
+  if (DEMO) return;
+  const { data } = await sb.from('platform_settings').select('*').eq('id', 1).maybeSingle();
+  const f = $('#cob-form'); const st = data || {};
+  f.pix_key_type.value = st.pix_key_type || 'celular'; f.pix_key.value = st.pix_key || ''; f.pix_name.value = st.pix_name || ''; f.pix_city.value = st.pix_city || ''; f.pix_bank.value = st.pix_bank || '';
+  renderCmp(!!st.mp_enabled, '');
+  if (st.mp_enabled) { const r = await cobFn('account'); if (!r.error) renderCmp(r.connected, r.account); }
+}
+$('#cob-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const f = e.target; const P = window.BoraPix;
+  const key = f.pix_key.value.trim() ? P.normalizeKey(f.pix_key_type.value, f.pix_key.value) : null;
+  if (f.pix_key.value.trim() && !key) return toast('Chave Pix inválida para o tipo escolhido.');
+  if (key && (!f.pix_name.value.trim() || !f.pix_city.value.trim())) return toast('Preencha o nome de quem recebe e a cidade.');
+  const patch = { pix_key: key, pix_key_type: key ? f.pix_key_type.value : null, pix_name: key ? P.plain(f.pix_name.value).slice(0, 25) : null,
+    pix_city: key ? P.plain(f.pix_city.value).slice(0, 15) : null, pix_bank: f.pix_bank.value.trim().slice(0, 40) || null, updated_at: new Date().toISOString() };
+  if (DEMO) return toast('Demonstração: nada foi salvo.');
+  const { error } = await sb.from('platform_settings').update(patch).eq('id', 1);
+  if (error) return toast('Não foi possível salvar.');
+  toast(key ? 'Chave Pix salva! A página de assinatura já aceita Pix.' : 'Chave Pix removida.');
+});
+function renderCmp(on, acc) {
+  $('#cmp-state').textContent = on ? 'Ligado' : 'Desligado'; $('#cmp-state').classList.toggle('on', on);
+  $('#cmp-off').hidden = on; $('#cmp-on').hidden = !on; $('#cmp-acc').textContent = acc || '';
+}
+async function cobFn(action, extra = {}) {
+  if (!sb || !sb.functions) return { error: 'indisponível' };
+  const { data, error } = await sb.functions.invoke('assinatura', { body: { action, ...extra } });
+  if (error) { let msg = 'Não foi possível falar com o servidor.'; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {} return { error: msg }; }
+  return data || {};
+}
+$('#cmp-connect').addEventListener('click', async () => {
+  const token = $('#cmp-token').value.trim();
+  if (!/^APP_USR-/.test(token)) return toast('Cole o Access Token de produção (começa com APP_USR-).');
+  const b = $('#cmp-connect'); b.disabled = true; b.textContent = 'Conectando…';
+  const r = await cobFn('connect', { token }); b.disabled = false; b.textContent = 'Conectar Mercado Pago';
+  if (r.error) return toast(r.error);
+  $('#cmp-token').value = ''; renderCmp(true, r.account); toast('Mercado Pago conectado! Cartão e boleto liberados na assinatura.');
+});
+$('#cmp-disconnect').addEventListener('click', async () => {
+  if (!confirm('Desconectar o Mercado Pago? Cartão e boleto deixam de aparecer na assinatura.')) return;
+  const r = await cobFn('disconnect'); if (r.error) return toast(r.error); renderCmp(false, '');
+});
 
 // volta para a última aba aberta
 try { const t = sessionStorage.getItem('adm-tab'); if (t) selectATab(t); } catch (_) {}
