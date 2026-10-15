@@ -3,9 +3,34 @@
    Configuração em assets/config.js
    ============================================================ */
 const CONFIG = window.BORA_CONFIG || window.TILIM_CONFIG || window.RUBRA_CONFIG || {};
-const sb = (CONFIG.supabaseUrl && CONFIG.supabaseAnonKey && window.supabase)
-  ? window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey)
-  : null;
+
+/* O Supabase (~50 KB) só é baixado depois que a página aparece, ou na hora em que alguém
+   abre um formulário. Assim ele não atrasa o primeiro carregamento. */
+const SB_SRC = [
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+];
+let sbPromise = null;
+function getSb() {
+  if (sbPromise) return sbPromise;
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return (sbPromise = Promise.resolve(null));
+  sbPromise = new Promise((resolve) => {
+    const make = () => {
+      try { resolve(window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey)); }
+      catch (e) { console.warn('Supabase indisponível', e); resolve(null); }
+    };
+    if (window.supabase) { make(); return; }
+    const tryLoad = (i) => {
+      if (i >= SB_SRC.length) { resolve(null); return; }
+      const el = document.createElement('script');
+      el.src = SB_SRC[i]; el.async = true;
+      el.onload = make; el.onerror = () => { el.remove(); tryLoad(i + 1); };
+      document.head.appendChild(el);
+    };
+    tryLoad(0);
+  });
+  return sbPromise;
+}
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -59,7 +84,7 @@ function openModal(id, opts = {}) {
 }
 document.addEventListener('click', (e) => {
   const opener = e.target.closest('[data-open]');
-  if (opener) { e.preventDefault(); openModal(opener.dataset.open, { plan: opener.dataset.plan }); return; }
+  if (opener) { e.preventDefault(); getSb(); openModal(opener.dataset.open, { plan: opener.dataset.plan }); return; }
   const closer = e.target.closest('[data-close]');
   if (closer) { closer.closest('dialog').close(); return; }
   if (e.target.tagName === 'DIALOG') e.target.close(); // clique no fundo
@@ -119,6 +144,7 @@ async function sendLead(type, data) {
   const pick = (keys) => Object.fromEntries(keys.map((k) => [k, data[k]]));
   const netOk = await netlifySave(type === 'cadastro' ? 'cadastro' : 'contato',
     type === 'cadastro' ? pick(['nome', 'loja', 'telefone', 'segmento', 'email', 'plano']) : pick(['nome', 'loja', 'assunto', 'mensagem']));
+  const sb = await getSb();
   if (!sb) { if (!netOk) console.warn('Nem Supabase nem Netlify Forms disponíveis — lead não foi salvo.'); return netOk; }
   const clip = (v, n) => (v ? String(v).trim().slice(0, n) : null);
   const row = {
@@ -156,6 +182,7 @@ $$('form[data-form]').forEach((form) => {
     const label = btn.innerHTML;
     btn.textContent = 'Enviando…';
     const kind = form.dataset.form;
+    const sb = await getSb();
 
     if (kind === 'login') {
       if (!sb) { btn.disabled = false; btn.innerHTML = label; toast('Login indisponível: configure o Supabase em assets/config.js.'); return; }
@@ -235,6 +262,7 @@ $('[data-action="forgot"]').addEventListener('click', async (e) => {
   e.preventDefault();
   const email = $('#l-email').value.trim();
   if (!email) { toast('Digite seu e-mail acima para redefinir a senha.'); return; }
+  const sb = await getSb();
   if (sb) {
     await sb.auth.resetPasswordForEmail(email, { redirectTo: new URL('painel.html', location.href).href });
   }
@@ -323,17 +351,22 @@ function startHeroQuote(list) { // só com depoimentos reais
 }
 
 async function loadTestimonials() {
-  renderTestimonials(EXAMPLES, true);
+  const sb = await getSb();
   if (!sb) return;
   const { data, error } = await sb.from('testimonials').select('nome,loja,cidade,segmento,texto')
     .eq('status', 'aprovado').order('created_at', { ascending: false }).limit(12);
   if (error) { console.warn('Depoimentos indisponíveis:', error.message); return; }
   if (data && data.length) { renderTestimonials(data, false); startHeroQuote(data); }
 }
-loadTestimonials();
+renderTestimonials(EXAMPLES, true);
+// Depoimentos reais: busca depois que a página terminou de carregar (sem disputar banda com o topo)
+const whenIdle = (fn) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 1200));
+if (document.readyState === 'complete') whenIdle(loadTestimonials);
+else addEventListener('load', () => whenIdle(loadTestimonials), { once: true });
 
 async function sendTestimonial(data) {
   const netOk = await netlifySave('depoimento', { nome: data.nome, loja: data.loja, cidade: data.cidade, segmento: data.segmento, texto: data.texto });
+  const sb = await getSb();
   if (!sb) return netOk;
   const clip = (v, n) => String(v || '').trim().slice(0, n);
   const { error } = await sb.from('testimonials').insert({

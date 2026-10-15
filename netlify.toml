@@ -14,10 +14,21 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
 
+# Imagens, marca e vídeo mudam pouco: o navegador guarda por 30 dias
 [[headers]]
-  for = "/assets/*"
+  for = "/assets/brand/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "/assets/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "/assets/video/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
 
 [[redirects]]
   from = "/admin"

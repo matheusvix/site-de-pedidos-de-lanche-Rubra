@@ -12,8 +12,10 @@
 <link rel="icon" href="assets/brand/boralanchar-icone-app.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="assets/styles.css?v=4">
 </head>
 <body>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
@@ -212,7 +214,7 @@
       <div class="ctas"><button class="btn btn-primary" data-open="signup">Quero testar</button><a class="btn btn-outline" href="cardapio.html">Ver cardápio de exemplo</a></div>
     </div>
     <div class="video-thumb reveal" id="demo">
-      <video id="demo-video" src="assets/video/boralanchar-demonstracao.mp4" poster="assets/video/boralanchar-capa.jpg" preload="metadata" playsinline></video>
+      <video id="demo-video" src="assets/video/boralanchar-demo-720.mp4" poster="assets/video/boralanchar-capa.jpg" preload="none" playsinline></video>
       <button class="video-cover" id="demo-play" type="button" aria-label="Assistir vídeo de demonstração">
         <span class="play"><svg width="34" height="34" style="color:#fff;margin-left:4px"><use href="#i-play"/></svg></span>
         <small>Demonstração · 51 s</small>
@@ -340,7 +342,7 @@
 <section class="section" style="padding:96px 0">
   <div class="container">
     <div class="cta-box reveal">
-      <img class="cta-seal" src="assets/brand/boralanchar-selo-negativo.svg" alt="" aria-hidden="true" width="220" height="152">
+      <img class="cta-seal" loading="lazy" decoding="async" src="assets/brand/boralanchar-selo-negativo.svg" alt="" aria-hidden="true" width="220" height="152">
       <div style="flex:1 1 480px;min-width:0">
         <span class="cta-kicker">Bateu a fome? Bora lanchar!</span>
         <h2>Seu próximo pedido pode chegar ainda hoje.</h2>
@@ -359,7 +361,7 @@
   <div class="container">
     <div class="footer-top">
       <div class="footer-brand">
-        <a class="brand" href="#topo"><img class="wordmark" src="assets/brand/boralanchar-logotipo-branco.svg" width="296" height="34" alt="BoraLanchar!"></a>
+        <a class="brand" href="#topo"><img class="wordmark" loading="lazy" decoding="async" src="assets/brand/boralanchar-logotipo-branco.svg" width="296" height="34" alt="BoraLanchar!"></a>
         <p style="font-size:15px">Pedidos, cardápio digital e gestão para restaurantes que querem crescer sem perder o controle.</p>
         <div class="socials">
           <a href="#" aria-label="Instagram"><svg width="20" height="20"><use href="#i-ig"/></svg></a>
@@ -476,8 +478,7 @@
 <form name="cadastro" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="telefone"><input name="segmento"><input name="email"><input name="plano"><input name="bot-field"></form>
 <form name="contato" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="assunto"><textarea name="mensagem"></textarea><input name="bot-field"></form>
 <form name="depoimento" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="cidade"><input name="segmento"><textarea name="texto"></textarea><input name="bot-field"></form>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/config.js"></script>
-<script src="assets/app.js"></script>
+<script defer src="assets/config.js"></script>
+<script defer src="assets/app.js?v=4"></script>
 </body>
 </html>
