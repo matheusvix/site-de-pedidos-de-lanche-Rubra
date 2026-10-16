@@ -135,7 +135,8 @@ Deno.serve(async (req) => {
         return json({ connected: !!data?.mp_access_token, account: data?.mp_account || null });
       }
       if (action === "disconnect") {
-        await admin.from("restaurant_secrets").delete().eq("restaurant_id", rest.id);
+        // só apaga o Mercado Pago (a mesma linha guarda o token do WhatsApp)
+        await admin.from("restaurant_secrets").update({ mp_access_token: null, mp_account: null, updated_at: new Date().toISOString() }).eq("restaurant_id", rest.id);
         await admin.from("restaurants").update({ pix_auto: false }).eq("id", rest.id);
         return json({ ok: true });
       }

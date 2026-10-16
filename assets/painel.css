@@ -222,3 +222,63 @@
 .support-bar .btn{background:#fff;color:#1D4ED8;min-height:40px;padding:6px 14px;font-size:14px}
 .support-mode .adm-top{border-top:3px solid #1D4ED8}
 @media (max-width:640px){.support-bar{padding:10px 16px}}
+
+/* ---------- Robô WhatsApp ---------- */
+.robo-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+.robo-col{display:flex;flex-direction:column;gap:18px;min-width:0}
+.robo-conn-head{display:flex;align-items:center;gap:12px}
+.robo-conn-head svg{color:#1E8A4C;flex-shrink:0}
+.robo-conn-head div{display:flex;flex-direction:column;flex:1;min-width:0}
+.robo-conn-head b{font-size:16px}
+.robo-conn-head .adm-muted{font-size:13px}
+#robo-off,#robo-on{display:flex;flex-direction:column;gap:12px}
+#robo-off .btn{align-self:flex-start}
+.robo-hook{display:flex;flex-direction:column;gap:10px;background:var(--paper);border-radius:14px;padding:12px 14px}
+.copy-row{display:flex;gap:8px;align-items:center;min-width:0}
+.copy-row code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.copy-row .btn{min-height:40px;padding:6px 12px;font-size:14px}
+.robo-number{display:flex;flex-direction:column}
+.robo-number b{font-size:20px;font-family:var(--display)}
+.robo-number span{font-size:13px;color:var(--muted)}
+.robo-switch{align-self:flex-start}
+.robo-switch b{display:inline!important}
+.robo-acts{display:flex;gap:8px;flex-wrap:wrap}
+#robo-form h3{font-size:16px;margin-top:6px}
+#robo-form select{font:inherit;font-size:15px;width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #E2D3D4;background:#fff;min-height:48px}
+#robo-form #rb-addfaq{align-self:flex-start}
+.faq-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) 36px;gap:8px;align-items:start;margin-bottom:8px}
+.faq-row input,.faq-row textarea{font:inherit;font-size:14px;width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;background:#fff;resize:vertical}
+/* prévia estilo WhatsApp */
+.wa-phone{border-radius:22px;overflow:hidden;border:1px solid var(--line);background:#EFE7DE}
+.wa-bar{background:#075E54;color:#fff;padding:10px 14px;display:flex;flex-direction:column}
+.wa-bar small{opacity:.8;font-size:12px}
+.wa-body{padding:12px;display:flex;flex-direction:column;gap:8px}
+.wa-msg{max-width:86%;padding:8px 10px 6px;border-radius:12px;font-size:14px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere;display:flex;flex-direction:column}
+.wa-msg.in{align-self:flex-start;background:#fff;border-top-left-radius:4px}
+.wa-msg.out{align-self:flex-end;background:#D9FDD3;border-top-right-radius:4px}
+.wa-msg.failed{background:#FFE8E9}
+.wa-foot{font-size:11px;color:#667781;align-self:flex-end;margin-top:4px}
+.wa-btn{display:block;text-align:center;color:#027EB5;font-weight:700;border-top:1px solid rgba(0,0,0,.08);margin-top:6px;padding-top:6px}
+.wa-who{font-size:11px;font-weight:800;color:#1E6B3A;margin-bottom:2px}
+/* conversas */
+.robo-chats-head{display:flex;justify-content:space-between;align-items:baseline}
+.robo-list{display:flex;flex-direction:column;gap:6px}
+.robo-list .adm-empty{padding:24px 8px}
+.robo-conv{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;font:inherit;color:inherit;cursor:pointer;min-height:56px}
+.robo-conv:hover{background:var(--paper)}
+.robo-conv.is-human{border-color:#F2B8BC;background:#FFF6F6}
+.rc-av{width:38px;height:38px;border-radius:50%;background:#DDF1E4;color:#1E6B3A;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rc-txt{display:flex;flex-direction:column;flex:1;min-width:0}
+.rc-txt b,.rc-txt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rc-txt small{color:var(--muted);font-size:12px}
+.rc-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted)}
+.robo-thread{display:flex;flex-direction:column;gap:10px}
+.robo-thread-head{display:flex;align-items:center;gap:8px}
+.robo-thread-head div{display:flex;flex-direction:column;flex:1;min-width:0}
+.robo-thread-head small{color:var(--muted);font-size:12px}
+.robo-thread-head .btn{min-height:40px;padding:6px 12px;font-size:14px}
+.robo-msgs{background:#EFE7DE;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;max-height:460px;overflow-y:auto}
+.robo-reply{display:flex;gap:8px;align-items:flex-end}
+.robo-reply textarea{flex:1;font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;resize:vertical;min-height:48px}
+@media (max-width:900px){.robo-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.faq-row{grid-template-columns:minmax(0,1fr) 36px}.faq-row textarea{grid-column:1}.faq-row .opt-x{grid-row:1;grid-column:2}}

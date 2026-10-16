@@ -153,6 +153,7 @@ function startApp() {
   loadMenu();
   loadOrders();
   subscribe();
+  if (window.BoraRobo) window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
   if (new URLSearchParams(location.search).has('bemvindo')) {
     toast('Sua loja foi criada! Comece cadastrando os produtos do cardápio.');
     selectTab('cardapio');
