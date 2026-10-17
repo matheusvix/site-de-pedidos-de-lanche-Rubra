@@ -137,3 +137,22 @@
 .del-btn{background:var(--red);color:#fff}
 .del-btn:disabled{opacity:.45;cursor:not-allowed}
 #del-dialog{max-width:520px;width:calc(100% - 32px)}
+
+/* robô do WhatsApp */
+.rb-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px}
+.rb-filters .adm-search{flex:1 1 280px;max-width:520px;margin:0}
+.rb-only{display:flex;align-items:center;gap:8px;font-size:14px;min-height:48px;cursor:pointer}
+.rb-only input{width:18px;height:18px;accent-color:var(--red)}
+.rb-copy{display:flex;align-items:center;gap:8px;background:#FDFAFA;border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 12px;min-width:0}
+.rb-copy code{flex:1;min-width:0;font-size:13px;overflow-wrap:anywhere}
+.rb-checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.rb-checks .ok{color:#1E6B3A}
+.rb-checks .no{color:var(--red)}
+.rb-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.5}
+.rb-fail-msg{white-space:pre-line;overflow-wrap:anywhere;display:block;max-width:560px}
+@media (max-width:640px){
+  .adm-top{gap:10px}
+  .adm-top .brand{min-width:0;flex:0 1 auto}
+  .adm-top .wordmark{width:auto;height:22px;max-width:100%}
+}
+.adm-table-wrap{position:relative}

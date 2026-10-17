@@ -11,7 +11,7 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
-<link rel="stylesheet" href="assets/admin.css?v=7">
+<link rel="stylesheet" href="assets/admin.css?v=8">
 </head>
 <body class="adm">
 <div class="adm-banner" id="demo-banner" hidden>Modo demonstração · dados fictícios · nada é salvo. Configure o Supabase para usar dados reais.</div>
@@ -77,6 +77,7 @@
     <button role="tab" type="button" data-atab="clientes" aria-selected="true">Clientes</button>
     <button role="tab" type="button" data-atab="cobranca" aria-selected="false">Cobrança <b class="p-count" id="pend-count" hidden>0</b></button>
     <button role="tab" type="button" data-atab="suporte" aria-selected="false">Suporte</button>
+    <button role="tab" type="button" data-atab="robo" aria-selected="false">Robô WhatsApp <b class="p-count" id="robo-wait" hidden>0</b></button>
     <button role="tab" type="button" data-atab="leads" aria-selected="false">Leads</button>
     <button role="tab" type="button" data-atab="depoimentos" aria-selected="false">Depoimentos</button>
   </nav>
@@ -169,6 +170,51 @@
       <div class="adm-table-wrap">
         <table class="adm-table"><thead><tr><th>Quando</th><th>Loja</th><th>Quem acessou</th></tr></thead><tbody id="sup-log"></tbody></table>
         <p class="adm-empty" id="sup-log-empty" hidden>Nenhum acesso ainda.</p>
+      </div>
+    </section>
+
+    <!-- ===== ROBÔ WHATSAPP ===== -->
+    <section data-apanel="robo" hidden>
+      <div class="adm-head">
+        <div><h1>Robô WhatsApp</h1><p class="adm-muted">Quais lojas estão com o robô ligado, quanto ele está conversando e se alguma mensagem falhou.</p></div>
+        <div class="adm-actions"><button class="btn btn-outline" id="rb-refresh" type="button">Atualizar</button></div>
+      </div>
+      <section class="adm-kpis" aria-label="Resumo do robô">
+        <div class="adm-kpi"><span>Lojas com número conectado</span><b id="rk-on">0</b></div>
+        <div class="adm-kpi"><span>Mensagens recebidas (7 dias)</span><b id="rk-in">0</b></div>
+        <div class="adm-kpi kpi-warn"><span>Clientes esperando atendente</span><b id="rk-wait">0</b></div>
+        <div class="adm-kpi kpi-bad"><span>Envios que falharam (7 dias)</span><b id="rk-fail">0</b></div>
+      </section>
+      <div class="rb-filters">
+        <div class="field adm-search"><label for="rb-q">Encontrar a loja</label><input id="rb-q" type="search" placeholder="Nome da loja ou número"></div>
+        <label class="rb-only"><input type="checkbox" id="rb-only" checked> Só lojas com número conectado</label>
+      </div>
+      <div class="adm-table-wrap">
+        <table class="adm-table"><thead><tr><th>Loja</th><th>Número</th><th>Robô</th><th>Conversas</th><th>7 dias</th><th>Última mensagem</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="rb-rows"></tbody></table>
+        <p class="adm-empty" id="rb-empty" hidden>Nenhuma loja com o robô conectado ainda.</p>
+      </div>
+      <h2 class="sup-h2">Últimas falhas de envio</h2>
+      <div class="adm-table-wrap">
+        <table class="adm-table"><thead><tr><th>Quando</th><th>Loja</th><th>Mensagem / motivo</th></tr></thead><tbody id="rb-fails"></tbody></table>
+        <p class="adm-empty" id="rb-fails-empty" hidden>Nenhuma falha. Tudo chegando certo.</p>
+      </div>
+      <div class="cob-grid">
+        <div class="cob-card">
+          <h2>Configuração na Meta</h2>
+          <p class="adm-muted">Use estes dados no app da Meta (WhatsApp › Configuração › Webhook). Assine o campo <b>messages</b>.</p>
+          <div class="field"><label>URL de callback</label><div class="rb-copy"><code id="rb-hook-url">—</code><button class="btn btn-ghost row-btn" type="button" data-rbcopy="rb-hook-url">Copiar</button></div></div>
+          <div class="field"><label>Token de verificação</label><div class="rb-copy"><code id="rb-hook-token">—</code><button class="btn btn-ghost row-btn" type="button" data-rbcopy="rb-hook-token">Copiar</button></div></div>
+          <ul class="rb-checks" id="rb-checks"></ul>
+        </div>
+        <div class="cob-card">
+          <h2>Para liberar números reais</h2>
+          <ol class="rb-steps">
+            <li>A Meta exige a <b>verificação da empresa</b> (CNPJ, pode ser MEI) em business.facebook.com › Central de Segurança.</li>
+            <li>Depois de aprovada, cada loja conecta o próprio número na aba <b>Robô WhatsApp</b> do painel dela. O número precisa estar fora do aplicativo do WhatsApp.</li>
+            <li>Para avisar o cliente depois de 24h sem conversa, crie um <b>modelo de mensagem</b> aprovado pela Meta.</li>
+          </ol>
+          <a class="btn btn-outline" href="https://business.facebook.com/settings/security" target="_blank" rel="noopener">Abrir Central de Segurança da Meta</a>
+        </div>
       </div>
     </section>
 
@@ -273,6 +319,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/pix.js?v=6"></script>
-<script defer src="assets/admin.js?v=7"></script>
+<script defer src="assets/admin.js?v=8"></script>
 </body>
 </html>

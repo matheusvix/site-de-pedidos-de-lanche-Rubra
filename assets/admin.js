@@ -105,6 +105,7 @@ function enterApp(email) {
   loadClients();
   loadPays();
   loadCob();
+  loadRobo();
 }
 
 if (!DEMO) {
@@ -361,6 +362,7 @@ function selectATab(t) {
   document.querySelectorAll('[data-apanel]').forEach((p) => { p.hidden = p.dataset.apanel !== t; });
   if (t === 'suporte') { renderSupport(); loadSupportLog(); }
   if (t === 'cobranca') renderPays();
+  if (t === 'robo') loadRobo();
   try { sessionStorage.setItem('adm-tab', t); } catch (_) {}
 }
 document.querySelectorAll('[data-atab]').forEach((b) => b.addEventListener('click', () => selectATab(b.dataset.atab)));
@@ -629,6 +631,81 @@ $('#cmp-disconnect').addEventListener('click', async () => {
   if (!confirm('Desconectar o Mercado Pago? Cartão e boleto deixam de aparecer na assinatura.')) return;
   const r = await cobFn('disconnect'); if (r.error) return toast(r.error); renderCmp(false, '');
 });
+
+/* ---------- robô do WhatsApp (todas as lojas) ---------- */
+let robos = [];
+const ago = (iso) => {
+  if (!iso) return '—';
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return 'agora'; if (m < 60) return `há ${m} min`;
+  const h = Math.round(m / 60); if (h < 24) return `há ${h} h`;
+  return new Date(iso).toLocaleDateString('pt-BR');
+};
+function demoRobos() {
+  const now = Date.now();
+  return [
+    { restaurant_id: 'd1', name: 'Burguer do Bairro', slug: 'burguer-do-bairro', plan: 'Profissional', status: 'ativo', enabled: true, connected: true, display_phone: '+55 27 99999-0000', verified_name: 'Burguer do Bairro', is_test: false, convs: 42, waiting: 2, unread: 5, in_7d: 180, out_7d: 210, failed_7d: 0, last_msg_at: new Date(now - 3 * 60000).toISOString() },
+    { restaurant_id: 'd2', name: 'Pizza da Praça', slug: 'pizza-da-praca', plan: 'Completo', status: 'teste', enabled: true, connected: true, display_phone: '+1 555-000-0000', verified_name: 'Test Number', is_test: true, convs: 3, waiting: 0, unread: 0, in_7d: 6, out_7d: 7, failed_7d: 6, last_msg_at: new Date(now - 5 * 3600000).toISOString() },
+  ];
+}
+async function loadRobo() {
+  if (DEMO) { robos = demoRobos(); renderRobo(); renderRoboFails([]); renderRoboPlat({ verify_token: 'bora-demonstracao', app_secret_ok: true, hook_ok: true }); return; }
+  const [ov, fl, pl] = await Promise.all([sb.rpc('admin_whatsapp_overview'), sb.rpc('admin_whatsapp_failures', { p_limit: 15 }), sb.rpc('admin_whatsapp_platform')]);
+  if (ov.error) { console.error(ov.error); toast('Não foi possível carregar o robô.'); robos = []; } else robos = ov.data || [];
+  renderRobo(); renderRoboFails(fl.data || []); renderRoboPlat(pl.data || {});
+}
+function renderRobo() {
+  const on = robos.filter((r) => r.connected);
+  const sum = (k) => robos.reduce((t, r) => t + Number(r[k] || 0), 0);
+  $('#rk-on').textContent = on.length;
+  $('#rk-in').textContent = sum('in_7d');
+  $('#rk-wait').textContent = sum('waiting');
+  $('#rk-fail').textContent = sum('failed_7d');
+  const w = sum('waiting'); $('#robo-wait').hidden = !w; $('#robo-wait').textContent = w;
+  const q = $('#rb-q').value.trim().toLowerCase();
+  const only = $('#rb-only').checked;
+  const list = robos.filter((r) => (!only || r.connected) && (!q || [r.name, r.slug, r.display_phone].some((v) => String(v || '').toLowerCase().includes(q))));
+  $('#rb-rows').replaceChildren(...list.map((r) => {
+    const st = !r.connected ? ['Sem número', 'st-perdido'] : !r.enabled ? ['Desligado', 'st-perdido'] : r.failed_7d && r.failed_7d * 2 >= r.out_7d ? ['Mensagens falhando', 'st-novo'] : ['Ligado', 'st-convertido'];
+    const phone = r.connected ? [el('b', { text: r.display_phone || '—' }), el('small', { text: r.is_test ? 'Número de teste da Meta' : (r.verified_name || '') })] : [el('small', { text: '—' })];
+    return el('tr', {},
+      el('td', {}, el('b', { text: r.name }), el('small', { text: `${r.plan || ''}${r.status === 'teste' ? ' · teste grátis' : ''}` })),
+      el('td', {}, ...phone),
+      el('td', {}, el('span', { class: 'st ' + st[1], text: st[0] })),
+      el('td', {}, el('b', { text: String(r.convs || 0) }), el('small', { text: [r.waiting ? `${r.waiting} esperando atendente` : '', r.unread ? `${r.unread} não lidas` : ''].filter(Boolean).join(' · ') || ' ' })),
+      el('td', {}, el('b', { text: `${r.in_7d || 0} recebidas` }), el('small', { text: `${r.out_7d || 0} enviadas${r.failed_7d ? ` · ${r.failed_7d} falharam` : ''}` })),
+      el('td', {}, el('small', { text: ago(r.last_msg_at) })),
+      el('td', {}, el('button', { class: 'btn btn-outline row-btn', type: 'button', text: 'Ver conversas', onclick: () => openRobo(r) })));
+  }));
+  $('#rb-empty').hidden = list.length > 0;
+  $('#rb-empty').textContent = only ? 'Nenhuma loja com o robô conectado ainda.' : 'Nenhuma loja encontrada.';
+}
+function openRobo(r) {
+  if (DEMO) { toast('Na demonstração o modo suporte não abre lojas reais.'); return; }
+  const url = `painel.html?suporte=${encodeURIComponent(r.restaurant_id)}&aba=robo`;
+  const w = window.open(url, '_blank');
+  if (w) w.opener = null; else location.href = url;
+}
+function renderRoboFails(list) {
+  $('#rb-fails').replaceChildren(...list.map((f) => el('tr', {},
+    el('td', {}, el('small', { text: new Date(f.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) })),
+    el('td', {}, el('b', { text: f.store })),
+    el('td', {}, el('small', { class: 'rb-fail-msg', text: f.body || '' })))));
+  $('#rb-fails-empty').hidden = list.length > 0;
+}
+function renderRoboPlat(p) {
+  $('#rb-hook-url').textContent = CFG.supabaseUrl ? `${CFG.supabaseUrl.replace(/\/$/, '')}/functions/v1/whatsapp` : '—';
+  $('#rb-hook-token').textContent = p.verify_token || '—';
+  const checks = [[!!p.verify_token, 'Token de verificação criado'], [!!p.hook_ok, 'Aviso de status do pedido ligado no banco'], [!!p.app_secret_ok, 'Chave secreta do app salva (bloqueia mensagens falsas)']];
+  $('#rb-checks').replaceChildren(...checks.map(([ok, t]) => el('li', { class: ok ? 'ok' : 'no', text: (ok ? '✓ ' : '✗ ') + t })));
+}
+document.querySelectorAll('[data-rbcopy]').forEach((b) => b.addEventListener('click', async () => {
+  const t = $('#' + b.dataset.rbcopy).textContent;
+  try { await navigator.clipboard.writeText(t); toast('Copiado!'); } catch (_) { toast('Não deu para copiar. Selecione e copie.'); }
+}));
+$('#rb-q').addEventListener('input', renderRobo);
+$('#rb-only').addEventListener('change', renderRobo);
+$('#rb-refresh').addEventListener('click', () => { loadRobo(); toast('Robô atualizado.'); });
 
 // volta para a última aba aberta
 try { const t = sessionStorage.getItem('adm-tab'); if (t) selectATab(t); } catch (_) {}

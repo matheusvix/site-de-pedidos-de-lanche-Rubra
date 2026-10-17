@@ -154,6 +154,8 @@ function startApp() {
   loadOrders();
   subscribe();
   if (window.BoraRobo) window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
+  const aba = new URLSearchParams(location.search).get('aba');
+  if (aba && document.querySelector(`.p-tabs [data-tab="${CSS.escape(aba)}"]`)) selectTab(aba);
   if (new URLSearchParams(location.search).has('bemvindo')) {
     toast('Sua loja foi criada! Comece cadastrando os produtos do cardápio.');
     selectTab('cardapio');

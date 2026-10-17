@@ -177,3 +177,67 @@ returns void language sql security definer set search_path = public as $$
 $$;
 revoke execute on function public.wa_touch_inbound(bigint, text) from public, anon, authenticated;
 grant execute on function public.wa_touch_inbound(bigint, text) to service_role;
+
+-- ============================================================
+-- Admin: visão do robô do WhatsApp em todas as lojas
+-- ============================================================
+create or replace function public.admin_whatsapp_overview()
+returns setof jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Sem permissão'; end if;
+  return query
+  select jsonb_build_object(
+           'restaurant_id', r.id, 'name', r.name, 'slug', r.slug, 'plan', r.plan, 'status', r.status, 'logo_url', r.logo_url,
+           'enabled', b.enabled, 'connected', b.phone_number_id is not null and s.wa_token is not null,
+           'display_phone', b.display_phone, 'verified_name', b.verified_name,
+           'is_test', coalesce(b.verified_name, '') ilike 'test number%' or coalesce(b.display_phone, '') like '+1 555%',
+           'notify_status', b.notify_status, 'faq_count', jsonb_array_length(b.faq),
+           'convs', coalesce(c.n, 0), 'waiting', coalesce(c.waiting, 0), 'unread', coalesce(c.unread, 0),
+           'in_7d', coalesce(m.n_in, 0), 'out_7d', coalesce(m.n_out, 0), 'failed_7d', coalesce(m.n_fail, 0),
+           'last_msg_at', c.last_at, 'updated_at', b.updated_at)
+  from public.whatsapp_bots b
+  join public.restaurants r on r.id = b.restaurant_id
+  left join public.restaurant_secrets s on s.restaurant_id = b.restaurant_id
+  left join lateral (
+    select count(*) n, count(*) filter (where human_until > now()) waiting, sum(unread) unread, max(last_msg_at) last_at
+      from public.wa_conversations where restaurant_id = b.restaurant_id
+  ) c on true
+  left join lateral (
+    select count(*) filter (where direction = 'in') n_in, count(*) filter (where direction = 'out') n_out,
+           count(*) filter (where status = 'failed') n_fail
+      from public.wa_messages where restaurant_id = b.restaurant_id and created_at > now() - interval '7 days'
+  ) m on true
+  order by (b.phone_number_id is not null) desc, c.last_at desc nulls last, r.created_at desc;
+end;
+$$;
+revoke execute on function public.admin_whatsapp_overview() from public, anon;
+grant execute on function public.admin_whatsapp_overview() to authenticated;
+
+-- Últimas falhas de envio (para o admin ver o motivo)
+create or replace function public.admin_whatsapp_failures(p_limit int default 20)
+returns setof jsonb language plpgsql stable security definer set search_path = public as $$
+begin
+  if not public.is_admin() then raise exception 'Sem permissão'; end if;
+  return query
+  select jsonb_build_object('created_at', m.created_at, 'store', r.name, 'sender', m.sender, 'body', left(m.body, 300))
+    from public.wa_messages m join public.restaurants r on r.id = m.restaurant_id
+   where m.status = 'failed'
+   order by m.created_at desc limit least(greatest(p_limit, 1), 100);
+end;
+$$;
+revoke execute on function public.admin_whatsapp_failures(int) from public, anon;
+grant execute on function public.admin_whatsapp_failures(int) to authenticated;
+
+-- Dados do webhook para configurar o app na Meta (só admin)
+create or replace function public.admin_whatsapp_platform()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare v jsonb;
+begin
+  if not public.is_admin() then raise exception 'Sem permissão'; end if;
+  select jsonb_build_object('verify_token', wa_verify_token, 'app_secret_ok', wa_app_secret is not null, 'hook_ok', wa_hook_secret is not null)
+    into v from public.platform_secrets where id = 1;
+  return coalesce(v, '{}'::jsonb);
+end;
+$$;
+revoke execute on function public.admin_whatsapp_platform() from public, anon;
+grant execute on function public.admin_whatsapp_platform() to authenticated;
