@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=9">
+<link rel="stylesheet" href="assets/painel.css?v=11">
 </head>
 <body class="adm">
 
@@ -85,6 +85,7 @@
     <button role="tab" aria-selected="true" data-tab="pedidos">Pedidos <b class="p-count" id="new-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="cardapio">Cardápio</button>
     <button role="tab" aria-selected="false" data-tab="loja">Minha loja</button>
+    <button role="tab" aria-selected="false" data-tab="robo">Robô WhatsApp <b class="p-count" id="robo-count" hidden>0</b></button>
   </nav>
 
   <main class="adm-main">
@@ -281,6 +282,109 @@
         </aside>
       </div>
     </section>
+
+    <!-- ROBÔ WHATSAPP -->
+    <section data-panel="robo" hidden>
+      <div class="adm-head">
+        <div><h1>Robô do WhatsApp</h1><p class="adm-muted">Atendimento automático 24 horas no WhatsApp da loja: manda o cardápio, responde horário, entrega e pagamento, avisa o cliente quando o pedido muda de status e chama você quando o cliente pede um atendente.</p></div>
+      </div>
+
+      <div class="robo-grid">
+        <div class="robo-col">
+          <!-- conexão -->
+          <div class="p-card robo-conn" id="robo-conn">
+            <div class="robo-conn-head">
+              <svg width="28" height="28" aria-hidden="true"><use href="#i-wa"/></svg>
+              <div><b>Número do WhatsApp</b><span class="adm-muted" id="robo-conn-sub">API oficial do WhatsApp (Meta)</span></div>
+              <span class="mp-state" id="robo-state">Desconectado</span>
+            </div>
+
+            <div id="robo-off">
+              <details class="mp-help" id="robo-help"><summary>Como conseguir esses dados na Meta (passo a passo)</summary>
+                <ol>
+                  <li>Entre em <b>business.facebook.com</b> e crie (ou use) o <b>portfólio empresarial</b> da loja.</li>
+                  <li>Em <b>developers.facebook.com › Meus apps › Criar app</b>, escolha o tipo <b>Empresa</b> e adicione o produto <b>WhatsApp</b>.</li>
+                  <li>Em <b>WhatsApp › Configuração da API</b>, adicione o número da loja (um número que <b>não</b> esteja em uso no aplicativo do WhatsApp) e confirme pelo código SMS.</li>
+                  <li>Copie o <b>ID do número de telefone</b> e o <b>ID da conta do WhatsApp Business</b> que aparecem nessa tela.</li>
+                  <li>Em <b>Configurações do negócio › Usuários do sistema</b>, crie um usuário <b>Admin</b>, adicione o app e a conta do WhatsApp a ele e gere um <b>token permanente</b> com as permissões <code>whatsapp_business_messaging</code> e <code>whatsapp_business_management</code>.</li>
+                  <li>Em <b>WhatsApp › Configuração › Webhook</b>, cole o endereço e o token de verificação abaixo e marque o campo <b>messages</b>.</li>
+                  <li>Em <b>Configurações do app › Básico</b>, copie a <b>Chave secreta do aplicativo</b>.</li>
+                </ol>
+              </details>
+              <div class="robo-hook" id="robo-hook" hidden>
+                <div class="field"><label>Endereço do webhook (URL de callback)</label><div class="copy-row"><code id="robo-hook-url"></code><button class="btn btn-ghost" type="button" data-copy="robo-hook-url">Copiar</button></div></div>
+                <div class="field"><label>Token de verificação</label><div class="copy-row"><code id="robo-hook-token"></code><button class="btn btn-ghost" type="button" data-copy="robo-hook-token">Copiar</button></div></div>
+              </div>
+              <div class="row2">
+                <div class="field"><label for="wa-pnid">ID do número de telefone</label><input id="wa-pnid" inputmode="numeric" autocomplete="off" placeholder="Ex.: 123456789012345"></div>
+                <div class="field"><label for="wa-waba">ID da conta do WhatsApp Business</label><input id="wa-waba" inputmode="numeric" autocomplete="off" placeholder="Ex.: 102030405060708"></div>
+              </div>
+              <div class="field"><label for="wa-token">Token de acesso permanente</label><input id="wa-token" type="password" autocomplete="off" spellcheck="false" placeholder="EAA…"></div>
+              <div class="field"><label for="wa-secret">Chave secreta do aplicativo</label><input id="wa-secret" type="password" autocomplete="off" spellcheck="false" placeholder="32 letras e números"><small class="adm-muted" id="wa-secret-hint">Usada para conferir que as mensagens vieram mesmo da Meta.</small></div>
+              <button class="btn btn-primary" type="button" id="wa-connect">Conectar número</button>
+            </div>
+
+            <div id="robo-on" hidden>
+              <div class="robo-number"><b id="robo-phone"></b><span id="robo-vname"></span></div>
+              <label class="open-switch robo-switch">
+                <input type="checkbox" id="robo-enabled"><span class="sw" aria-hidden="true"></span><b id="robo-enabled-label">Robô ligado</b>
+              </label>
+              <p class="adm-muted" id="robo-on-hint">Para testar, mande um "oi" para este número de outro celular.</p>
+              <div class="robo-acts">
+                <button class="btn btn-outline" type="button" id="wa-test">Testar conexão</button>
+                <button class="btn btn-ghost adm-danger" type="button" id="wa-disconnect">Desconectar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- mensagens -->
+          <form class="p-card form" id="robo-form" novalidate>
+            <h2>Mensagens do robô</h2>
+            <div class="field"><label for="rb-greeting">Boas-vindas</label><textarea id="rb-greeting" name="greeting" rows="3" maxlength="600"></textarea><small class="adm-muted">Deixe em branco para usar a padrão. Use <code>{nome}</code> para o nome do cliente e <code>{loja}</code> para o nome da loja.</small></div>
+            <div class="field"><label for="rb-away">Quando a loja estiver fechada</label><textarea id="rb-away" name="away_text" rows="2" maxlength="600"></textarea><small class="adm-muted">Em branco, o robô diz quando a loja abre, pelo seu horário de funcionamento.</small></div>
+
+            <h3>Perguntas frequentes</h3>
+            <p class="adm-muted">Quando a mensagem do cliente tiver uma das palavras, o robô responde o seu texto. Separe as palavras por vírgula.</p>
+            <div id="rb-faq"></div>
+            <button class="btn btn-outline" type="button" id="rb-addfaq">+ Pergunta</button>
+
+            <h3>Avisos do pedido</h3>
+            <label class="check"><input type="checkbox" name="notify_status"> <span>Avisar o cliente no WhatsApp quando o pedido for recebido, aceito, sair para entrega ou ficar pronto</span></label>
+            <div class="field"><label for="rb-tpl">Nome do modelo aprovado na Meta (opcional)</label><input id="rb-tpl" name="template_name" maxlength="60" placeholder="Ex.: status_pedido" spellcheck="false" autocomplete="off">
+              <small class="adm-muted">Pela regra do WhatsApp, se o cliente não mandou mensagem nas últimas 24h, o aviso só sai com um modelo aprovado. Crie na Meta um modelo de <b>Utilidade</b> com o texto: <code>Olá, {{1}}! Seu pedido #{{2}} na {{4}} está {{3}}.</code></small></div>
+
+            <h3>Atendente humano</h3>
+            <div class="field"><label for="rb-human">Quando o cliente chamar um atendente, o robô fica em silêncio por</label>
+              <select id="rb-human" name="human_minutes"><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="720">12 horas</option></select></div>
+
+            <div class="biz-save"><button class="btn btn-primary btn-lg btn-block" type="submit">Salvar mensagens</button></div>
+          </form>
+        </div>
+
+        <div class="robo-col">
+          <!-- prévia -->
+          <div class="p-card robo-preview">
+            <h2>Como o cliente vê</h2>
+            <div class="wa-phone" id="robo-preview"></div>
+          </div>
+
+          <!-- conversas -->
+          <div class="p-card robo-chats">
+            <div class="robo-chats-head"><h2>Conversas</h2><small class="adm-muted">Últimos 7 dias</small></div>
+            <div id="robo-list" class="robo-list"></div>
+            <div id="robo-thread" class="robo-thread" hidden>
+              <div class="robo-thread-head">
+                <button class="btn btn-ghost" type="button" id="rt-back" aria-label="Voltar para a lista">←</button>
+                <div><b id="rt-name"></b><small id="rt-phone"></small></div>
+                <button class="btn btn-outline" type="button" id="rt-mode"></button>
+              </div>
+              <div class="robo-msgs" id="rt-msgs"></div>
+              <form class="robo-reply" id="rt-form"><textarea id="rt-text" rows="2" maxlength="4000" placeholder="Responder como a loja…"></textarea><button class="btn btn-primary" type="submit">Enviar</button></form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -331,6 +435,7 @@
 <script defer src="assets/pix.js?v=6"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/horario.js?v=5"></script>
-<script defer src="assets/painel.js?v=12"></script>
+<script defer src="assets/painel.js?v=13"></script>
+<script defer src="assets/robo.js?v=1"></script>
 </body>
 </html>
