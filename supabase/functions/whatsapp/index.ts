@@ -28,7 +28,7 @@ type Row = Record<string, any>;
 /* ---------------- utilidades ---------------- */
 const digits = (s: unknown) => String(s ?? "").replace(/\D/g, "");
 const brl = (n: unknown) => Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^\w\s?]/g, " ").replace(/\s+/g, " ").trim();
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\w\s?]/g, " ").replace(/\s+/g, " ").trim();
 const first = (name: unknown) => String(name || "").trim().split(/\s+/)[0] || "";
 const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
 
@@ -252,7 +252,8 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
     conversation_id: conv.id, restaurant_id: R.id, direction: "in", sender: "cliente", body: text.slice(0, 4096), wa_msg_id: String(msg.id || "").slice(0, 200) || null,
   });
   if (saved.error) return; // já processada
-  await admin.from("wa_conversations").update({ last_msg_at: now, last_inbound_at: now, unread: (conv.unread || 0) + 1, ...(name ? { name } : {}) }).eq("id", conv.id);
+  await admin.rpc("wa_touch_inbound", { p_conv: conv.id, p_name: name || "" }); // soma 1 em "não lidas" sem perder mensagens que chegam juntas
+  conv.last_inbound_at = now;
 
   // marca como lida (os dois tracinhos azuis)
   if (msg.id) graph(token, `/${bot.phone_number_id}/messages`, { method: "POST", body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: msg.id }) }).catch(() => {});

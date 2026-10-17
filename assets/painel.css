@@ -246,6 +246,9 @@
 #robo-form h3{font-size:16px;margin-top:6px}
 #robo-form select{font:inherit;font-size:15px;width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #E2D3D4;background:#fff;min-height:48px}
 #robo-form #rb-addfaq{align-self:flex-start}
+#robo-form .biz-save{position:static;background:none;padding-top:8px}
+/* cabeçalho: nome longo da loja não estoura a tela no celular */
+.adm-top .adm-tag{min-width:0;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .faq-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) 36px;gap:8px;align-items:start;margin-bottom:8px}
 .faq-row input,.faq-row textarea{font:inherit;font-size:14px;width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;background:#fff;resize:vertical}
 /* prévia estilo WhatsApp */
@@ -253,13 +256,13 @@
 .wa-bar{background:#075E54;color:#fff;padding:10px 14px;display:flex;flex-direction:column}
 .wa-bar small{opacity:.8;font-size:12px}
 .wa-body{padding:12px;display:flex;flex-direction:column;gap:8px}
-.wa-msg{max-width:86%;padding:8px 10px 6px;border-radius:12px;font-size:14px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere;display:flex;flex-direction:column}
+.wa-msg{max-width:86%;padding:8px 10px 6px;border-radius:12px;font-size:14px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere}
 .wa-msg.in{align-self:flex-start;background:#fff;border-top-left-radius:4px}
 .wa-msg.out{align-self:flex-end;background:#D9FDD3;border-top-right-radius:4px}
 .wa-msg.failed{background:#FFE8E9}
-.wa-foot{font-size:11px;color:#667781;align-self:flex-end;margin-top:4px}
+.wa-foot{display:block;font-size:11px;color:#667781;text-align:right;margin-top:4px}
 .wa-btn{display:block;text-align:center;color:#027EB5;font-weight:700;border-top:1px solid rgba(0,0,0,.08);margin-top:6px;padding-top:6px}
-.wa-who{font-size:11px;font-weight:800;color:#1E6B3A;margin-bottom:2px}
+.wa-who{display:block;font-size:11px;font-weight:800;color:#1E6B3A;margin-bottom:2px}
 /* conversas */
 .robo-chats-head{display:flex;justify-content:space-between;align-items:baseline}
 .robo-list{display:flex;flex-direction:column;gap:6px}
@@ -282,3 +285,4 @@
 .robo-reply textarea{flex:1;font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;resize:vertical;min-height:48px}
 @media (max-width:900px){.robo-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.faq-row{grid-template-columns:minmax(0,1fr) 36px}.faq-row textarea{grid-column:1}.faq-row .opt-x{grid-row:1;grid-column:2}}
+@media (max-width:640px){.adm-top{gap:8px}.adm-top .brand .wordmark{height:20px}.adm-top-right .btn{padding:8px 10px}.adm-top .adm-tag{max-width:26vw}}

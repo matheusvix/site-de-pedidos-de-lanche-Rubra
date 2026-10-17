@@ -167,3 +167,13 @@ for each row execute function public.wa_notify_status();
 
 revoke execute on function public.wa_notify_status() from public, anon, authenticated;
 revoke execute on function public.whatsapp_bot_row() from public, anon, authenticated;
+
+-- Mensagem recebida: soma 1 em "não lidas" de forma segura (várias mensagens no mesmo segundo)
+create or replace function public.wa_touch_inbound(p_conv bigint, p_name text)
+returns void language sql security definer set search_path = public as $$
+  update public.wa_conversations
+     set last_msg_at = now(), last_inbound_at = now(), unread = unread + 1, name = coalesce(nullif(p_name, ''), name)
+   where id = p_conv;
+$$;
+revoke execute on function public.wa_touch_inbound(bigint, text) from public, anon, authenticated;
+grant execute on function public.wa_touch_inbound(bigint, text) to service_role;
