@@ -401,7 +401,8 @@ const FAQ = [
   ['Preciso cadastrar um cartão para testar?', 'Não. O período de teste é liberado só com seus dados de contato, e você decide depois se quer continuar.'],
   ['Existe comissão sobre cada venda?', 'Não cobramos por pedido. Você paga a mensalidade do plano; apenas transações online têm a tarifa da operadora de pagamento.'],
   ['Quais formas de pagamento posso aceitar?', 'Pix, cartões de crédito e débito e carteiras digitais online, além de dinheiro e maquininha na entrega.'],
-  ['Consigo usar meu próprio número de WhatsApp?', 'Sim. Você conecta o número que já usa no restaurante e mantém o histórico das conversas.'],
+  ['Como funciona o robô de atendimento no WhatsApp?', 'Ele usa a API oficial do WhatsApp (Meta). Quando o cliente manda mensagem, o robô responde na hora com um menu: cardápio, horário, taxa de entrega e pagamento. Também avisa quando o pedido muda de status e chama você quando o cliente pede um atendente. Você acompanha e responde as conversas pelo painel.'],
+  ['Posso usar o número de WhatsApp que já tenho?', 'Pela regra da Meta, o número do robô precisa ficar só na API oficial, fora do aplicativo do WhatsApp. Muitos restaurantes usam um chip novo só para o atendimento. A Meta também pede a verificação da empresa (com CNPJ, que pode ser de MEI). A gente te ajuda no passo a passo.'],
   ['Posso cancelar quando quiser?', 'Pode. Não há fidelidade nem multa; o cancelamento é feito pelo próprio painel.'],
 ];
 $('#faq').innerHTML = FAQ.map(([q, a], i) => `

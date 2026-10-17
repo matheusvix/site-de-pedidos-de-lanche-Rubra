@@ -345,7 +345,18 @@ async function handleWebhook(raw: string, sig: string) {
 
       // confirmações de entrega/leitura das mensagens enviadas
       for (const s of v.statuses || []) {
-        if (s.id) await admin.from("wa_messages").update({ status: String(s.status || "").slice(0, 20) }).eq("wa_msg_id", String(s.id));
+        if (!s.id) continue;
+        const st = String(s.status || "").slice(0, 20);
+        const err = (s.errors || [])[0];
+        if (st === "failed" && err) {
+          // guarda o motivo da falha para aparecer no painel
+          const { data: m } = await admin.from("wa_messages").select("body").eq("wa_msg_id", String(s.id)).maybeSingle();
+          const why = `⚠️ Não entregue: (#${err.code}) ${err.error_data?.details || err.message || err.title || ""}`.slice(0, 400);
+          await admin.from("wa_messages").update({ status: st, body: `${why}\n${m?.body || ""}`.slice(0, 4096) }).eq("wa_msg_id", String(s.id));
+          console.warn("whatsapp: falha na entrega", JSON.stringify(err));
+        } else {
+          await admin.from("wa_messages").update({ status: st }).eq("wa_msg_id", String(s.id));
+        }
       }
       if (!(v.messages || []).length) continue;
       const { data: R } = await admin.from("restaurants").select("*").eq("id", bot.restaurant_id).maybeSingle();

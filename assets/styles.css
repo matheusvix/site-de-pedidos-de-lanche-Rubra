@@ -430,3 +430,26 @@ dialog.wide{width:min(960px,calc(100% - 32px))}
 /* depoimentos e recursos com borda mais marcada */
 .feature,.slide,.compare-card{border-width:2px}
 .feature:hover{border-color:var(--ink);box-shadow:6px 6px 0 var(--ink)}
+
+/* ---------- Robô no WhatsApp ---------- */
+.robo{display:flex;flex-wrap:wrap;gap:56px;align-items:center}
+.robo-copy{flex:1 1 440px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.robo-copy .list li span{line-height:1.45}
+.robo-note{margin:0;font-size:14px;color:var(--muted)}
+.robo-phone{flex:0 1 380px;min-width:0;margin:0 auto;border-radius:36px;background:#0B141A;padding:10px;box-shadow:var(--shadow)}
+.rp-bar{display:flex;align-items:center;gap:10px;background:#075E54;color:#fff;border-radius:28px 28px 0 0;padding:14px 16px}
+.rp-bar div{display:flex;flex-direction:column;line-height:1.2}
+.rp-bar small{opacity:.8;font-size:12px}
+.rp-av{width:36px;height:36px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--display)}
+.rp-chat{background:#EFE7DE;border-radius:0 0 28px 28px;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:420px}
+.rp-msg{max-width:84%;padding:8px 11px;border-radius:12px;font-size:14px;line-height:1.45;color:#111B21;box-shadow:0 1px 1px rgba(0,0,0,.08);overflow-wrap:anywhere}
+.rp-msg.in{align-self:flex-start;background:#fff;border-top-left-radius:4px}
+.rp-msg.out{align-self:flex-end;background:#D9FDD3;border-top-right-radius:4px}
+.rp-msg.rp-alert{background:#FFF4D6}
+.rp-btn{display:block;margin-top:8px;padding-top:7px;border-top:1px solid rgba(0,0,0,.08);text-align:center;color:#027EB5;font-weight:700}
+/* as mensagens aparecem uma de cada vez quando a seção entra na tela */
+.robo-phone .rp-msg{opacity:0;transform:translateY(8px)}
+.robo-phone.in .rp-msg{animation:rp-in .45s ease forwards;animation-delay:calc(var(--d) * .9s + .3s)}
+@keyframes rp-in{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.robo-phone .rp-msg{opacity:1;transform:none}}
+@media (max-width:640px){.robo{gap:36px}.robo-phone{flex-basis:100%}.rp-chat{min-height:0}}
