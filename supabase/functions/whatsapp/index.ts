@@ -194,10 +194,14 @@ async function lastOrder(R: Row, waId: string) {
 }
 
 /* ---------------- envio ---------------- */
+// Celular brasileiro: o WhatsApp manda o wa_id sem o 9 (55 + DDD + 8 dígitos).
+// Respondemos com o 9 (55 + DDD + 9 + 8 dígitos), que é o formato aceito em todos os casos.
+const toAddr = (waId: string) => (/^55\d{2}[6-9]\d{7}$/.test(waId) ? waId.slice(0, 4) + "9" + waId.slice(4) : waId);
+
 async function send(bot: Row, token: string, conv: Row, payload: Row, logBody: string, sender = "robo") {
   const r = await graph(token, `/${bot.phone_number_id}/messages`, {
     method: "POST",
-    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: conv.wa_id, ...payload }),
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: toAddr(conv.wa_id), ...payload }),
   });
   const id = r.ok ? String(r.data?.messages?.[0]?.id || "") || null : null;
   await admin.from("wa_messages").insert({
