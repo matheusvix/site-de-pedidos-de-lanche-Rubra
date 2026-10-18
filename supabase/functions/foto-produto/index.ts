@@ -1,7 +1,8 @@
-// BoraLanchar! — Foto profissional do produto gerada por IA (OpenAI; Google Gemini como reserva)
+// BoraLanchar! — Foto profissional do produto gerada por IA (fal.ai FLUX; OpenAI e Gemini como reserva)
 // POST { name, description?, restaurant_id? }  (Authorization: Bearer <jwt do dono ou do admin>)
 // -> { image: "data:image/png;base64,...", remaining }
-// Segredo: OPENAI_API_KEY (preferido) ou GEMINI_API_KEY (Supabase › Edge Functions › Secrets)
+// Segredo: FAL_KEY (preferido), OPENAI_API_KEY ou GEMINI_API_KEY (Supabase › Edge Functions › Secrets)
+// Opcional: FAL_IMAGE_MODEL (padrão fal-ai/flux-2)
 // Opcionais: OPENAI_IMAGE_MODEL (padrão gpt-image-1.5), OPENAI_IMAGE_QUALITY (low|medium|high, padrão medium)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -9,7 +10,29 @@ const MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
 const OAI_MODEL = Deno.env.get("OPENAI_IMAGE_MODEL") || "gpt-image-1.5";
 const OAI_QUALITY = Deno.env.get("OPENAI_IMAGE_QUALITY") || "medium";
 
+const FAL_MODEL = Deno.env.get("FAL_IMAGE_MODEL") || "fal-ai/flux-2";
+
 type Gen = { image?: string; error?: string; blocked?: boolean };
+
+async function genFal(key: string, text: string): Promise<Gen> {
+  const r = await fetch(`https://fal.run/${FAL_MODEL}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Key ${key}` },
+    body: JSON.stringify({ prompt: text, image_size: "square_hd", num_images: 1, output_format: "jpeg", sync_mode: true, enable_safety_checker: true }),
+  });
+  const data = await r.json().catch(() => ({}));
+  const img = data?.images?.[0];
+  if (!r.ok || !img?.url || data?.has_nsfw_concepts?.[0]) {
+    console.error("fal", r.status, JSON.stringify(data).slice(0, 600));
+    return { error: String(r.status), blocked: !!data?.has_nsfw_concepts?.[0] };
+  }
+  if (String(img.url).startsWith("data:")) return { image: img.url };
+  // se vier como link, baixa e devolve como data URI
+  const f = await fetch(img.url); if (!f.ok) return { error: "download" };
+  const buf = new Uint8Array(await f.arrayBuffer()); let bin = "";
+  for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return { image: `data:${img.content_type || "image/jpeg"};base64,${btoa(bin)}` };
+}
 
 async function genOpenAI(key: string, text: string): Promise<Gen> {
   const r = await fetch("https://api.openai.com/v1/images/generations", {
@@ -104,11 +127,12 @@ Deno.serve(async (req) => {
     if (!isAdm && used >= MONTHLY_LIMIT)
       return json({ error: `Você já gerou ${MONTHLY_LIMIT} fotos este mês. O limite renova no dia 1º. Enquanto isso, dá para enviar uma foto sua.`, remaining: 0 }, 429);
 
-    const oaiKey = Deno.env.get("OPENAI_API_KEY"), gemKey = Deno.env.get("GEMINI_API_KEY");
-    if (!oaiKey && !gemKey) return json({ error: "A geração de fotos ainda não foi ativada. Fale com o suporte do BoraLanchar!." }, 503);
+    const falKey = Deno.env.get("FAL_KEY"), oaiKey = Deno.env.get("OPENAI_API_KEY"), gemKey = Deno.env.get("GEMINI_API_KEY");
+    if (!falKey && !oaiKey && !gemKey) return json({ error: "A geração de fotos ainda não foi ativada. Fale com o suporte do BoraLanchar!." }, 503);
 
     const text = prompt(name, desc);
-    let g: Gen = oaiKey ? await genOpenAI(oaiKey, text) : { error: "sem openai" };
+    let g: Gen = falKey ? await genFal(falKey, text) : { error: "sem fal" };
+    if (!g.image && !g.blocked && oaiKey) g = await genOpenAI(oaiKey, text);
     if (!g.image && !g.blocked && gemKey) g = await genGemini(gemKey, text);
     if (!g.image) {
       await admin.from("ai_image_log").insert({ restaurant_id: rid, product_name: name, ok: false });
