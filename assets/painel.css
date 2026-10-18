@@ -286,3 +286,12 @@
 @media (max-width:900px){.robo-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.faq-row{grid-template-columns:minmax(0,1fr) 36px}.faq-row textarea{grid-column:1}.faq-row .opt-x{grid-row:1;grid-column:2}}
 @media (max-width:640px){.adm-top{gap:8px}.adm-top .brand .wordmark{height:20px}.adm-top-right .btn{padding:8px 10px}.adm-top .adm-tag{max-width:26vw}}
+
+/* foto por IA */
+.pd-ai{background:linear-gradient(135deg,var(--red),#B5121B)}
+.pd-photo.loading{flex-direction:column;gap:8px;text-align:center;padding:8px;font-size:12px;background:linear-gradient(110deg,var(--red-soft) 30%,#fff 50%,var(--red-soft) 70%);background-size:200% 100%;animation:aishine 1.4s linear infinite}
+.ai-spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(0,0,0,.08);border-top-color:var(--red);animation:aispin .8s linear infinite}
+@keyframes aispin{to{transform:rotate(360deg)}}
+@keyframes aishine{to{background-position:-200% 0}}
+#pd-ai-note{line-height:1.4}
+@media (prefers-reduced-motion:reduce){.pd-photo.loading,.ai-spin{animation:none}}
