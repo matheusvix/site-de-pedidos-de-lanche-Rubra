@@ -1,10 +1,50 @@
-// BoraLanchar! — Foto profissional do produto gerada por IA (Google Gemini)
+// BoraLanchar! — Foto profissional do produto gerada por IA (OpenAI; Google Gemini como reserva)
 // POST { name, description?, restaurant_id? }  (Authorization: Bearer <jwt do dono ou do admin>)
 // -> { image: "data:image/png;base64,...", remaining }
-// Segredo necessário: GEMINI_API_KEY (Supabase › Edge Functions › Secrets)
+// Segredo: OPENAI_API_KEY (preferido) ou GEMINI_API_KEY (Supabase › Edge Functions › Secrets)
+// Opcionais: OPENAI_IMAGE_MODEL (padrão gpt-image-1.5), OPENAI_IMAGE_QUALITY (low|medium|high, padrão medium)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const MODEL = Deno.env.get("GEMINI_IMAGE_MODEL") || "gemini-2.5-flash-image";
+const OAI_MODEL = Deno.env.get("OPENAI_IMAGE_MODEL") || "gpt-image-1.5";
+const OAI_QUALITY = Deno.env.get("OPENAI_IMAGE_QUALITY") || "medium";
+
+type Gen = { image?: string; error?: string; blocked?: boolean };
+
+async function genOpenAI(key: string, text: string): Promise<Gen> {
+  const r = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ model: OAI_MODEL, prompt: text, n: 1, size: "1024x1024", quality: OAI_QUALITY, output_format: "jpeg", output_compression: 85 }),
+  });
+  const data = await r.json().catch(() => ({}));
+  const b64 = data?.data?.[0]?.b64_json;
+  if (!r.ok || !b64) {
+    console.error("openai", r.status, JSON.stringify(data).slice(0, 600));
+    return { error: String(data?.error?.code || data?.error?.type || r.status), blocked: data?.error?.code === "moderation_blocked" || data?.error?.code === "content_policy_violation" };
+  }
+  return { image: `data:image/jpeg;base64,${b64}` };
+}
+
+async function genGemini(key: string, text: string): Promise<Gen> {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text }] }],
+      generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } },
+    }),
+  });
+  const data = await r.json().catch(() => ({}));
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const img = parts.find((p: any) => p?.inlineData?.data || p?.inline_data?.data);
+  const inline = img?.inlineData || img?.inline_data;
+  if (!r.ok || !inline) {
+    console.error("gemini", r.status, JSON.stringify(data).slice(0, 600));
+    return { error: String(r.status), blocked: !!(data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason === "SAFETY") };
+  }
+  return { image: `data:${inline.mimeType || inline.mime_type || "image/png"};base64,${inline.data}` };
+}
 const MONTHLY_LIMIT = Number(Deno.env.get("FOTO_IA_LIMITE_MES") || 60);
 
 const cors = {
@@ -64,30 +104,18 @@ Deno.serve(async (req) => {
     if (!isAdm && used >= MONTHLY_LIMIT)
       return json({ error: `Você já gerou ${MONTHLY_LIMIT} fotos este mês. O limite renova no dia 1º. Enquanto isso, dá para enviar uma foto sua.`, remaining: 0 }, 429);
 
-    const key = Deno.env.get("GEMINI_API_KEY");
-    if (!key) return json({ error: "A geração de fotos ainda não foi ativada. Fale com o suporte do BoraLanchar!." }, 503);
+    const oaiKey = Deno.env.get("OPENAI_API_KEY"), gemKey = Deno.env.get("GEMINI_API_KEY");
+    if (!oaiKey && !gemKey) return json({ error: "A geração de fotos ainda não foi ativada. Fale com o suporte do BoraLanchar!." }, 503);
 
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt(name, desc) }] }],
-        generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } },
-      }),
-    });
-    const data = await r.json().catch(() => ({}));
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const img = parts.find((p: any) => p?.inlineData?.data || p?.inline_data?.data);
-    const inline = img?.inlineData || img?.inline_data;
-    if (!r.ok || !inline) {
-      console.error("gemini", r.status, JSON.stringify(data).slice(0, 600));
+    const text = prompt(name, desc);
+    let g: Gen = oaiKey ? await genOpenAI(oaiKey, text) : { error: "sem openai" };
+    if (!g.image && !g.blocked && gemKey) g = await genGemini(gemKey, text);
+    if (!g.image) {
       await admin.from("ai_image_log").insert({ restaurant_id: rid, product_name: name, ok: false });
-      const blocked = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason === "SAFETY";
-      return json({ error: blocked ? "Não consegui gerar uma foto para esse nome. Tente escrever de outro jeito." : "Não consegui gerar a foto agora. Tente de novo em instantes." }, 502);
+      return json({ error: g.blocked ? "Não consegui gerar uma foto para esse nome. Tente escrever de outro jeito." : "Não consegui gerar a foto agora. Tente de novo em instantes." }, 502);
     }
     await admin.from("ai_image_log").insert({ restaurant_id: rid, product_name: name, ok: true });
-    const mime = inline.mimeType || inline.mime_type || "image/png";
-    return json({ image: `data:${mime};base64,${inline.data}`, remaining: isAdm ? null : Math.max(0, MONTHLY_LIMIT - used - 1) });
+    return json({ image: g.image, remaining: isAdm ? null : Math.max(0, MONTHLY_LIMIT - used - 1) });
   } catch (e) {
     console.error(e);
     return json({ error: "Não consegui gerar a foto agora. Tente de novo em instantes." }, 500);
