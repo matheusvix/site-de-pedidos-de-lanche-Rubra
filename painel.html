@@ -14,6 +14,11 @@
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
 <link rel="stylesheet" href="assets/painel.css?v=15">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="BoraLanchar">
 </head>
 <body class="adm">
 
@@ -595,5 +600,6 @@
 <script defer src="assets/painel.js?v=17"></script>
 <script defer src="assets/robo.js?v=2"></script>
 <script defer src="assets/recursos.js?v=2"></script>
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 </body>
 </html>

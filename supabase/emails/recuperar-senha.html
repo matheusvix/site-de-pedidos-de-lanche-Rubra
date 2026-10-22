@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>Vamos criar uma nova senha</title></head>
+<body style="margin:0;padding:0;background:#FBF7F6;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#1A1112">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Crie uma nova senha para entrar no BoraLanchar!</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FBF7F6"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;table-layout:fixed;background:#FFFFFF;border-radius:24px;overflow:hidden;border:1px solid #EFE3E3">
+<tr><td align="center" style="background:#E01E2D;padding:30px 24px 26px">
+<a href="https://boralanchar.com.br" style="text-decoration:none"><img src="https://boralanchar.com.br/assets/app/email-logo.png" width="260" height="32" alt="BoraLanchar!" style="display:block;border:0;width:260px;height:auto;color:#FFFFFF;font-size:28px;font-weight:800"></a>
+<p style="margin:12px 0 0;color:#FFE8E9;font-size:14px;font-weight:600">Seu cardápio vende. E você cozinha!</p>
+</td></tr>
+<tr><td style="padding:36px 32px 8px">
+<h1 style="margin:0 0 14px;font-size:26px;line-height:1.2;font-weight:800;color:#1A1112">Vamos criar uma nova senha</h1>
+<p style="margin:0 0 26px;font-size:16px;line-height:1.6;color:#5B4A4B">Recebemos um pedido para trocar a senha da conta {{ .Email }}. Toque no botão abaixo para criar a nova senha.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td align="center">
+<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#E01E2D;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:17px;padding:16px 34px;border-radius:999px">Criar nova senha</a>
+</td></tr></table>
+<p style="margin:22px 0 0;font-size:14px;line-height:1.6;color:#6E5C5D">O link vale por 1 hora. Se não foi você que pediu, ignore este e-mail: sua senha continua a mesma.</p>
+</td></tr>
+<tr><td style="padding:28px 32px 4px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFE8E9;border-radius:18px"><tr><td style="padding:22px 22px 20px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="top" style="padding-right:14px"><img src="https://boralanchar.com.br/assets/app/icone-192.png" width="56" height="56" alt="" style="display:block;border-radius:14px"></td>
+<td valign="top"><p style="margin:0 0 4px;font-size:17px;font-weight:800;color:#1A1112">Baixe o app BoraLanchar!</p>
+<p style="margin:0;font-size:14px;line-height:1.5;color:#5B4A4B">Receba os pedidos com aviso sonoro no celular e no computador.</p></td>
+</tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:16px"><tr>
+<td align="center" style="padding:4px"><a href="https://boralanchar.com.br/baixar.html" style="display:block;background:#1A1112;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:12px 10px;border-radius:12px">&#11015; Android</a></td>
+<td align="center" style="padding:4px"><a href="https://boralanchar.com.br/baixar.html" style="display:block;background:#1A1112;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:12px 10px;border-radius:12px">&#11015; iPhone</a></td>
+<td align="center" style="padding:4px"><a href="https://boralanchar.com.br/baixar.html" style="display:block;background:#1A1112;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:14px;padding:12px 10px;border-radius:12px">&#11015; Computador</a></td>
+</tr></table>
+</td></tr></table>
+</td></tr>
+<tr><td style="padding:22px 32px 30px">
+<p style="margin:0 0 6px;font-size:13px;line-height:1.6;color:#6E5C5D">O botão não funcionou? Copie e cole este endereço no navegador:</p>
+<p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all"><a href="{{ .ConfirmationURL }}" style="color:#A3101B;word-break:break-all;overflow-wrap:anywhere">{{ .ConfirmationURL }}</a></p>
+</td></tr>
+<tr><td align="center" style="background:#1A1112;padding:22px 24px">
+<p style="margin:0 0 6px;color:#FFFFFF;font-size:14px;font-weight:700">BoraLanchar! · Pedidos, cardápio digital e gestão</p>
+<p style="margin:0;color:#BFAEAF;font-size:12px;line-height:1.6"><a href="https://boralanchar.com.br" style="color:#FF8A93;text-decoration:none">boralanchar.com.br</a> · Se você não pediu este e-mail, é só ignorar.</p>
+</td></tr>
+</table></td></tr></table></body></html>

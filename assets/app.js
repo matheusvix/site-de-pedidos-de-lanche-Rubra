@@ -234,13 +234,13 @@ $$('form[data-form]').forEach((form) => {
       password: data.senha,
       options: {
         data: { nome: data.nome.trim(), loja: data.loja.trim(), telefone: data.telefone, segmento: data.segmento, plano: data.plano },
-        emailRedirectTo: new URL('painel.html', location.href).href,
+        emailRedirectTo: new URL('baixar.html?confirmado=1', location.href).href,
       },
     });
     if (error) {
       btn.disabled = false; btn.innerHTML = label;
       const already = /registered|already/i.test(error.message);
-      toast(already ? 'Este e-mail já tem conta. Use "Entrar" para acessar seu painel.' : 'Não foi possível criar a conta: ' + error.message);
+      toast(already ? 'Este e-mail já tem conta. Toque em "Já tem conta? Entrar" para acessar seu painel.' : 'Não foi possível criar a conta: ' + error.message);
       return;
     }
     if (auth.session) {
@@ -254,7 +254,7 @@ $$('form[data-form]').forEach((form) => {
       if (li && li.session) { location.href = 'painel.html'; return; }
       if (auth.user && Array.isArray(auth.user.identities) && auth.user.identities.length === 0) {
         btn.disabled = false; btn.innerHTML = label;
-        toast('Este e-mail já tem conta. Use "Entrar" para acessar seu painel.');
+        toast('Este e-mail já tem conta. Toque em "Já tem conta? Entrar" para acessar seu painel.');
         return;
       }
     }
@@ -262,7 +262,8 @@ $$('form[data-form]').forEach((form) => {
     form.innerHTML = `<div class="success">
       <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
       <h3 style="font-size:24px">Quase lá, ${escapeHtml(first)}!</h3>
-      <p style="color:var(--muted)">Enviamos um link de confirmação para <b>${escapeHtml(data.email.trim())}</b>. Abra o e-mail, toque no link e seu painel abre com o teste de 7 dias do plano ${escapeHtml(data.plano)}.</p>
+      <p style="color:var(--muted)">Enviamos um link de confirmação para <b>${escapeHtml(data.email.trim())}</b>. Abra o e-mail e toque em <b>Confirmar e baixar o app</b>. Seu teste de 7 dias do plano ${escapeHtml(data.plano)} já está garantido.</p>
+      <a class="btn btn-outline btn-block" href="baixar.html">Baixar o app agora</a>
       <a class="btn btn-ghost btn-block" href="${waUrl}" target="_blank" rel="noopener">Não chegou? Fale com a gente no WhatsApp</a>
       <button class="btn btn-primary btn-block" type="button" data-close>Fechar</button></div>`;
   });

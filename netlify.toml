@@ -9,6 +9,18 @@
     X-Frame-Options = "SAMEORIGIN"
 
 [[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "no-cache"
+
+[[headers]]
   for = "/garcom.html"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
@@ -35,6 +47,16 @@
   for = "/assets/video/*"
   [headers.values]
     Cache-Control = "public, max-age=2592000"
+
+[[redirects]]
+  from = "/baixar"
+  to = "/baixar.html"
+  status = 200
+
+[[redirects]]
+  from = "/download"
+  to = "/baixar.html"
+  status = 200
 
 [[redirects]]
   from = "/garcom"

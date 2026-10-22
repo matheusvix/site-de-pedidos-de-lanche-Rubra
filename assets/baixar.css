@@ -1,0 +1,66 @@
+/* BoraLanchar! — página de download do app */
+.dl{background:var(--paper)}
+.dl-top{position:sticky;top:0;z-index:10;background:rgba(251,247,246,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.dl-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
+.dl-nav .wordmark{height:24px;width:auto;display:block}
+.dl-web{font-weight:700;color:var(--ink);font-size:15px;padding:10px 4px}
+.dl-hero{padding:56px 0 40px;background:radial-gradient(900px 420px at 85% 20%,var(--red-soft),transparent 70%)}
+.dl-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
+.dl-copy h1{font-size:clamp(36px,5vw,60px);line-height:1.02;letter-spacing:-.035em;font-weight:800;margin:12px 0 16px;text-wrap:balance}
+.dl-copy h1 em{font-style:normal;color:var(--red)}
+.dl-copy .lead{max-width:540px;margin:0 0 28px}
+.dl-main{font-size:18px;min-height:60px;padding:0 32px}
+.dl-note{font-size:14px;color:var(--muted-2);margin:12px 0 28px}
+.dl-perks{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.dl-perks li{display:flex;align-items:center;gap:12px;font-weight:600}
+.dl-perks svg{color:var(--red);flex-shrink:0}
+.dl-ok,.dl-warn{display:flex;gap:10px;align-items:flex-start;padding:14px 16px;border-radius:16px;margin-bottom:20px;font-size:15px}
+.dl-ok{background:#E6F4EA;color:#1E6B3A;border:1px solid #BFE3CB}
+.dl-ok svg{flex-shrink:0;margin-top:2px}
+.dl-warn{background:#FFF3D6;color:#6B4600;border:1px solid #F0D99A}
+.dl-art{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap}
+.dl-phone{width:250px;aspect-ratio:9/18.5;border-radius:42px;background:var(--ink);padding:12px;box-shadow:var(--shadow);transform:rotate(-4deg)}
+.dl-screen{height:100%;border-radius:32px;background:linear-gradient(170deg,#fff 0%,var(--paper) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:20px}
+.dl-screen img{border-radius:22px;box-shadow:0 16px 30px -14px rgba(163,16,27,.6);margin-bottom:8px}
+.dl-screen b{font-family:var(--display);font-size:22px}
+.dl-screen span{background:var(--red);color:#fff;font-weight:700;font-size:13px;padding:6px 12px;border-radius:999px;margin-top:10px}
+.dl-screen i{font-style:normal;font-size:13px;color:var(--muted)}
+.dl-qr{background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;display:grid;justify-items:center;gap:8px;text-align:center;font-size:13px;font-weight:600;color:var(--muted)}
+.dl-qr #qr{width:140px;height:140px}
+.dl-qr svg{width:100%;height:100%;display:block}
+.dl-plat{padding:64px 0 80px;background:#fff}
+.dl-plat h2{font-size:clamp(28px,3.4vw,40px);letter-spacing:-.03em;margin-bottom:28px}
+.dl-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.dl-card{border:1.5px solid var(--line);border-radius:var(--radius);padding:24px;background:#fff;transition:border-color .2s,box-shadow .2s}
+.dl-card.me{border-color:var(--red);box-shadow:0 20px 40px -24px rgba(163,16,27,.45)}
+.dl-card.me h3::after{content:"Seu aparelho";margin-left:10px;font:700 11px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--red-ink);background:var(--red-soft);padding:3px 8px;border-radius:999px;vertical-align:middle}
+.dl-ic{width:52px;height:52px;border-radius:16px;background:var(--red-soft);color:var(--red-dark);display:grid;place-items:center;margin-bottom:14px}
+.dl-card h3{font-size:20px;margin-bottom:12px}
+.dl-card ol{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--ink-2)}
+.dl-alt{font-size:14px;color:var(--muted);margin:14px 0 0;padding-top:12px;border-top:1px dashed var(--line)}
+.dl-share{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--paper);border:1px solid var(--line);font-size:12px}
+.dl-foot{margin:32px 0 0;color:var(--muted);text-align:center}
+#how{border:0;padding:0;border-radius:24px;width:min(460px,calc(100% - 32px));box-shadow:var(--shadow)}
+#how::backdrop{background:rgba(26,17,18,.55)}
+.dl-sheet{position:relative;padding:28px 24px 24px}
+.dl-sheet h2{font-size:24px;margin-bottom:14px;padding-right:40px}
+.dl-sheet ol{padding-left:20px;display:grid;gap:10px;margin:0 0 22px}
+.dl-sheet p{color:var(--muted);margin:0 0 18px}
+.dl-x{position:absolute;top:14px;right:14px;width:44px;height:44px;border:0;background:var(--paper);border-radius:50%;display:grid;place-items:center;cursor:pointer}
+.dl-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;max-width:calc(100% - 32px);transition:.2s;z-index:50}
+.dl-toast.show{opacity:1;transform:translate(-50%,0)}
+@media (max-width:900px){
+  .dl-grid{grid-template-columns:1fr;gap:36px}
+  .dl-phone{width:180px;border-radius:32px;padding:9px}
+  .dl-screen{border-radius:24px}
+  .dl-screen img{width:72px;height:72px;border-radius:18px}
+  .dl-cards{grid-template-columns:1fr}
+  .dl-hero{padding:32px 0 32px}
+}
+@media (max-width:520px){
+  .dl-phone{display:none}
+  .container{padding:0 16px}
+  .dl-main{width:100%}
+  .dl-web{font-size:14px}
+  .dl-nav .wordmark{height:20px}
+}

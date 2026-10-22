@@ -10,6 +10,7 @@
 <meta property="og:description" content="Pedidos, cardápio digital e gestão para restaurantes e delivery.">
 <meta property="og:type" content="website">
 <link rel="icon" href="assets/brand/boralanchar-icone-app.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/app/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
@@ -22,6 +23,7 @@
 
 <!-- SVG icon sprite -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dl" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></g></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
@@ -64,7 +66,7 @@
       <a href="#duvidas">Dúvidas</a>
     </nav>
     <div class="nav-actions">
-      <button class="btn btn-ghost" data-open="login">Entrar</button>
+      <a class="btn btn-ghost" href="baixar.html"><svg width="18" height="18" aria-hidden="true"><use href="#i-dl"/></svg>Download</a>
       <button class="btn btn-primary" data-open="signup">Testar grátis</button>
       <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="menu-mobile"><svg width="22" height="22"><use href="#i-menu"/></svg></button>
     </div>
@@ -76,7 +78,7 @@
     <a href="#como-funciona">Como funciona</a>
     <a href="#planos">Planos</a>
     <a href="#duvidas">Dúvidas</a>
-    <button class="btn btn-outline btn-block" data-open="login">Entrar</button>
+    <a class="btn btn-outline btn-block" href="baixar.html"><svg width="18" height="18" aria-hidden="true"><use href="#i-dl"/></svg>Baixar o app</a>
     <button class="btn btn-primary btn-block" data-open="signup">Testar grátis</button>
   </nav>
 </header>
@@ -408,7 +410,7 @@
         </div>
       </div>
       <nav aria-label="Produto"><b>Produto</b><a href="#produto">Cardápio digital</a><a href="#robo">Robô no WhatsApp</a><a href="#canais">Caixa de entrada</a><a href="#produto">Pagamento online</a><a href="#planos">Planos e preços</a></nav>
-      <nav aria-label="Comece"><b>Comece</b><a href="#" data-open="signup">Teste grátis</a><a href="#" data-open="consultor">Falar com especialista</a><a href="#" data-open="login">Entrar</a><a href="#" data-open="video">Ver demonstração</a><a href="cardapio.html">Cardápio de exemplo</a></nav>
+      <nav aria-label="Comece"><b>Comece</b><a href="#" data-open="signup">Teste grátis</a><a href="#" data-open="consultor">Falar com especialista</a><a href="baixar.html">Baixar o app</a><a href="#" data-open="login">Entrar</a><a href="#" data-open="video">Ver demonstração</a><a href="cardapio.html">Cardápio de exemplo</a></nav>
       <nav aria-label="Ajuda"><b>Ajuda</b><a href="#duvidas">Dúvidas frequentes</a><a href="#" data-open="consultor">Suporte</a><a href="#">Central de ajuda</a><a href="admin.html">Área administrativa</a></nav>
     </div>
     <div class="footer-bottom">
@@ -516,6 +518,6 @@
 <form name="contato" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="assunto"><textarea name="mensagem"></textarea><input name="bot-field"></form>
 <form name="depoimento" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="cidade"><input name="segmento"><textarea name="texto"></textarea><input name="bot-field"></form>
 <script defer src="assets/config.js"></script>
-<script defer src="assets/app.js?v=7"></script>
+<script defer src="assets/app.js?v=8"></script>
 </body>
 </html>
