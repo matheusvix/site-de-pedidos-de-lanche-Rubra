@@ -1,0 +1,199 @@
+/* ============================================================
+   BoraLanchar! — app do garçom (plano Completo)
+   Endereço: /garcom.html?loja=<link-da-loja>
+   O garçom entra com o PIN, vê as mesas, lança pedidos e fecha a conta.
+   Banco: funções waiter_* em supabase/recursos-planos.sql
+   ============================================================ */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const brl = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const CFG = window.BORA_CONFIG || {};
+const sb = window.supabase && CFG.supabaseUrl ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey) : null;
+const slug = (new URLSearchParams(location.search).get('loja') || '').toLowerCase();
+const SKEY = 'bora-garcom-' + slug;
+
+let S = null;            // sessão {token, name, restaurant}
+let TABLES = [], TABLE = null, CATS = [], P = {}, cart = [], tick = null;
+const toastEl = $('.toast'); let tt;
+function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
+function view(id) { ['v-login', 'v-tables', 'v-table', 'v-state'].forEach((v) => { $('#' + v).hidden = v !== id; }); window.scrollTo(0, 0); }
+const msg = (e) => String((e && e.message) || 'Não foi possível agora. Tente de novo.').replace(/^.*?:\s*/, '');
+function expired(e) { if (/sess[aã]o expirada/i.test((e && e.message) || '')) { logout(); toast('Sua sessão expirou. Entre de novo com o PIN.'); return true; } return false; }
+
+/* ---------- entrar ---------- */
+let pin = '';
+function drawPin() { $$('#pin i').forEach((d, i) => d.classList.toggle('on', i < pin.length)); }
+$('#keys').addEventListener('click', (e) => {
+  const k = e.target.closest('[data-k]'); if (!k) return; $('#lg-err').textContent = '';
+  if (k.dataset.k === 'del') pin = pin.slice(0, -1);
+  else if (k.dataset.k === 'ok') return login();
+  else if (pin.length < 6) pin += k.dataset.k;
+  drawPin();
+});
+document.addEventListener('keydown', (e) => { if ($('#v-login').hidden) return; if (/^\d$/.test(e.key) && pin.length < 6) { pin += e.key; drawPin(); } else if (e.key === 'Backspace') { pin = pin.slice(0, -1); drawPin(); } else if (e.key === 'Enter') login(); });
+async function login() {
+  if (pin.length < 4) { $('#lg-err').textContent = 'O PIN tem de 4 a 6 números.'; return; }
+  const b = $('[data-k="ok"]'); b.disabled = true;
+  const { data, error } = await sb.rpc('waiter_login', { p_slug: slug, p_pin: pin });
+  b.disabled = false; pin = ''; drawPin();
+  if (error) { $('#lg-err').textContent = msg(error); return; }
+  if (data && data.error) { $('#lg-err').textContent = data.error; return; }
+  S = data; try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (_) {}
+  start();
+}
+function logout() { S = null; clearInterval(tick); try { localStorage.removeItem(SKEY); } catch (_) {} view('v-login'); }
+$('#logout').addEventListener('click', logout);
+
+/* ---------- mesas ---------- */
+async function loadTables() {
+  const { data, error } = await sb.rpc('waiter_tables', { p_token: S.token });
+  if (error) { if (!expired(error)) toast(msg(error)); return; }
+  TABLES = data || []; renderTables();
+  if (TABLE) { const t = TABLES.find((x) => x.id === TABLE.id); if (t) { TABLE = t; $('#tb-total').textContent = t.bill ? brl(t.bill.total) : ''; } }
+}
+function renderTables() {
+  $('#t-grid').innerHTML = TABLES.map((t) => {
+    const b = t.bill;
+    return `<button type="button" class="t-card ${b ? 'busy' : ''} ${b && b.ready ? 'ready' : ''}" data-t="${t.id}">
+      <b>${esc(t.label)}</b>${b ? `<span>${brl(b.total)}</span>${b.ready ? `<em>${b.ready} pronto(s)</em>` : `<small>${b.orders} pedido(s)</small>`}` : '<small>Livre</small>'}</button>`;
+  }).join('') || '<p class="g-muted">Nenhuma mesa cadastrada. Peça para o dono criar as mesas no painel.</p>';
+}
+$('#t-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) openTable(TABLES.find((t) => t.id === +b.dataset.t)); });
+$('#refresh').addEventListener('click', () => { loadTables(); toast('Mesas atualizadas.'); });
+
+/* ---------- cardápio ---------- */
+async function loadMenu() {
+  const { data: r } = await sb.from('restaurants').select('id').eq('slug', slug).maybeSingle();
+  if (!r) return;
+  const [{ data: cats }, { data: prods }] = await Promise.all([
+    sb.from('categories').select('*').eq('restaurant_id', r.id).order('position').order('id'),
+    sb.from('products').select('*').eq('restaurant_id', r.id).eq('available', true).order('position').order('id'),
+  ]);
+  P = Object.fromEntries((prods || []).map((p) => [p.id, p]));
+  CATS = (cats || []).map((c) => ({ ...c, items: (prods || []).filter((p) => p.category_id === c.id) }));
+  const loose = (prods || []).filter((p) => !p.category_id || !(cats || []).some((c) => c.id === p.category_id));
+  if (loose.length) CATS.push({ id: 0, name: 'Outros', items: loose });
+  CATS = CATS.filter((c) => c.items.length);
+}
+const optById = (pid, id) => { for (const g of P[pid].options || []) for (const o of g.items || []) if (o.id === id) return { g, o }; return null; };
+const unit = (l) => Number(P[l.pid].price) + (l.opts || []).reduce((s, id) => { const x = optById(l.pid, id); return s + (x && x.g.kind !== 'remove' ? Number(x.o.price || 0) : 0); }, 0);
+const labels = (l) => (l.opts || []).map((id) => optById(l.pid, id)).filter(Boolean).map(({ g, o }) => (g.kind === 'remove' ? `Sem ${o.name}` : g.kind === 'add' ? `+ ${o.name}` : o.name));
+function renderMenu() {
+  const q = ($('#q').value || '').trim().toLowerCase();
+  const qty = (pid) => cart.filter((l) => l.pid === pid).reduce((s, l) => s + l.qty, 0);
+  $('#menu').innerHTML = CATS.map((c) => {
+    const items = c.items.filter((i) => !q || i.name.toLowerCase().includes(q)); if (!items.length) return '';
+    return `<h2 class="m-cat">${esc(c.name)}</h2>${items.map((i) => `<div class="m-row" data-p="${i.id}"><div><b>${esc(i.name)}</b><span>${brl(i.price)}${(i.options || []).length ? ' · com opções' : ''}</span></div>
+      <div class="m-qty">${qty(i.id) ? `<button type="button" data-minus aria-label="Tirar um">−</button><b>${qty(i.id)}</b>` : ''}<button type="button" data-plus aria-label="Adicionar">+</button></div></div>`).join('')}`;
+  }).join('') || '<p class="g-muted">Nada encontrado.</p>';
+  const n = cart.reduce((s, l) => s + l.qty, 0);
+  $('#bar').hidden = !n; $('#send-total').textContent = brl(cart.reduce((s, l) => s + unit(l) * l.qty, 0)); $('#send-txt').textContent = `Enviar ${n} ${n > 1 ? 'itens' : 'item'} para a cozinha`;
+}
+$('#q').addEventListener('input', renderMenu);
+$('#menu').addEventListener('click', (e) => {
+  const row = e.target.closest('[data-p]'); if (!row) return; const pid = +row.dataset.p;
+  if (e.target.closest('[data-minus]')) { const i = cart.map((l) => l.pid).lastIndexOf(pid); if (i >= 0) { cart[i].qty--; if (!cart[i].qty) cart.splice(i, 1); } renderMenu(); return; }
+  if (e.target.closest('[data-plus]')) { if ((P[pid].options || []).length) return optionSheet(pid); addLine(pid, []); }
+});
+function addLine(pid, opts, note = '') { const k = [...opts].sort().join(); const same = cart.find((l) => l.pid === pid && [...l.opts].sort().join() === k && l.note === note); if (same) same.qty++; else cart.push({ pid, qty: 1, opts, note }); renderMenu(); }
+function optionSheet(pid) {
+  const p = P[pid]; const d = $('#d-opt');
+  $('#opt-form').innerHTML = `<h2>${esc(p.name)}</h2>${(p.options || []).map((g) => `<fieldset data-g="${esc(g.id)}" data-kind="${g.kind}" data-max="${g.max || ''}"><legend>${esc(g.title)}${g.kind === 'choose' ? ' <em>obrigatório</em>' : ''}</legend>
+    ${(g.items || []).map((o) => `<label><input type="${g.kind === 'choose' ? 'radio' : 'checkbox'}" name="g${esc(g.id)}" value="${esc(o.id)}"><span>${g.kind === 'remove' ? 'Sem ' : ''}${esc(o.name)}</span>${Number(o.price) > 0 ? `<small>+ ${brl(o.price)}</small>` : ''}</label>`).join('')}</fieldset>`).join('')}
+    <label class="g-field">Observação<input name="note" maxlength="140" placeholder="Ex.: bem passado"></label>
+    <p class="g-err" id="opt-err"></p>
+    <div class="g-acts"><button class="g-btn ghost" value="cancel" formnovalidate>Cancelar</button><button class="g-btn primary" type="button" id="opt-ok">Adicionar</button></div>`;
+  d.showModal();
+  $('#opt-ok').onclick = () => {
+    const opts = []; let bad = null;
+    $$('#opt-form fieldset').forEach((f) => { const sel = $$('input:checked', f).map((i) => i.value); if (f.dataset.kind === 'choose' && sel.length !== 1 && !bad) bad = `Escolha uma opção em "${$('legend', f).textContent.replace(' obrigatório', '')}".`; if (f.dataset.max && sel.length > +f.dataset.max && !bad) bad = `Escolha no máximo ${f.dataset.max} em "${$('legend', f).textContent}".`; opts.push(...sel); });
+    if (bad) { $('#opt-err').textContent = bad; return; }
+    addLine(pid, opts, $('#opt-form [name=note]').value.trim()); d.close();
+  };
+}
+$('#send').addEventListener('click', () => {
+  const d = $('#d-send');
+  $('#send-form').innerHTML = `<h2>Mesa ${esc(TABLE.label)}</h2>
+    <div class="g-lines">${cart.map((l) => { const lb = labels(l); return `<div><span>${l.qty}× ${esc(P[l.pid].name)}${lb.length ? `<small>${lb.map(esc).join(' · ')}</small>` : ''}${l.note ? `<small>Obs.: ${esc(l.note)}</small>` : ''}</span><b>${brl(unit(l) * l.qty)}</b></div>`; }).join('')}</div>
+    <label class="g-field">Nome do cliente (opcional)<input name="name" maxlength="80" placeholder="Para saber de quem é"></label>
+    <label class="g-field">Observação para a cozinha (opcional)<input name="notes" maxlength="300"></label>
+    <p class="g-err" id="send-err"></p>
+    <div class="g-acts"><button class="g-btn ghost" type="button" data-x>Voltar</button><button class="g-btn primary" type="submit">Enviar agora</button></div>`;
+  $('#send-form [data-x]').onclick = () => d.close();
+  d.showModal();
+});
+$('#send-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); const f = e.target; const b = $('[type=submit]', f); b.disabled = true;
+  const { error } = await sb.rpc('waiter_order', { p_token: S.token, p_table: TABLE.id, p_items: cart.map((l) => ({ product_id: l.pid, qty: l.qty, note: l.note, options: l.opts })), p_name: f.name.value.trim() || null, p_notes: f.notes.value.trim() || null });
+  b.disabled = false;
+  if (error) { if (expired(error)) return; $('#send-err').textContent = msg(error); return; }
+  $('#d-send').close(); cart = []; renderMenu(); toast(`Pedido da mesa ${TABLE.label} enviado para a cozinha!`); loadTables();
+});
+
+/* ---------- conta da mesa ---------- */
+const ST = { novo: 'Na cozinha', preparo: 'Em preparo', pronto: 'Pronto p/ servir', entregue: 'Servido' };
+async function loadBill() {
+  const { data, error } = await sb.rpc('waiter_bill', { p_token: S.token, p_table: TABLE.id });
+  if (error) { if (!expired(error)) toast(msg(error)); return; }
+  const os = (data && data.orders) || []; const total = os.reduce((s, o) => s + Number(o.total), 0);
+  $('#tb-total').textContent = os.length ? brl(total) : '';
+  const ready = os.filter((o) => o.status === 'pronto').length;
+  $('#bill').innerHTML = !data || !data.bill ? '<div class="g-empty"><b>Mesa sem conta aberta</b><span class="g-muted">Lance o primeiro pedido na aba "Lançar pedido".</span></div>'
+    : `${ready ? `<button class="g-btn primary block" type="button" id="serve">Marcar ${ready} pedido(s) pronto(s) como servido(s)</button>` : ''}
+      ${os.map((o) => `<div class="b-ord"><div class="b-h"><b>#${o.number}${o.waiter ? ` · ${esc(o.waiter)}` : ' · pelo QR Code'}</b><span class="st st-${o.status}">${ST[o.status] || o.status}</span></div>
+        ${(o.items || []).map((i) => `<div class="b-l"><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></div>`).join('')}</div>`).join('')}
+      <div class="b-tot"><span>Consumo</span><b>${brl(total)}</b></div>
+      <button class="g-btn dark block" type="button" id="close">Fechar conta</button>`;
+  const sv = $('#serve'); if (sv) sv.onclick = async () => { sv.disabled = true; const { error: e2 } = await sb.rpc('waiter_serve', { p_token: S.token, p_table: TABLE.id }); if (e2) { sv.disabled = false; return toast(msg(e2)); } toast('Pedidos marcados como servidos.'); loadBill(); loadTables(); };
+  const cl = $('#close'); if (cl) cl.onclick = () => closeSheet(total);
+}
+function closeSheet(total) {
+  const d = $('#d-close');
+  $('#close-form').innerHTML = `<h2>Fechar conta · Mesa ${esc(TABLE.label)}</h2>
+    <div class="b-tot"><span>Consumo</span><b>${brl(total)}</b></div>
+    <label class="g-check"><input type="checkbox" name="svc" checked> <span>Taxa de serviço 10% (${brl(total * 0.1)})</span></label>
+    <div class="b-tot big"><span>Total</span><b id="cl-tot">${brl(total * 1.1)}</b></div>
+    <div class="g-pay">${[['pix', 'Pix'], ['cartao', 'Cartão'], ['dinheiro', 'Dinheiro']].map(([k, l], i) => `<label><input type="radio" name="pay" value="${k}" ${i === 0 ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>
+    <p class="g-err" id="cl-err"></p>
+    <div class="g-acts"><button class="g-btn ghost" type="button" data-x>Voltar</button><button class="g-btn primary" type="submit">Confirmar pagamento</button></div>`;
+  const f = $('#close-form'); f.svc.onchange = () => { $('#cl-tot').textContent = brl(total * (f.svc.checked ? 1.1 : 1)); };
+  $('#close-form [data-x]').onclick = () => d.close();
+  d.showModal();
+}
+$('#close-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); const f = e.target; const b = $('[type=submit]', f); b.disabled = true;
+  const { data, error } = await sb.rpc('waiter_close', { p_token: S.token, p_table: TABLE.id, p_payment: f.pay.value, p_service_pct: f.svc.checked ? 10 : 0 });
+  b.disabled = false;
+  if (error) { if (expired(error)) return; $('#cl-err').textContent = msg(error); return; }
+  $('#d-close').close(); toast(`Conta da mesa ${TABLE.label} fechada: ${brl(data.total)}.`); TABLE = null; view('v-tables'); loadTables();
+});
+
+/* ---------- navegação ---------- */
+function gtab(t) { $$('.g-tabs [data-gt]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.gt === t))); $('#p-pedir').hidden = t !== 'pedir'; $('#p-conta').hidden = t !== 'conta'; $('#bar').hidden = t !== 'pedir' || !cart.length; if (t === 'conta') loadBill(); }
+$$('.g-tabs [data-gt]').forEach((b) => b.addEventListener('click', () => gtab(b.dataset.gt)));
+function openTable(t) {
+  if (TABLE && TABLE.id !== t.id) cart = [];
+  TABLE = t; $('#tb-title').textContent = `Mesa ${t.label}`; $('#tb-total').textContent = t.bill ? brl(t.bill.total) : ''; $('#q').value = '';
+  view('v-table'); renderMenu(); gtab(t.bill && t.bill.ready ? 'conta' : 'pedir');
+}
+$('#back').addEventListener('click', () => { if (cart.length && !confirm('Sair da mesa sem enviar os itens escolhidos?')) return; cart = []; TABLE = null; view('v-tables'); loadTables(); });
+
+async function start() {
+  view('v-tables');
+  $('#tp-store').textContent = S.restaurant.name; $('#tp-who').textContent = `Garçom: ${S.name}`;
+  await Promise.all([loadTables(), loadMenu()]);
+  clearInterval(tick); tick = setInterval(() => { if (document.hidden || !S) return; loadTables(); if (TABLE && !$('#p-conta').hidden) loadBill(); }, 15000);
+}
+async function boot() {
+  if (!sb) { $('#st-text').textContent = 'Sistema indisponível.'; return; }
+  if (!slug) { $('#st-text').textContent = 'Link do app incompleto. Peça o link certo para o dono da loja.'; return; }
+  try { S = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (_) { S = null; }
+  if (S && S.token) return start();
+  const { data: r } = await sb.from('restaurants').select('name, logo_url').eq('slug', slug).maybeSingle();
+  if (!r) { $('#st-text').textContent = 'Loja não encontrada. Confira o link.'; return; }
+  $('#lg-store').textContent = r.name; document.title = `Garçom · ${r.name}`;
+  $('#lg-ini').textContent = r.name.charAt(0).toUpperCase(); if (r.logo_url) { $('#lg-logo').src = r.logo_url; $('#lg-logo').hidden = false; $('#lg-ini').hidden = true; }
+  view('v-login');
+}
+boot();

@@ -11,6 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const GRAPH = "https://graph.facebook.com/v23.0";
 const SITE = "https://boralanchar.com.br";
+const planRobo = (plan: string) => ["Profissional", "Completo"].includes(String(plan || ""));
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -262,7 +263,7 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
   // marca como lida (os dois tracinhos azuis)
   if (msg.id) graph(token, `/${bot.phone_number_id}/messages`, { method: "POST", body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: msg.id }) }).catch(() => {});
 
-  if (!bot.enabled) return;
+  if (!bot.enabled || !planRobo(R.plan)) return; // robô só nos planos Profissional e Completo
   if (conv.human_until && new Date(conv.human_until).getTime() > Date.now()) return; // atendente da loja está cuidando
 
   const t = norm(text);
@@ -373,11 +374,13 @@ async function handleWebhook(raw: string, sig: string) {
 async function notify(orderId: number, status: string) {
   const { data: o } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (!o || o.status !== status || !ST[status] || status === "pagamento") return { skipped: "status" };
+  if (o.mode === "mesa") return { skipped: "pedido na mesa" };
   const { data: bot } = await admin.from("whatsapp_bots").select("*").eq("restaurant_id", o.restaurant_id).maybeSingle();
   if (!bot || !bot.enabled || !bot.notify_status || !bot.phone_number_id) return { skipped: "robô desligado" };
   const sec = await secretsFor(o.restaurant_id);
   if (!sec.wa_token) return { skipped: "sem token" };
   const { data: R } = await admin.from("restaurants").select("*").eq("id", o.restaurant_id).single();
+  if (!planRobo(R.plan)) return { skipped: "plano sem robô" };
 
   let d = digits(o.customer_phone); if (d.length <= 11) d = "55" + d;
   const tail = d.slice(-8);
@@ -423,6 +426,7 @@ async function ownerRestaurant(req: Request) {
 async function ownerAction(req: Request, action: string, body: Row) {
   const R = await ownerRestaurant(req);
   if (!R) return json({ error: "Entre de novo no painel para continuar." }, 401);
+  if (action !== "account" && !planRobo(R.plan)) return json({ error: "O robô de atendimento faz parte dos planos Profissional e Completo." }, 403);
   await admin.from("whatsapp_bots").upsert({ restaurant_id: R.id }, { onConflict: "restaurant_id", ignoreDuplicates: true });
   const { data: bot } = await admin.from("whatsapp_bots").select("*").eq("restaurant_id", R.id).single();
   const sec = await secretsFor(R.id);

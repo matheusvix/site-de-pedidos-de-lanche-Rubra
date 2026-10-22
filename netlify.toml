@@ -9,6 +9,12 @@
     X-Frame-Options = "SAMEORIGIN"
 
 [[headers]]
+  for = "/garcom.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
   for = "/admin.html"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
@@ -29,6 +35,11 @@
   for = "/assets/video/*"
   [headers.values]
     Cache-Control = "public, max-age=2592000"
+
+[[redirects]]
+  from = "/garcom"
+  to = "/garcom.html"
+  status = 200
 
 [[redirects]]
   from = "/admin"

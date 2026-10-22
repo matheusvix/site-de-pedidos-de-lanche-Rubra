@@ -20,6 +20,11 @@ let P = {};               // produtos por id
 let cart = [];            // [{pid, qty, note, opts:[ids]}]
 let sellable = false;
 let GEO = null;           // localização do cliente {lat,lng}
+let MESA = null;          // pedido na mesa pelo QR Code {token,label}
+let CP = null;            // cupom aplicado {code,kind,value,label}
+let LOY = { enabled: false }; // fidelidade da loja e do cliente
+const MESA_TOKEN = new URLSearchParams(location.search).get('mesa');
+const plano = (f) => !!(R && window.BoraPlanos && window.BoraPlanos.has(R.plan, f));
 const isOpen = () => H.openNow(R);
 
 const toastEl = $('.toast'); let tt;
@@ -55,6 +60,13 @@ async function load() {
 
   document.title = `${r.name} · Cardápio digital`;
   if (!sellable) return state(`${r.name}`, 'Este cardápio está temporariamente indisponível. Fale direto com a loja.');
+  if (MESA_TOKEN) {
+    const { data: t } = await sb.rpc('table_info', { p_slug: slug, p_token: MESA_TOKEN });
+    if (t) { MESA = { token: MESA_TOKEN, label: t.label }; KEY = 'bora-cart-' + slug + '-mesa'; LAST = 'bora-last-' + slug + '-mesa'; try { cart = (JSON.parse(localStorage.getItem(KEY) || '[]') || []).filter((l) => P[l.pid] && P[l.pid].available); } catch (_) { cart = []; } }
+    else toast('Este QR Code de mesa não está ativo. Você pode pedir normalmente.');
+  }
+  if (plano('cupons') && !MESA) { try { const s0 = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); const { data } = await sb.rpc('loyalty_status', { p_slug: slug, p_phone: s0.tel || '' }); if (data) LOY = data; } catch (_) {} }
+  if (plano('inbox')) initChat();
   renderHeader();
   renderMenu();
   renderCart();
@@ -92,6 +104,8 @@ function renderHeader() {
   if (R.segment) tags.push(`<span class="chip hot">${esc(R.segment)}</span>`);
   if (Number(R.min_order) > 0) tags.push(`<span class="chip">Pedido mínimo ${brl(R.min_order)}</span>`);
   if (R.accepts_pickup) tags.push('<span class="chip">Retirada no balcão</span>');
+  if (LOY.enabled && Number(LOY.reward) > 0) tags.push(`<span class="chip loyal-chip">🎁 A cada ${LOY.goal} pedidos, ganhe ${brl(LOY.reward)}</span>`);
+  const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>Mesa ${esc(MESA.label)}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.`;
   $('#s-tags').innerHTML = tags.join('');
   const n = $('#s-notice');
   n.hidden = st.open;
@@ -255,13 +269,13 @@ function lineTotal(l) { return unitPrice(l.pid, l.opts) * l.qty; }
 function totals(modo = 'entrega') {
   const sub = cart.reduce((s, l) => s + lineTotal(l), 0);
   let fee = 0;
-  if (modo === 'entrega' && sub > 0 && R.accepts_delivery) fee = zones().length ? (!$('#v-checkout').hidden ? deliveryQuote().fee : null) : Number(R.delivery_fee);
+  if (modo === 'entrega' && !MESA && sub > 0 && R.accepts_delivery) fee = zones().length ? (!$('#v-checkout').hidden ? deliveryQuote().fee : null) : Number(R.delivery_fee);
   return { sub, fee, total: sub + (fee || 0), count: cart.reduce((s, l) => s + l.qty, 0) };
 }
 function cartHTML() {
   const t = totals();
   if (!cart.length) return `<div class="cart-head"><h2>Sua sacola</h2></div><div class="cart-body"><div class="cart-empty"><svg width="34" height="34"><use href="#i-bag"/></svg><b>Sacola vazia</b><span>Escolha algo no cardápio para começar.</span></div></div>`;
-  const min = Number(R.min_order); const open = isOpen();
+  const min = MESA ? 0 : Number(R.min_order); const open = isOpen();
   return `<div class="cart-head"><h2>Sua sacola</h2><button class="link" type="button" data-clear>Limpar</button></div>
     <div class="cart-body">${cart.map((l, i) => { const ol = optLabels(l.pid, l.opts); return `<div class="line"><div class="line-info"><b>${esc(P[l.pid].name)}</b>${ol.length ? `<small class="opts">${ol.map(esc).join(' · ')}</small>` : ''}${l.note ? `<small>Obs.: ${esc(l.note)}</small>` : ''}
       <div class="qty"><button type="button" data-l="${i}" data-d="-1" aria-label="Menos">−</button><span>${l.qty}</span><button type="button" data-l="${i}" data-d="1" aria-label="Mais">+</button></div></div>
@@ -269,7 +283,7 @@ function cartHTML() {
     <div class="cart-foot">
       ${min > 0 && t.sub < min ? `<div class="progress">Faltam ${brl(min - t.sub)} para o pedido mínimo<i style="--p:${Math.min(100, t.sub / min * 100)}%"></i></div>` : ''}
       <div class="sum"><span>Subtotal</span><span class="price">${brl(t.sub)}</span></div>
-      ${R.accepts_delivery ? `<div class="sum"><span>Taxa de entrega</span><span class="price">${t.fee == null ? `<small>${esc(feeSummary())}</small>` : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : ''}
+      ${R.accepts_delivery && !MESA ? `<div class="sum"><span>Taxa de entrega</span><span class="price">${t.fee == null ? `<small>${esc(feeSummary())}</small>` : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : ''}
       <div class="sum total"><span>Total${t.fee == null ? ' sem entrega' : ''}</span><span class="price">${brl(t.total)}</span></div>
       <button class="btn btn-primary btn-block" type="button" data-checkout ${!open || (min > 0 && t.sub < min) ? 'disabled' : ''}>${open ? 'Continuar' : 'Loja fechada agora'}</button>
     </div>`;
@@ -304,8 +318,15 @@ document.addEventListener('click', (e) => { const g = e.target.closest('[data-go
 
 /* ---------- checkout ---------- */
 const co = $('#checkout');
-const modo = () => (co.modo.value || (R.accepts_delivery ? 'entrega' : 'retirada'));
+const modo = () => (MESA ? 'mesa' : co.modo.value || (R.accepts_delivery ? 'entrega' : 'retirada'));
 function prepareCheckout() {
+  // mesa: só nome; sem entrega e sem pagamento agora
+  $('#box-mesa').hidden = !MESA; $('#box-pag').hidden = !!MESA;
+  if (MESA) { $('#h-mesa').textContent = `Mesa ${MESA.label}`; $('#box-modo').hidden = true; $('#box-end').hidden = true; $('#box-ret').hidden = true; }
+  co.tel.required = !MESA; co.tel.closest('.field').querySelector('label').textContent = MESA ? 'WhatsApp (opcional)' : 'WhatsApp';
+  $('#box-promo').hidden = !(plano('cupons') && !MESA);
+  $('#ly-box').hidden = true; renderCoupon(); checkLoyalty();
+  if (MESA) { try { const s = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); if (s.nome && !co.nome.value) co.nome.value = s.nome; if (s.tel && !co.tel.value) co.tel.value = s.tel; } catch (_) {} syncCheckout(); return; }
   $('#opt-ent').hidden = !R.accepts_delivery; $('#opt-ret').hidden = !R.accepts_pickup;
   if (!R.accepts_delivery) co.modo.value = 'retirada';
   if (!R.accepts_pickup) co.modo.value = 'entrega';
@@ -330,7 +351,20 @@ function prepareCheckout() {
   } catch (_) {}
   syncCheckout();
 }
+function discountOf(t) {
+  let d = 0;
+  if (CP) d = CP.kind === 'percent' ? Math.round(t.sub * CP.value) / 100 : CP.kind === 'fixed' ? Math.min(CP.value, t.sub) : (t.fee || 0);
+  if (LOY.useReward && LOY.rewards > 0) d += Math.min(Number(LOY.reward), t.sub + (t.fee || 0) - d);
+  return Math.max(0, Math.min(d, t.sub + (t.fee || 0)));
+}
 function syncCheckout() {
+  if (MESA) {
+    const t = totals('mesa');
+    $('#resumo').innerHTML = cart.map((l) => { const ol = optLabels(l.pid, l.opts); return `<div><span>${l.qty}× ${esc(P[l.pid].name)}${ol.length ? `<small>${ol.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(lineTotal(l))}</span></div>`; }).join('')
+      + `<div style="font-weight:800;font-size:16px"><span style="color:var(--ink)">Total deste pedido</span><span class="price">${brl(t.sub)}</span></div>`;
+    $('#confirm-total').textContent = brl(t.sub); $('#confirm span').textContent = 'Enviar para a cozinha'; $('#confirm').disabled = false;
+    return;
+  }
   const ent = modo() === 'entrega';
   $('#box-end').hidden = !ent; $('#box-ret').hidden = ent;
   $$('#box-end input[required], #box-end select').forEach((i) => { i.disabled = !ent; });
@@ -345,19 +379,63 @@ function syncCheckout() {
     fl.innerHTML = q.out ? esc(q.label) : `${q.label ? esc(q.label) + ' · ' : ''}${q.pending && R.delivery_mode === 'bairro' ? '' : `Taxa <b>${q.fee > 0 ? brl(q.fee) : 'grátis'}</b>${q.time ? ` · chega em ${esc(q.time)}` : ''}`}`;
   }
   const t = totals(modo());
+  const disc = discountOf(t); const total = t.total - disc;
   $('#resumo').innerHTML = cart.map((l) => { const ol = optLabels(l.pid, l.opts); return `<div><span>${l.qty}× ${esc(P[l.pid].name)}${ol.length ? `<small>${ol.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(lineTotal(l))}</span></div>`; }).join('')
     + `<div><span>Subtotal</span><span class="price">${brl(t.sub)}</span></div>`
     + (ent ? `<div><span>Taxa de entrega</span><span class="price">${q.out || (q.pending && R.delivery_mode === 'bairro') ? '—' : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : '')
-    + `<div style="font-weight:800;font-size:16px"><span style="color:var(--ink)">Total</span><span class="price">${brl(t.total)}</span></div>`;
-  $('#confirm-total').textContent = brl(t.total);
-  $('#confirm span').textContent = co.pag.value === 'pix' && R.pix_key ? 'Ir para o pagamento' : 'Confirmar pedido';
+    + (disc > 0 ? `<div class="disc"><span>Desconto${CP ? ` (${esc(CP.code)})` : ''}${LOY.useReward ? ' · prêmio fidelidade' : ''}</span><span class="price">− ${brl(disc)}</span></div>` : '')
+    + `<div style="font-weight:800;font-size:16px"><span style="color:var(--ink)">Total</span><span class="price">${brl(total)}</span></div>`;
+  $('#confirm-total').textContent = brl(total);
+  $('#confirm span').textContent = co.pag.value === 'pix' && R.pix_key && total > 0 ? 'Ir para o pagamento' : 'Confirmar pedido';
   $('#confirm').disabled = ent && !!q.out;
 }
 co.addEventListener('change', syncCheckout);
 co.tel.addEventListener('input', (e) => {
   const d = e.target.value.replace(/\D/g, '').slice(0, 11);
   e.target.value = d.length > 6 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : d.length > 2 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d;
+  if (d.length >= 10) checkLoyalty();
 });
+
+/* ---------- cupom e fidelidade (planos Profissional e Completo) ---------- */
+function renderCoupon() {
+  $('#cp-ok').hidden = !CP; $('#cp-err').textContent = '';
+  if (CP) $('#cp-ok').innerHTML = `🎟️ Cupom <b>${esc(CP.code)}</b> aplicado: ${esc(CP.label)} <button class="link" type="button" id="cp-rm">remover</button>`;
+  $('#cp-apply').textContent = CP ? 'Trocar' : 'Aplicar';
+}
+$('#cp-apply').addEventListener('click', async () => {
+  const code = $('#c-cupom').value.trim().toUpperCase(); $('#cp-err').textContent = '';
+  if (!code) { $('#cp-err').textContent = 'Digite o código do cupom.'; return; }
+  const t = totals(modo()); const b = $('#cp-apply'); b.disabled = true;
+  const { data, error } = await sb.rpc('check_coupon', { p_slug: slug, p_code: code, p_subtotal: t.sub, p_fee: t.fee || 0, p_phone: co.tel.value });
+  b.disabled = false;
+  if (error || !data) { $('#cp-err').textContent = 'Não foi possível conferir o cupom agora.'; return; }
+  if (!data.ok) { CP = null; renderCoupon(); $('#cp-err').textContent = data.error; syncCheckout(); return; }
+  CP = { code: data.code, kind: data.kind, value: Number(data.value), label: data.label };
+  renderCoupon(); syncCheckout(); toast('Cupom aplicado!');
+});
+$('#c-cupom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#cp-apply').click(); } });
+$('#cp-ok').addEventListener('click', (e) => { if (e.target.id === 'cp-rm') { CP = null; $('#c-cupom').value = ''; renderCoupon(); syncCheckout(); } });
+let lyTimer = null;
+function checkLoyalty() {
+  if (!LOY.enabled || MESA) { $('#ly-box').hidden = true; return; }
+  clearTimeout(lyTimer);
+  lyTimer = setTimeout(async () => {
+    const tel = co.tel.value.replace(/\D/g, '');
+    if (tel.length >= 10) { const { data } = await sb.rpc('loyalty_status', { p_slug: slug, p_phone: tel }); if (data && data.enabled) { const use = LOY.useReward; LOY = { ...data, useReward: use && data.rewards > 0 }; } }
+    renderLoyalty(tel.length >= 10);
+  }, 350);
+}
+function renderLoyalty(known) {
+  const box = $('#ly-box'); box.hidden = false;
+  const goal = LOY.goal || 10, st = Math.min(LOY.stamps || 0, goal);
+  const dots = Array.from({ length: goal }, (_, i) => `<i class="${i < st ? 'on' : ''}"></i>`).join('');
+  box.innerHTML = `<div class="loyal-head"><b>🎁 Cartão fidelidade</b><small>${known ? `${st} de ${goal} pedidos` : 'Informe seu WhatsApp para ver seus selos'}</small></div>
+    <div class="loyal-dots" aria-hidden="true">${dots}</div>
+    <small class="loyal-txt">A cada ${goal} pedidos entregues${Number(LOY.min) > 0 ? ` (a partir de ${brl(LOY.min)})` : ''}, você ganha ${brl(LOY.reward)} de desconto.</small>
+    ${LOY.rewards > 0 ? `<label class="loyal-use"><input type="checkbox" id="ly-use" ${LOY.useReward ? 'checked' : ''}> <span>Usar meu prêmio de <b>${brl(LOY.reward)}</b> neste pedido${LOY.rewards > 1 ? ` (você tem ${LOY.rewards})` : ''}</span></label>` : ''}`;
+  const u = $('#ly-use'); if (u) u.onchange = () => { LOY.useReward = u.checked; syncCheckout(); };
+  syncCheckout();
+}
 
 /* localização do cliente (entrega por distância) */
 function setGeo(lat, lng, how) {
@@ -397,6 +475,7 @@ co.addEventListener('submit', async (e) => {
   $$('input[required], select[name="zone"]', co).forEach((i) => {
     if (i.disabled || i.closest('[hidden]')) return;
     const v = i.value.trim();
+    if (MESA && i.name === 'tel' && !v) { i.parentElement.querySelector('.err').textContent = ''; return; }
     const msg = !v ? (i.name === 'zone' ? 'Escolha o bairro.' : 'Campo obrigatório.') : (i.name === 'tel' && v.replace(/\D/g, '').length < 10 ? 'Informe um WhatsApp com DDD.' : '');
     i.parentElement.querySelector('.err').textContent = msg;
     if (msg && !bad) bad = i;
@@ -410,7 +489,10 @@ co.addEventListener('submit', async (e) => {
   const troco = co.pag.value === 'dinheiro' ? parseFloat(co.troco.value.replace(',', '.')) : NaN;
   const btn = $('#confirm'); btn.disabled = true;
   try { localStorage.setItem('bora-cliente', JSON.stringify({ nome: co.nome.value.trim(), tel: co.tel.value, rua: co.rua.value, num: co.num.value, bairro: byZone ? '' : co.bairro.value, zone: byZone ? co.zone.value : '', comp: co.comp.value })); } catch (_) {}
-  const customer = { name: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: Number.isFinite(troco) ? String(troco) : '', notes: co.obs.value.trim() };
+  const customer = MESA ? { table: MESA.token, name: co.nome.value.trim(), phone: co.tel.value, notes: co.obs.value.trim() }
+    : { name: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: Number.isFinite(troco) ? String(troco) : '', notes: co.obs.value.trim() };
+  if (!MESA && CP) customer.coupon = CP.code;
+  if (!MESA && LOY.useReward && LOY.rewards > 0) customer.use_reward = 'true';
   if (ent && byZone) customer.zone = co.zone.value;
   if (ent && GEO) { customer.lat = GEO.lat.toFixed(6); customer.lng = GEO.lng.toFixed(6); }
   const { data, error } = await sb.rpc('place_order', {
@@ -419,7 +501,8 @@ co.addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
-  const order = { ...data, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  const order = { ...data, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  CP = null; LOY.useReward = false; $('#c-cupom').value = '';
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';
   if (data.status === 'pagamento') { showPay(data.public_id, order); return; }
@@ -442,16 +525,18 @@ async function showTrack(publicId, order) {
   $('#t-num').textContent = `Pedido #${order.number}`;
   $('#t-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? ` <small style="color:var(--muted-2)">(${esc(i.note)})</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
     + (order.mode === 'entrega' ? `<div><span>Entrega${order.delivery_info ? ` <small>${esc(order.delivery_info)}</small>` : ''}</span><span class="price">${Number(order.fee) > 0 ? brl(order.fee) : 'Grátis'}</span></div>` : '')
-    + `<div style="font-weight:800"><span style="color:var(--ink)">Total</span><span class="price">${brl(order.total)}</span></div>`;
+    + (Number(order.discount) > 0 ? `<div class="disc"><span>Desconto</span><span class="price">− ${brl(order.discount)}</span></div>` : '')
+    + `<div style="font-weight:800"><span style="color:var(--ink)">${order.mode === 'mesa' ? 'Total deste pedido (pague na conta da mesa)' : 'Total'}</span><span class="price">${brl(order.total)}</span></div>`;
   renderPix(order, publicId);
   const wa = (R.whatsapp || '').replace(/\D/g, '');
   const waBtn = $('#t-wa');
-  waBtn.hidden = !wa;
+  waBtn.hidden = !wa || order.mode === 'mesa';
   if (wa) waBtn.href = `https://wa.me/${waNum(wa)}?text=${encodeURIComponent(waText(order))}`;
-  const ent = order.mode === 'entrega';
-  const STEPS = [['novo', 'Pedido enviado', 'A loja já recebeu seu pedido.'], ['preparo', 'Em preparo', 'Seu pedido está sendo feito.'],
-    ent ? ['saiu', 'Saiu para entrega', 'O entregador está a caminho.'] : ['pronto', 'Pronto para retirar', 'Pode vir buscar no balcão.'],
-    ['entregue', ent ? 'Entregue' : 'Retirado', 'Bom apetite!']];
+  const ent = order.mode === 'entrega', mesa = order.mode === 'mesa';
+  const STEPS = [['novo', 'Pedido enviado', mesa ? `A cozinha já recebeu o pedido da mesa ${order.mesa || ''}.` : 'A loja já recebeu seu pedido.'], ['preparo', 'Em preparo', 'Seu pedido está sendo feito.'],
+    ent ? ['saiu', 'Saiu para entrega', 'O entregador está a caminho.'] : mesa ? ['pronto', 'Pronto', 'Já já chega na sua mesa.'] : ['pronto', 'Pronto para retirar', 'Pode vir buscar no balcão.'],
+    ['entregue', ent ? 'Entregue' : mesa ? 'Servido' : 'Retirado', 'Bom apetite!']];
+  $('#again').textContent = mesa ? 'Pedir mais alguma coisa' : 'Fazer outro pedido';
   const ORDER = { novo: 0, preparo: 1, pronto: 2, saiu: 2, entregue: 3 };
   const render = (st) => {
     if (st === 'cancelado') {
@@ -492,6 +577,7 @@ async function showPay(publicId, order) {
   $('#p-amount').textContent = brl(order.total);
   $('#p-items').innerHTML = (order.items || []).map((i) => `<div><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(i.price * i.qty)}</span></div>`).join('')
     + (order.mode === 'entrega' ? `<div><span>Entrega</span><span class="price">${Number(order.fee) > 0 ? brl(order.fee) : 'Grátis'}</span></div>` : '')
+    + (Number(order.discount) > 0 ? `<div class="disc"><span>Desconto</span><span class="price">− ${brl(order.discount)}</span></div>` : '')
     + `<div style="font-weight:800"><span style="color:var(--ink)">Total</span><span class="price">${brl(order.total)}</span></div>`;
   $('#p-qr').innerHTML = '<span class="spin" aria-label="Gerando o Pix"></span>'; $('#p-copy').disabled = true; $('#p-code').textContent = '';
   // loja com Mercado Pago conectado: Pix gerado por lá (confirmação automática)
@@ -568,5 +654,49 @@ document.addEventListener('click', (e) => {
   go('menu'); renderResume();
 });
 $('#again').addEventListener('click', () => { clearInterval(poll); history.replaceState(null, '', location.pathname + location.search); go('menu'); renderResume(); });
+
+/* ---------- chat com a loja (caixa de entrada única, planos Profissional e Completo) ---------- */
+let CHAT = null, chatPoll = null, chatSeen = 0;
+const dChat = $('#d-chat');
+function initChat() {
+  CHAT = { token: localStorage.getItem('bora-chat-' + slug), msgs: [] };
+  try { chatSeen = +localStorage.getItem('bora-chat-seen-' + slug) || 0; } catch (_) {}
+  $('#chat-btn').hidden = false; $('#ch-title').textContent = `Fale com ${R.name}`;
+  if (CHAT.token) { fetchChat(); setInterval(() => { if (!dChat.open && !document.hidden) fetchChat(); }, 45000); }
+}
+async function fetchChat() {
+  if (!CHAT || !CHAT.token) return;
+  const { data } = await sb.rpc('site_chat_fetch', { p_token: CHAT.token });
+  CHAT.msgs = data || []; renderChat();
+}
+function renderChat() {
+  const box = $('#ch-msgs');
+  box.innerHTML = CHAT.msgs.length ? CHAT.msgs.map((m) => `<div class="cm ${m.sender === 'loja' ? 'in' : 'out'}">${esc(m.body).replace(/\n/g, '<br>')}<small>${new Date(m.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('')
+    : `<p class="chat-hello">Olá! 👋 Mande sua dúvida sobre o cardápio, entrega ou um pedido. A ${esc(R.name)} responde por aqui.</p>`;
+  box.scrollTop = box.scrollHeight;
+  $('#ch-who').hidden = !!CHAT.token;
+  const fromStore = CHAT.msgs.filter((m) => m.sender === 'loja').length;
+  if (dChat.open) { chatSeen = fromStore; try { localStorage.setItem('bora-chat-seen-' + slug, chatSeen); } catch (_) {} }
+  $('#chat-dot').hidden = fromStore <= chatSeen;
+}
+$('#chat-btn').addEventListener('click', () => {
+  try { const s = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); if (s.nome && !$('#ch-name').value) $('#ch-name').value = s.nome; if (s.tel && !$('#ch-tel').value) $('#ch-tel').value = s.tel; } catch (_) {}
+  renderChat(); dChat.showModal(); fetchChat();
+  clearInterval(chatPoll); chatPoll = setInterval(() => { if (dChat.open) fetchChat(); else clearInterval(chatPoll); }, 5000);
+});
+dChat.addEventListener('click', (e) => { if (e.target === dChat || e.target.closest('[data-chclose]')) dChat.close(); });
+$('#ch-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); $('#ch-err').textContent = '';
+  const body = $('#ch-text').value.trim(); if (!body) return;
+  if (!CHAT.token && !$('#ch-name').value.trim()) { $('#ch-err').textContent = 'Escreva seu nome para a loja saber quem é.'; $('#ch-name').focus(); return; }
+  const token = CHAT.token || (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  const b = $('#ch-form [type=submit]'); b.disabled = true;
+  const { data, error } = await sb.rpc('site_chat_send', { p_slug: slug, p_token: token, p_name: $('#ch-name').value.trim(), p_phone: $('#ch-tel').value.trim(), p_body: body });
+  b.disabled = false;
+  if (error) { $('#ch-err').textContent = (error.message || 'Não foi possível enviar.').replace(/^.*?:\s*/, ''); return; }
+  if (!CHAT.token) { CHAT.token = token; try { localStorage.setItem('bora-chat-' + slug, token); } catch (_) {} }
+  $('#ch-text').value = ''; CHAT.msgs = data || []; renderChat();
+});
+$('#ch-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#ch-form').requestSubmit(); } });
 
 load();

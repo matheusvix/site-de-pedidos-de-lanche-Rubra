@@ -11,7 +11,7 @@ const sb = window.supabase && CFG.supabaseUrl ? window.supabase.createClient(CFG
 
 const PLANS = {
   Essencial: { price: 39.99, desc: 'Para começar a vender online', feats: ['Cardápio digital e QR Code', 'Pedidos ilimitados', 'Pagamento online'] },
-  Profissional: { price: 59.99, desc: 'Atendimento no automático', feats: ['Tudo do Essencial', 'Atendente automático no WhatsApp', 'Caixa de entrada única', 'Cupons e fidelidade'] },
+  Profissional: { price: 59.99, desc: 'Atendimento no automático', feats: ['Tudo do Essencial', 'Robô de atendimento no WhatsApp', 'Caixa de entrada única', 'Cupons e fidelidade'] },
   Completo: { price: 79.99, desc: 'Delivery, salão e gestão', feats: ['Tudo do Profissional', 'App do garçom e mesas', 'Estoque e financeiro', 'Suporte prioritário'] },
 };
 const params = new URLSearchParams(location.search);

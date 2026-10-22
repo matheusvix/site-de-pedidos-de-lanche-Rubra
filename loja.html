@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="/assets/loja.css?v=8">
+<link rel="stylesheet" href="/assets/loja.css?v=9">
 </head>
 <body>
 
@@ -20,6 +20,7 @@
   <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-bag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></g></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h4.5v-5.5h3V20H18V9.5"/></g></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></g></symbol>
@@ -45,6 +46,7 @@
       </div>
     </div>
     <p class="notice" id="s-notice" hidden></p>
+    <p class="mesa-banner" id="s-mesa" hidden></p>
     <button class="resume" type="button" id="resume" hidden><span id="resume-txt"></span><b>Ver pedido ›</b></button>
     <details class="info" id="s-info">
       <summary><span>Sobre a loja, horários e contato</span><svg width="18" height="18"><use href="#i-down"/></svg></summary>
@@ -92,6 +94,11 @@
       </div>
     </section>
 
+    <section class="card mesa-box" id="box-mesa" hidden>
+      <h2 id="h-mesa"></h2>
+      <p>Seu pedido vai direto para a cozinha. Você paga tudo junto no final, na conta da mesa.</p>
+    </section>
+
     <section class="card" id="box-end" aria-labelledby="h-end">
       <h2 id="h-end">Endereço de entrega</h2>
       <div class="row2">
@@ -115,7 +122,7 @@
       <p id="ret-end" style="color:var(--muted)"></p>
     </section>
 
-    <section class="card" aria-labelledby="h-pag">
+    <section class="card" id="box-pag" aria-labelledby="h-pag">
       <h2 id="h-pag">Pagamento</h2>
       <div class="pay">
         <label id="pay-pix"><input type="radio" name="pag" value="pix" checked><span><b>Pix</b><small id="pag-pix">A loja envia a chave Pix pelo WhatsApp</small></span></label>
@@ -124,6 +131,15 @@
       </div>
       <div class="field" id="box-troco" hidden><label for="c-troco">Troco para quanto? (opcional)</label><input id="c-troco" name="troco" inputmode="decimal" placeholder="Ex.: 100"><span class="err"></span></div>
       <div class="field"><label for="c-obs">Observação para a loja (opcional)</label><input id="c-obs" name="obs" maxlength="300" placeholder="Ex.: tocar o interfone"></div>
+    </section>
+
+    <section class="card" id="box-promo" aria-labelledby="h-promo" hidden>
+      <h2 id="h-promo">Cupom e fidelidade</h2>
+      <div class="cp-wrap" id="cp-box">
+        <div class="field"><label for="c-cupom">Tem cupom de desconto?</label><div class="coupon-row"><input id="c-cupom" maxlength="20" autocomplete="off" placeholder="Digite o código" style="text-transform:uppercase"><button class="btn btn-ghost" type="button" id="cp-apply">Aplicar</button></div><span class="err" id="cp-err"></span></div>
+        <p class="coupon-ok" id="cp-ok" hidden></p>
+      </div>
+      <div class="loyal" id="ly-box" hidden></div>
     </section>
 
     <section class="card" aria-labelledby="h-res">
@@ -190,6 +206,17 @@
   </div>
 </div>
 
+<button class="chat-btn" type="button" id="chat-btn" hidden aria-label="Falar com a loja"><svg width="22" height="22" aria-hidden="true"><use href="#i-chat"/></svg><span>Falar com a loja</span><b class="chat-dot" id="chat-dot" hidden></b></button>
+<dialog id="d-chat" aria-labelledby="ch-title">
+  <form class="chat" id="ch-form" novalidate>
+    <div class="chat-head"><div><h2 id="ch-title">Fale com a loja</h2><small id="ch-sub">A loja responde por aqui</small></div><button class="x" type="button" data-chclose aria-label="Fechar"><svg width="20" height="20"><use href="#i-x"/></svg></button></div>
+    <div class="chat-msgs" id="ch-msgs"></div>
+    <div class="chat-who" id="ch-who"><input id="ch-name" maxlength="80" placeholder="Seu nome" autocomplete="name"><input id="ch-tel" type="tel" inputmode="tel" maxlength="20" placeholder="WhatsApp (opcional)" autocomplete="tel"></div>
+    <div class="chat-send"><textarea id="ch-text" rows="2" maxlength="1000" placeholder="Escreva sua mensagem…"></textarea><button class="btn btn-primary" type="submit">Enviar</button></div>
+    <p class="err" id="ch-err" role="alert"></p>
+  </form>
+</dialog>
+
 <div class="bagbar" id="bagbar"><button class="btn btn-primary" type="button" id="open-bag"><span class="count" id="bb-count">0</span><span>Ver sacola</span><span class="price" id="bb-total">R$ 0,00</span></button></div>
 
 <dialog id="d-prod" aria-labelledby="pd-title"><form class="pd" method="dialog" id="pd-form"></form></dialog>
@@ -201,6 +228,7 @@
 <script defer src="/assets/horario.js?v=5"></script>
 <script defer src="/assets/vendor/qr.js"></script>
 <script defer src="/assets/pix.js?v=6"></script>
-<script defer src="/assets/loja.js?v=9"></script>
+<script defer src="/assets/planos.js?v=1"></script>
+<script defer src="/assets/loja.js?v=10"></script>
 </body>
 </html>

@@ -153,7 +153,8 @@ function startApp() {
   loadMenu();
   loadOrders();
   subscribe();
-  if (window.BoraRobo) window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
+  if (window.BoraRecursos) window.BoraRecursos.start(); // recursos por plano (assets/recursos.js)
+  if (window.BoraRobo && window.BoraPlanos.has(R.plan, 'robo')) window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
   const aba = new URLSearchParams(location.search).get('aba');
   if (aba && document.querySelector(`.p-tabs [data-tab="${CSS.escape(aba)}"]`)) selectTab(aba);
   if (new URLSearchParams(location.search).has('bemvindo')) {
@@ -174,6 +175,7 @@ $('#open-toggle').addEventListener('change', async (e) => {
 function selectTab(t) {
   $$('.p-tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== t; });
+  if (window.BoraRecursos) window.BoraRecursos.onTab(t);
 }
 $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 
@@ -213,7 +215,7 @@ $('#pending').addEventListener('click', async (e) => {
 });
 setInterval(() => { if (PENDING.length) { PENDING = PENDING.filter(isPending); renderPending(); } }, 60000);
 const ST = { novo: 'Novo', preparo: 'Em preparo', pronto: 'Pronto', saiu: 'Saiu para entrega', entregue: 'Entregue', cancelado: 'Cancelado' };
-const PAG = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro' };
+const PAG = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro', mesa: 'Na conta da mesa' };
 async function loadOrders() {
   const since = new Date(Date.now() - 3 * 86400000).toISOString();
   const { data } = await sb.from('orders').select('*').eq('restaurant_id', R.id).gte('created_at', since).order('created_at', { ascending: false }).limit(200);
@@ -236,28 +238,30 @@ function renderOrders(freshId) {
 }
 function orderCard(o, fresh) {
   const t = new Date(o.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  const ent = o.mode === 'entrega';
+  const ent = o.mode === 'entrega', mesa = o.mode === 'mesa';
   const next = {
     novo: [['preparo', 'Aceitar e preparar', 'btn-primary'], ['cancelado', 'Recusar', 'btn-ghost']],
-    preparo: [ent ? ['saiu', 'Saiu para entrega', 'btn-primary'] : ['pronto', 'Pronto para retirar', 'btn-primary']],
-    pronto: [['entregue', 'Retirado', 'btn-primary']],
+    preparo: [ent ? ['saiu', 'Saiu para entrega', 'btn-primary'] : ['pronto', mesa ? 'Pronto para servir' : 'Pronto para retirar', 'btn-primary']],
+    pronto: [['entregue', mesa ? 'Servido' : 'Retirado', 'btn-primary']],
     saiu: [['entregue', 'Entregue', 'btn-primary']],
   }[o.status] || [];
-  return `<article class="ord st-${o.status} ${fresh ? 'fresh' : ''}" data-id="${o.id}">
-    <div class="ord-head"><div><h3>#${o.number} · ${esc(o.customer_name)}</h3><small>${t} · ${ent ? 'Entrega' : 'Retirada'}</small></div><span class="ord-st ${o.status}">${ST[o.status]}</span></div>
+  const how = mesa ? `<b class="ord-mesa">${esc(o.delivery_info || 'Mesa')}</b>` : ent ? 'Entrega' : 'Retirada';
+  return `<article class="ord st-${o.status} ${mesa ? 'is-mesa' : ''} ${fresh ? 'fresh' : ''}" data-id="${o.id}">
+    <div class="ord-head"><div><h3>#${o.number} · ${esc(o.customer_name)}</h3><small>${t} · ${how}</small></div><span class="ord-st ${o.status}">${mesa && o.status === 'pronto' ? 'Pronto p/ servir' : mesa && o.status === 'entregue' ? 'Servido' : ST[o.status]}</span></div>
     <ul class="ord-items">${(o.items || []).map((i) => `<li><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small class="ord-opts">${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></li>`).join('')}</ul>
     <div class="ord-info">
       ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
       ${ent && o.delivery_info ? `<span><b>Entrega:</b> ${esc(o.delivery_info)}</span>` : ''}
       <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}${o.payment === 'pix' ? (o.paid ? ' <em class="paid yes">Pix recebido ✓</em>' : o.pix_informed_at ? ` <em class="paid">Cliente pagou às ${new Date(o.pix_informed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: confira no app do banco</em>` : ' <em class="paid">Aguardando Pix: confira no app do banco</em>') : ''}</span>
-      <span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>
+      ${o.customer_phone ? `<span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>` : ''}
+      ${Number(o.discount) > 0 ? `<span><b>Desconto:</b> −${brl(o.discount)}${o.coupon_code ? ` (cupom ${esc(o.coupon_code)})` : ''}${o.reward_used ? ' (prêmio fidelidade)' : ''}</span>` : ''}
       ${o.notes ? `<span><b>Obs.:</b> ${esc(o.notes)}</span>` : ''}
     </div>
     <div class="ord-total"><span>Total${Number(o.fee) > 0 ? ` (com entrega ${brl(o.fee)})` : ''}</span><span>${brl(o.total)}</span></div>
     <div class="ord-acts">
       ${next.map(([s, l, c]) => `<button class="btn ${c}" type="button" data-st="${s}">${l}</button>`).join('')}
       ${o.payment === 'pix' && o.status !== 'cancelado' ? `<button class="btn ${o.paid ? 'btn-ghost' : 'btn-outline'}" type="button" data-paid="${o.paid ? 0 : 1}">${o.paid ? 'Desfazer Pix recebido' : 'Pix recebido'}</button>` : ''}
-      <a class="btn wa" href="${waCustomer(o)}" target="_blank" rel="noopener"><svg width="18" height="18"><use href="#i-wa"/></svg>Cliente</a>
+      ${digits(o.customer_phone).length >= 10 ? `<a class="btn wa" href="${waCustomer(o)}" target="_blank" rel="noopener"><svg width="18" height="18"><use href="#i-wa"/></svg>Cliente</a>` : ''}
       <button class="btn btn-ghost" type="button" data-print>Imprimir</button>
     </div></article>`;
 }
@@ -303,8 +307,8 @@ function printOrder(o) {
   w.document.write(`<html><head><title>Pedido #${o.number}</title><style>body{font:14px monospace;padding:12px;width:300px}h1{font-size:18px;margin:0 0 6px}hr{border:0;border-top:1px dashed #000}td{vertical-align:top}</style></head><body>
     <h1>${esc(R.name)}</h1><b>Pedido #${o.number}</b><br>${new Date(o.created_at).toLocaleString('pt-BR')}<hr>
     <table style="width:100%">${(o.items || []).map((i) => `<tr><td>${i.qty}x ${esc(i.name)}${(i.opts || []).map((t) => `<br>&nbsp; ${esc(t)}`).join('')}${i.note ? `<br><i>${esc(i.note)}</i>` : ''}</td><td style="text-align:right">${brl(i.price * i.qty)}</td></tr>`).join('')}</table><hr>
-    ${Number(o.fee) > 0 ? `Entrega: ${brl(o.fee)}<br>` : ''}<b>TOTAL: ${brl(o.total)}</b><br>Pagamento: ${PAG[o.payment]}${o.change_for ? ` (troco p/ ${brl(o.change_for)})` : ''}<hr>
-    ${esc(o.customer_name)} · ${esc(o.customer_phone)}<br>${o.mode === 'entrega' ? esc(o.address) : 'RETIRADA NO BALCÃO'}${o.notes ? `<br>Obs.: ${esc(o.notes)}` : ''}
+    ${Number(o.fee) > 0 ? `Entrega: ${brl(o.fee)}<br>` : ''}${Number(o.discount) > 0 ? `Desconto: -${brl(o.discount)}<br>` : ''}<b>TOTAL: ${brl(o.total)}</b><br>Pagamento: ${PAG[o.payment] || esc(o.payment)}${o.change_for ? ` (troco p/ ${brl(o.change_for)})` : ''}<hr>
+    ${esc(o.customer_name)}${o.customer_phone ? ' · ' + esc(o.customer_phone) : ''}<br>${o.mode === 'entrega' ? esc(o.address) : o.mode === 'mesa' ? esc((o.delivery_info || 'MESA').toUpperCase()) : 'RETIRADA NO BALCÃO'}${o.notes ? `<br>Obs.: ${esc(o.notes)}` : ''}
     <script>print();<\/script></body></html>`);
   w.document.close();
 }
@@ -312,6 +316,7 @@ function subscribe() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel('pedidos-' + R.id)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${R.id}` }, (p) => {
+      if (window.BoraRecursos) window.BoraRecursos.onOrder(p.new);
       const known = ORDERS.some((o) => o.id === p.new.id);
       if (isPending(p.new)) { // pedido esperando o Pix
         if (!PENDING.some((o) => o.id === p.new.id)) { PENDING.unshift(p.new); renderPending(); if (!R.pix_auto) toast(`${p.new.customer_name} está pagando um pedido no Pix.`); }
@@ -477,6 +482,7 @@ function openProduct(p, catId) {
   setPhoto(photo.url); $('#pd-file').value = '';
   OPTS = JSON.parse(JSON.stringify((p && p.options) || []));
   renderOpts();
+  if (window.BoraRecursos) window.BoraRecursos.recipeOpen(p);
   dlg.showModal();
 }
 dlg.addEventListener('click', (e) => { if (e.target === dlg || e.target.closest('[data-close]')) dlg.close(); });
@@ -518,9 +524,10 @@ pf.addEventListener('submit', async (e) => {
   }
   const row = { name: name.slice(0, 80), description: pf.description.value.trim().slice(0, 300) || null, price, available: pf.available.checked,
     category_id: pf.category_id.value ? +pf.category_id.value : null, image_url, options: cleanOpts() };
-  const q = editing ? sb.from('products').update(row).eq('id', editing.id)
-    : sb.from('products').insert({ ...row, restaurant_id: R.id, position: PRODS.length + 1 });
-  const { error } = await q;
+  const q = editing ? sb.from('products').update(row).eq('id', editing.id).select('id').single()
+    : sb.from('products').insert({ ...row, restaurant_id: R.id, position: PRODS.length + 1 }).select('id').single();
+  const { data: saved, error } = await q;
+  if (!error && saved && window.BoraRecursos) await window.BoraRecursos.recipeSave(saved.id);
   btn.disabled = false; btn.textContent = 'Salvar produto';
   if (error) { $('#pd-err').textContent = 'Não foi possível salvar. Confira os dados.'; return; }
   dlg.close(); toast(editing ? 'Produto atualizado.' : 'Produto adicionado ao cardápio.'); await loadMenu();
@@ -589,7 +596,11 @@ function fillStore() {
   renderIdentity(); renderOpenLabel(); renderGeo(); renderDelivery(); renderWeek(); renderLink();
   const plan = $('#plan-box');
   const st = R.status === 'ativo' ? 'Plano ativo' : R.status === 'suspenso' ? 'Loja pausada' : canSell() ? `Teste grátis · ${daysLeft()} dia(s) restante(s)` : 'Teste encerrado';
-  plan.innerHTML = `<b>Plano ${esc(R.plan)}</b><span>${st}</span><a href="${waSupport(`Olá! Quero falar sobre o plano da loja ${R.name} (${R.slug}).`)}" target="_blank" rel="noopener">Falar com o BoraLanchar!</a>`;
+  const prio = window.BoraPlanos.has(R.plan, 'prioritario');
+  plan.innerHTML = `<b>Plano ${esc(R.plan)}</b><span>${st}</span>`
+    + (prio ? `<a class="prio" href="${waSupport(`[PRIORITÁRIO] Olá! Sou da loja ${R.name} (${R.slug}), plano Completo, e preciso de ajuda.`)}" target="_blank" rel="noopener">⚡ Suporte prioritário</a>`
+      : `<a href="${waSupport(`Olá! Quero falar sobre o plano da loja ${R.name} (${R.slug}).`)}" target="_blank" rel="noopener">Falar com o BoraLanchar!</a>`)
+    + (R.plan !== 'Completo' ? `<a href="assinar.html?plano=${R.plan === 'Essencial' ? 'profissional' : 'completo'}">Conhecer o plano ${R.plan === 'Essencial' ? 'Profissional' : 'Completo'}</a>` : '');
 }
 sf().description.addEventListener('input', (e) => { $('#desc-count').textContent = e.target.value.length; });
 

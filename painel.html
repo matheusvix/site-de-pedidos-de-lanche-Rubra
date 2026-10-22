@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=13">
+<link rel="stylesheet" href="assets/painel.css?v=15">
 </head>
 <body class="adm">
 
@@ -84,8 +84,13 @@
   <nav class="p-tabs" role="tablist" aria-label="Seções do painel">
     <button role="tab" aria-selected="true" data-tab="pedidos">Pedidos <b class="p-count" id="new-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="cardapio">Cardápio</button>
+    <button role="tab" aria-selected="false" data-tab="mesas" data-feat="mesas">Mesas <b class="p-count" id="mesas-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="mensagens" data-feat="inbox">Mensagens <b class="p-count" id="inbox-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="cupons" data-feat="cupons">Cupons e fidelidade</button>
+    <button role="tab" aria-selected="false" data-tab="estoque" data-feat="estoque">Estoque <b class="p-count" id="estoque-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="financeiro" data-feat="estoque">Financeiro</button>
+    <button role="tab" aria-selected="false" data-tab="robo" data-feat="robo">Robô WhatsApp <b class="p-count" id="robo-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="loja">Minha loja</button>
-    <button role="tab" aria-selected="false" data-tab="robo">Robô WhatsApp <b class="p-count" id="robo-count" hidden>0</b></button>
   </nav>
 
   <main class="adm-main">
@@ -114,6 +119,142 @@
         </div>
       </div>
       <div id="menu-editor"></div>
+    </section>
+
+    <!-- MENSAGENS (caixa de entrada única) -->
+    <section data-panel="mensagens" data-feat="inbox" hidden>
+      <div class="adm-head">
+        <div><h1>Mensagens</h1><p class="adm-muted">Todas as conversas num lugar só: WhatsApp (pelo robô) e o chat do seu cardápio digital. Responda daqui mesmo.</p></div>
+        <div class="adm-seg" role="group" aria-label="Canal">
+          <button type="button" data-ich="todos" aria-pressed="true">Todas</button>
+          <button type="button" data-ich="site" aria-pressed="false">Chat do cardápio</button>
+          <button type="button" data-ich="wa" aria-pressed="false">WhatsApp</button>
+        </div>
+      </div>
+      <div class="mbox">
+        <div class="p-card inbox-list-card">
+          <div class="inbox-channels"><span class="ch on">Chat do cardápio</span><span class="ch" id="ich-wa">WhatsApp</span><span class="ch soon">Instagram · em breve</span><span class="ch soon">Facebook · em breve</span></div>
+          <div class="inbox-list" id="inbox-list"></div>
+        </div>
+        <div class="p-card inbox-thread" id="inbox-thread">
+          <div class="inbox-empty" id="inbox-empty"><b>Escolha uma conversa</b><span class="adm-muted">As mensagens novas aparecem aqui na hora, com som.</span></div>
+          <div id="inbox-open" hidden>
+            <div class="robo-thread-head">
+              <button class="btn btn-ghost" type="button" id="it-back" aria-label="Voltar para a lista">←</button>
+              <div><b id="it-name"></b><small id="it-sub"></small></div>
+              <a class="btn btn-outline" id="it-wa" target="_blank" rel="noopener" hidden><svg width="16" height="16"><use href="#i-wa"/></svg>WhatsApp</a>
+            </div>
+            <div class="robo-msgs" id="it-msgs"></div>
+            <form class="robo-reply" id="it-form"><textarea id="it-text" rows="2" maxlength="1000" placeholder="Escreva sua resposta…"></textarea><button class="btn btn-primary" type="submit">Enviar</button></form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUPONS E FIDELIDADE -->
+    <section data-panel="cupons" data-feat="cupons" hidden>
+      <div class="adm-head"><div><h1>Cupons e fidelidade</h1><p class="adm-muted">Crie cupons de desconto para divulgar e dê um prêmio para quem pede sempre. O cliente usa tudo direto no cardápio.</p></div></div>
+      <div class="rx-grid">
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Cupons de desconto</h2><button class="btn btn-primary" type="button" id="cp-new">Novo cupom</button></div>
+          <div id="cp-list" class="rx-list"></div>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Cartão fidelidade</h2><span class="mp-state" id="ly-state">Desligado</span></div>
+          <p class="adm-muted">Funciona como o cartãozinho de carimbo: a cada pedido entregue o cliente ganha um selo pelo número do WhatsApp. Quando completa, ganha o prêmio e usa no próximo pedido.</p>
+          <form class="form" id="ly-form" novalidate>
+            <label class="open-switch rx-switch"><input type="checkbox" name="loyalty_enabled"><span class="sw" aria-hidden="true"></span><b>Fidelidade ligada</b></label>
+            <div class="row2">
+              <div class="field"><label for="ly-goal">Pedidos para ganhar</label><input id="ly-goal" name="loyalty_goal" inputmode="numeric" placeholder="10"><small class="adm-muted">Ex.: 10 = "compre 10, ganhe 1"</small></div>
+              <div class="field"><label for="ly-reward">Valor do prêmio (R$)</label><input id="ly-reward" name="loyalty_reward" inputmode="decimal" placeholder="30,00"><small class="adm-muted">Desconto no pedido do prêmio</small></div>
+            </div>
+            <div class="field"><label for="ly-min">Valor mínimo do pedido para ganhar selo (R$)</label><input id="ly-min" name="loyalty_min" inputmode="decimal" placeholder="0,00"></div>
+            <button class="btn btn-primary" type="submit">Salvar fidelidade</button>
+          </form>
+          <h3 class="rx-sub">Clientes fiéis</h3>
+          <div id="ly-list" class="rx-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MESAS E GARÇOM -->
+    <section data-panel="mesas" data-feat="mesas" hidden>
+      <div class="adm-head">
+        <div><h1>Mesas</h1><p class="adm-muted">Cada mesa tem o seu QR Code: o cliente pede pelo celular e o pedido chega aqui marcado com a mesa. O garçom também lança pedidos pelo app dele e fecha a conta.</p></div>
+        <div class="adm-actions"><button class="btn btn-outline" type="button" id="ms-print">Imprimir QR Codes</button><button class="btn btn-primary" type="button" id="ms-add">Nova mesa</button></div>
+      </div>
+      <div class="ms-grid" id="ms-grid"></div>
+      <div class="rx-grid">
+        <div class="p-card">
+          <div class="rx-card-head"><h2>App do garçom</h2></div>
+          <p class="adm-muted">O garçom abre este link no celular dele e entra com o PIN. Ele vê as mesas, lança pedidos que vão direto para a cozinha e fecha a conta.</p>
+          <div class="copy-row"><code id="gc-link"></code><button class="btn btn-ghost" type="button" id="gc-copy">Copiar</button></div>
+          <div class="rx-card-head"><h3 class="rx-sub">Garçons</h3><button class="btn btn-outline" type="button" id="wt-add">Novo garçom</button></div>
+          <div id="wt-list" class="rx-list"></div>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Contas fechadas hoje</h2></div>
+          <div id="ms-closed" class="rx-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESTOQUE -->
+    <section data-panel="estoque" data-feat="estoque" hidden>
+      <div class="adm-head">
+        <div><h1>Estoque</h1><p class="adm-muted">Cadastre os insumos e diga quanto cada produto gasta (ficha técnica, na tela do produto). A cada pedido aceito o estoque baixa sozinho.</p></div>
+        <div class="adm-actions"><button class="btn btn-primary" type="button" id="st-add">Novo insumo</button></div>
+      </div>
+      <section class="adm-kpis" aria-label="Resumo do estoque">
+        <div class="adm-kpi"><span>Insumos cadastrados</span><b id="sk-n">0</b></div>
+        <div class="adm-kpi kpi-bad"><span>Abaixo do mínimo</span><b id="sk-low">0</b></div>
+        <div class="adm-kpi"><span>Valor em estoque</span><b id="sk-val">R$ 0,00</b></div>
+      </section>
+      <div class="field adm-search st-search"><label for="st-q">Buscar insumo</label><input id="st-q" type="search" placeholder="Ex.: pão, queijo, bacon"></div>
+      <div class="adm-table-wrap">
+        <table class="adm-table st-table"><thead><tr><th>Insumo</th><th>Em estoque</th><th>Mínimo</th><th>Custo</th><th><span class="sr-only">Ações</span></th></tr></thead><tbody id="st-rows"></tbody></table>
+        <p class="adm-empty" id="st-empty" hidden>Nenhum insumo ainda. Comece por "Novo insumo".</p>
+      </div>
+      <h2 class="rx-h2">Últimas movimentações</h2>
+      <div class="adm-table-wrap">
+        <table class="adm-table"><thead><tr><th>Quando</th><th>Insumo</th><th>Movimento</th><th>Motivo</th></tr></thead><tbody id="st-moves"></tbody></table>
+        <p class="adm-empty" id="st-moves-empty" hidden>Sem movimentações ainda.</p>
+      </div>
+    </section>
+
+    <!-- FINANCEIRO -->
+    <section data-panel="financeiro" data-feat="estoque" hidden>
+      <div class="adm-head">
+        <div><h1>Financeiro</h1><p class="adm-muted">Vendas, despesas e caixa da loja. Os números vêm dos pedidos do sistema.</p></div>
+        <div class="adm-seg" role="group" aria-label="Período">
+          <button type="button" data-fp="hoje" aria-pressed="true">Hoje</button>
+          <button type="button" data-fp="7" aria-pressed="false">7 dias</button>
+          <button type="button" data-fp="30" aria-pressed="false">30 dias</button>
+          <button type="button" data-fp="mes" aria-pressed="false">Este mês</button>
+        </div>
+      </div>
+      <section class="adm-kpis fin-kpis" aria-label="Resumo do período">
+        <div class="adm-kpi"><span>Faturamento</span><b id="fk-total">R$ 0,00</b><small id="fk-orders">0 pedidos</small></div>
+        <div class="adm-kpi"><span>Ticket médio</span><b id="fk-ticket">R$ 0,00</b></div>
+        <div class="adm-kpi"><span>Custo dos produtos (CMV)</span><b id="fk-cmv">R$ 0,00</b><small>pela ficha técnica</small></div>
+        <div class="adm-kpi"><span>Despesas</span><b id="fk-exp">R$ 0,00</b></div>
+        <div class="adm-kpi kpi-good"><span>Lucro estimado</span><b id="fk-profit">R$ 0,00</b></div>
+      </section>
+      <div class="rx-grid">
+        <div class="p-card"><h2>Vendas por dia</h2><div class="fin-bars" id="fin-days"></div></div>
+        <div class="p-card"><h2>Por forma de pagamento</h2><div id="fin-pay" class="fin-split"></div><h3 class="rx-sub">Por canal</h3><div id="fin-mode" class="fin-split"></div><p class="adm-muted" id="fin-extra"></p></div>
+      </div>
+      <div class="rx-grid">
+        <div class="p-card"><h2>Mais vendidos</h2><div id="fin-top" class="rx-list"></div></div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Caixa</h2><span class="mp-state" id="cx-state">Fechado</span></div>
+          <div id="cx-body"></div>
+        </div>
+      </div>
+      <div class="p-card">
+        <div class="rx-card-head"><h2>Despesas</h2><button class="btn btn-outline" type="button" id="ex-add">Lançar despesa</button></div>
+        <div id="ex-list" class="rx-list"></div>
+      </div>
     </section>
 
     <!-- LOJA -->
@@ -284,7 +425,7 @@
     </section>
 
     <!-- ROBÔ WHATSAPP -->
-    <section data-panel="robo" hidden>
+    <section data-panel="robo" data-feat="robo" hidden>
       <div class="adm-head">
         <div><h1>Robô do WhatsApp</h1><p class="adm-muted">Atendimento automático 24 horas no WhatsApp da loja: manda o cardápio, responde horário, entrega e pagamento, avisa o cliente quando o pedido muda de status e chama você quando o cliente pede um atendente.</p></div>
       </div>
@@ -420,11 +561,26 @@
         <button class="btn btn-outline" type="button" data-addgroup="choose">+ Escolha obrigatória</button>
       </div>
     </div>
+    <div class="opt-editor recipe-editor" id="recipe-box" hidden>
+      <div><b>Ficha técnica (estoque)</b><p class="adm-muted">Quanto deste produto sai do estoque a cada unidade vendida.</p></div>
+      <div id="recipe-rows"></div>
+      <div class="opt-add"><button class="btn btn-outline" type="button" id="recipe-add">+ Insumo</button></div>
+    </div>
     <p class="err" id="pd-err" role="alert"></p>
     <div class="adm-dialog-actions">
       <button class="btn btn-ghost adm-danger" type="button" id="pd-delete">Excluir</button>
       <button class="btn btn-primary" type="submit" id="pd-save">Salvar produto</button>
     </div>
+  </form>
+</dialog>
+
+<!-- janela genérica dos recursos (cupom, mesa, insumo, garçom, despesa) -->
+<dialog id="rx-dialog" aria-labelledby="rx-title">
+  <form class="modal" id="rx-form" novalidate>
+    <div class="modal-head"><div><h2 id="rx-title"></h2><p class="adm-muted" id="rx-sub"></p></div><button class="close" type="button" data-rxclose aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button></div>
+    <div id="rx-body" class="rx-body"></div>
+    <p class="err" id="rx-err" role="alert"></p>
+    <div class="adm-dialog-actions" id="rx-actions"></div>
   </form>
 </dialog>
 
@@ -435,7 +591,9 @@
 <script defer src="assets/pix.js?v=6"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/horario.js?v=5"></script>
-<script defer src="assets/painel.js?v=16"></script>
-<script defer src="assets/robo.js?v=1"></script>
+<script defer src="assets/planos.js?v=1"></script>
+<script defer src="assets/painel.js?v=17"></script>
+<script defer src="assets/robo.js?v=2"></script>
+<script defer src="assets/recursos.js?v=2"></script>
 </body>
 </html>

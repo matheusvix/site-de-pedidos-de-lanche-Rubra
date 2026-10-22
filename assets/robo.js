@@ -201,6 +201,7 @@ window.BoraRobo = (() => {
 
   async function start() {
     if (started || typeof R === 'undefined' || !R) return;
+    if (window.BoraPlanos && !window.BoraPlanos.has(R.plan, 'robo')) return; // robô só nos planos Profissional e Completo
     started = true;
     let { data } = await sb.from('whatsapp_bots').select('*').eq('restaurant_id', R.id).maybeSingle();
     BOT = data || { restaurant_id: R.id, enabled: false, faq: [], notify_status: true, human_minutes: 120 };
