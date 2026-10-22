@@ -351,29 +351,7 @@ async function loadMenu() {
   CATS = cats || []; PRODS = prods || [];
   renderMenu();
 }
-async function genMissing() {
-  const list = PRODS.filter((p) => !p.image_url);
-  if (!list.length) return toast('Todos os produtos já têm foto.');
-  if (!confirm(`Criar fotos profissionais para ${list.length} produto(s) sem foto?\n\nLeva uns 10 segundos por produto. Depois você pode trocar qualquer uma.`)) return;
-  const b = $('#ai-all'); b.disabled = true; let ok = 0;
-  for (const [i, p] of list.entries()) {
-    b.textContent = `Criando ${i + 1} de ${list.length}…`;
-    const r = await aiImage(p.name, p.description || '');
-    if (r.error) { toast(r.error); if (/limite|ativada/i.test(r.error)) break; continue; }
-    const path = `${R.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-    const up = await sb.storage.from('produtos').upload(path, r.blob, { contentType: 'image/jpeg', upsert: false });
-    if (up.error) continue;
-    const url = sb.storage.from('produtos').getPublicUrl(path).data.publicUrl;
-    const { error } = await sb.from('products').update({ image_url: url }).eq('id', p.id);
-    if (!error) { p.image_url = url; ok++; renderMenu(); }
-  }
-  b.disabled = false; b.textContent = '✨ Gerar fotos que faltam';
-  if (ok) toast(`${ok} foto(s) criada(s). Confira no cardápio.`);
-  renderMenu();
-}
-$('#ai-all').addEventListener('click', genMissing);
 function renderMenu() {
-  $('#ai-all').hidden = !PRODS.some((p) => !p.image_url);
   const blocks = CATS.map((c, i) => {
     const items = PRODS.filter((p) => p.category_id === c.id);
     return `<section class="cat-block" data-cat="${c.id}">
@@ -487,11 +465,7 @@ function cleanOpts() {
 /* ---------- produto (formulário) ---------- */
 const dlg = $('#prod-dialog'); const pf = $('#prod-form');
 let editing = null, photo = { url: null, blob: null, removed: false };
-function setPhoto(url) {
-  $('#pd-photo').classList.remove('loading');
-  $('#pd-photo').innerHTML = url ? `<img src="${esc(url)}" alt="">` : '<span>Sem foto</span>'; $('#pd-rmphoto').hidden = !url;
-  $('#pd-ai').textContent = url ? '✨ Gerar outra foto' : '✨ Gerar foto profissional';
-}
+function setPhoto(url) { $('#pd-photo').innerHTML = url ? `<img src="${esc(url)}" alt="">` : '<span>Sem foto</span>'; $('#pd-rmphoto').hidden = !url; }
 function openProduct(p, catId) {
   editing = p || null; photo = { url: p ? p.image_url : null, blob: null, removed: false };
   $('#pd-title').textContent = p ? 'Editar produto' : 'Novo produto';
@@ -500,8 +474,7 @@ function openProduct(p, catId) {
   pf.category_id.innerHTML = CATS.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('') + '<option value="">Sem categoria</option>';
   pf.category_id.value = p ? (p.category_id || '') : (catId || '');
   $('#pd-delete').hidden = !p; $('#pd-err').textContent = '';
-  setPhoto(photo.url); $('#pd-file').value = ''; aiJob = null; aiFor = '';
-  $('#pd-ai-note').textContent = 'Digite o nome do produto e a foto é criada sozinha, com cara de estúdio.';
+  setPhoto(photo.url); $('#pd-file').value = '';
   OPTS = JSON.parse(JSON.stringify((p && p.options) || []));
   renderOpts();
   dlg.showModal();
@@ -530,45 +503,8 @@ function resize(file, max, square) {
     }; img.onerror = rej; img.src = URL.createObjectURL(file);
   });
 }
-/* ---------- foto gerada por IA (função foto-produto) ---------- */
-let aiJob = null, aiFor = '';
-async function aiImage(name, description) {
-  if (!sb.functions) return { error: 'indisponível' };
-  const { data, error } = await sb.functions.invoke('foto-produto', { body: { name, description, restaurant_id: R.id } });
-  if (error) { let msg = 'Não consegui gerar a foto agora. Tente de novo em instantes.'; try { const j = await error.context.json(); msg = j.error || msg; } catch (_) {} return { error: msg }; }
-  if (!data || !data.image) return { error: 'Não consegui gerar a foto agora. Tente de novo em instantes.' };
-  const blob = await (await fetch(data.image)).blob();
-  return { blob: await resize(blob, 900), remaining: data.remaining };
-}
-function genPhoto(auto) {
-  const name = pf.name.value.trim();
-  if (name.length < 3) { if (!auto) { toast('Digite o nome do produto primeiro.'); pf.name.focus(); } return null; }
-  if (aiJob) return aiJob;
-  aiFor = name.toLowerCase();
-  const box = $('#pd-photo'), btn = $('#pd-ai');
-  box.classList.add('loading'); box.innerHTML = '<i class="ai-spin" aria-hidden="true"></i><span>Criando a foto…</span>';
-  btn.disabled = true; $('#pd-ai-note').textContent = 'Leva uns 10 segundos. Pode continuar preenchendo.';
-  aiJob = (async () => {
-    const r = await aiImage(name, pf.description.value.trim());
-    btn.disabled = false; aiJob = null;
-    if (!dlg.open) return;
-    if (r.error) { setPhoto(photo.removed ? null : (photo.blob ? URL.createObjectURL(photo.blob) : photo.url)); $('#pd-ai-note').textContent = r.error; if (!auto) toast(r.error); return; }
-    photo.blob = r.blob; photo.removed = false; setPhoto(URL.createObjectURL(r.blob));
-    $('#pd-ai-note').textContent = 'Foto criada por IA a partir do nome. Confira se parece com o seu produto; se não gostar, gere outra ou envie a sua.'
-      + (r.remaining != null ? ` (${r.remaining} restantes este mês)` : '');
-  })();
-  return aiJob;
-}
-$('#pd-ai').addEventListener('click', () => genPhoto(false));
-// automático: ao terminar de digitar o nome de um produto sem foto
-pf.name.addEventListener('change', () => {
-  const n = pf.name.value.trim().toLowerCase();
-  if (!photo.blob && !photo.url && n.length >= 3 && n !== aiFor) genPhoto(true);
-});
-
 pf.addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (aiJob) { $('#pd-save').disabled = true; $('#pd-save').textContent = 'Terminando a foto…'; await aiJob; $('#pd-save').disabled = false; $('#pd-save').textContent = 'Salvar produto'; }
   const name = pf.name.value.trim(), price = num(pf.price.value);
   if (!name) { $('#pd-err').textContent = 'Dê um nome ao produto.'; return; }
   if (!(price >= 0) || !pf.price.value.trim()) { $('#pd-err').textContent = 'Informe o preço.'; return; }
