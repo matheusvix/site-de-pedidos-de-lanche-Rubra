@@ -46,7 +46,7 @@ create policy "dono ve suas assinaturas" on public.subscription_payments for sel
 grant select on public.subscription_payments to authenticated;
 
 create or replace function public.plan_price(p text) returns numeric language sql immutable set search_path = public as $$
-  select case p when 'Essencial' then 39.99 when 'Profissional' then 59.99 when 'Completo' then 79.99 end::numeric; $$;
+  select case p when 'Essencial' then 59.99 when 'Profissional' then 89.99 when 'Completo' then 119.99 end::numeric; $$;
 
 create or replace function public.start_subscription(p_plan text, p_method text)
 returns jsonb language plpgsql security definer set search_path = public as $$

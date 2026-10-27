@@ -54,7 +54,7 @@ Para adicionar outro administrador: convide o e-mail em *Authentication › User
 
 Em `assets/config.js`, informe também o `whatsapp` comercial (DDI + DDD + número, só dígitos).
 
-Depois substitua os textos entre colchetes (`[00 mil]` etc.). Os preços ficam em `data-m` / `data-a` no `index.html` (Essencial R$ 39,99, Profissional R$ 59,99, Completo R$ 79,99; teste grátis de 7 dias). O vídeo de demonstração fica em `assets/video/` (MP4 + capa) e toca direto na seção "Veja na prática".
+Depois substitua os textos entre colchetes (`[00 mil]` etc.). Os preços ficam em `data-m` / `data-a` no `index.html` (Essencial R$ 59,99, Profissional R$ 89,99, Completo R$ 119,99; teste grátis de 7 dias). O vídeo de demonstração fica em `assets/video/` (MP4 + capa) e toca direto na seção "Veja na prática".
 
 ## Rodar localmente
 

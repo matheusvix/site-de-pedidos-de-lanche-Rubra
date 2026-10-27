@@ -368,7 +368,7 @@ function selectATab(t) {
 document.querySelectorAll('[data-atab]').forEach((b) => b.addEventListener('click', () => selectATab(b.dataset.atab)));
 
 /* ---------- clientes (lojas com conta no sistema) ---------- */
-const PRICE = { Essencial: 39.99, Profissional: 59.99, Completo: 79.99 };
+const PRICE = { Essencial: 59.99, Profissional: 89.99, Completo: 119.99 };
 const brl = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const SITE = (CFG.siteUrl || location.origin).replace(/\/$/, '');
 let clients = [], cFilter = '';
