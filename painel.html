@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=17">
+<link rel="stylesheet" href="assets/painel.css?v=18">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -90,6 +90,7 @@
   <nav class="p-tabs" role="tablist" aria-label="Seções do painel">
     <button role="tab" aria-selected="true" data-tab="pedidos">Pedidos <b class="p-count" id="new-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="desempenho">Desempenho</button>
+    <button role="tab" aria-selected="false" data-tab="relatorios">Relatórios</button>
     <button role="tab" aria-selected="false" data-tab="entregas" data-feat="entregas">Entregas <b class="p-count" id="entregas-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="cardapio">Cardápio</button>
     <button role="tab" aria-selected="false" data-tab="mesas" data-feat="mesas">Mesas <b class="p-count" id="mesas-count" hidden>0</b></button>
@@ -130,10 +131,12 @@
       <div class="adm-head">
         <div><h1>Cardápio</h1><p class="adm-muted">Organize por categorias. O que você salvar aparece no seu cardápio na hora.</p></div>
         <div class="adm-actions">
+          <button class="btn btn-ghost" type="button" id="mass-open">Edição em massa</button>
           <button class="btn btn-outline" type="button" id="add-cat">Nova categoria</button>
           <button class="btn btn-primary" type="button" id="add-prod">Novo produto</button>
         </div>
       </div>
+      <div class="p-card menu-score" id="menu-score" hidden></div>
       <div id="menu-editor"></div>
     </section>
 
@@ -272,6 +275,27 @@
         <div class="p-card"><h2>De onde vêm os pedidos</h2><div id="dp-source" class="fin-split"></div></div>
       </div>
       <div class="p-card"><h2>Melhores dias da semana</h2><div class="fin-bars" id="dp-week"></div></div>
+    </section>
+
+    <!-- RELATÓRIOS -->
+    <section data-panel="relatorios" hidden>
+      <div class="adm-head">
+        <div><h1>Relatórios</h1><p class="adm-muted">Clientes, vendas, itens, entregas e o caminho do cliente no cardápio.</p></div>
+        <div class="adm-seg" role="group" aria-label="Período">
+          <button type="button" data-rp="7" aria-pressed="false">7 dias</button>
+          <button type="button" data-rp="30" aria-pressed="true">30 dias</button>
+          <button type="button" data-rp="90" aria-pressed="false">90 dias</button>
+        </div>
+      </div>
+      <nav class="rep-tabs" role="tablist" aria-label="Relatório">
+        <button type="button" role="tab" data-rt="clientes" aria-selected="true">Clientes</button>
+        <button type="button" role="tab" data-rt="vendas" aria-selected="false">Vendas</button>
+        <button type="button" role="tab" data-rt="itens" aria-selected="false">Itens</button>
+        <button type="button" role="tab" data-rt="entregas" aria-selected="false">Entregas</button>
+        <button type="button" role="tab" data-rt="equipe" aria-selected="false">Garçons e cupons</button>
+        <button type="button" role="tab" data-rt="funil" aria-selected="false">Funil do cardápio</button>
+      </nav>
+      <div id="rep-body"><p class="adm-empty">Carregando…</p></div>
     </section>
 
     <!-- ESTOQUE -->
@@ -415,6 +439,9 @@
                 </div>
               </div>
               <div class="field"><label for="f-min">Pedido mínimo (R$)</label><input id="f-min" name="min_order" inputmode="decimal" placeholder="0,00"></div>
+              <h3 style="margin-top:8px">Na finalização do pedido</h3>
+              <label class="check"><input type="checkbox" name="allow_notes"> <span>Cliente pode escrever uma observação para a loja</span></label>
+              <label class="check"><input type="checkbox" name="ask_cutlery"> <span>Perguntar se o cliente quer talheres e guardanapos</span></label>
             </div>
 
             <!-- HORÁRIO -->
@@ -632,7 +659,12 @@
       <div class="field"><label for="pd-price">Preço (R$)</label><input id="pd-price" name="price" inputmode="decimal" required placeholder="0,00"></div>
       <div class="field"><label for="pd-cat">Categoria</label><select id="pd-cat" name="category_id"></select></div>
     </div>
+    <div class="row2">
+      <div class="field"><label for="pd-promo">Preço promocional (opcional)</label><input id="pd-promo" name="promo_price" inputmode="decimal" placeholder="Ex.: 19,90"><small class="adm-muted">O preço normal aparece riscado.</small></div>
+      <div class="field"><span class="field-label">Dias em que vende</span><div class="day-chips" id="pd-days"></div><small class="adm-muted">Sem nenhum marcado = todos os dias.</small></div>
+    </div>
     <label class="check"><input type="checkbox" name="available" checked> <span>Disponível para venda</span></label>
+    <label class="check"><input type="checkbox" name="featured"> <span>Mostrar em Destaques no topo do cardápio</span></label>
     <div class="opt-editor">
       <div><b>Opções do produto</b><p class="adm-muted">O cliente toca para tirar ingredientes, colocar adicionais ou escolher (ex.: ponto da carne).</p></div>
       <div id="opt-groups"></div>
@@ -674,11 +706,13 @@
 <script defer src="assets/horario.js?v=5"></script>
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
-<script defer src="assets/painel.js?v=19"></script>
+<script defer src="assets/painel.js?v=20"></script>
 <script defer src="assets/robo.js?v=2"></script>
 <script defer src="assets/recursos.js?v=3"></script>
-<script defer src="assets/pdv.js?v=1"></script>
+<script defer src="assets/pdv.js?v=2"></script>
 <script defer src="assets/desempenho.js?v=1"></script>
+<script defer src="assets/cardapio-extra.js?v=1"></script>
+<script defer src="assets/relatorios.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 <script defer src="/assets/olhinho.js?v=1"></script>
 </body>

@@ -52,6 +52,11 @@ async function load() {
     sb.from('categories').select('*').eq('restaurant_id', r.id).order('position').order('id'),
     sb.from('products').select('*').eq('restaurant_id', r.id).order('position').order('id'),
   ]);
+  const dow = H.spNow().d;
+  (prods || []).forEach((p) => {
+    if (p.promo_price != null && Number(p.promo_price) < Number(p.price)) { p.old_price = Number(p.price); p.price = Number(p.promo_price); }
+    if (p.available && Array.isArray(p.days) && p.days.length && !p.days.includes(dow)) { p.available = false; p.offday = p.days.slice().sort().map((d) => H.CURTO[d]).join(', '); }
+  });
   P = Object.fromEntries((prods || []).map((p) => [p.id, p]));
   CATS = (cats || []).map((c) => ({ ...c, items: (prods || []).filter((p) => p.category_id === c.id) }));
   const loose = (prods || []).filter((p) => !p.category_id || !(cats || []).some((c) => c.id === p.category_id));
@@ -71,6 +76,7 @@ async function load() {
   renderHeader();
   renderMenu();
   renderCart();
+  if (!MESA) track('visit');
   $('#v-state').hidden = true; $('#v-menu').hidden = false;
   setInterval(() => { renderHeader(); renderCart(); }, 60000);
 
@@ -110,7 +116,7 @@ function renderHeader() {
   $('#s-tags').innerHTML = tags.join('');
   const n = $('#s-notice');
   n.hidden = st.open;
-  if (!st.open) n.textContent = `${st.text.replace(/^Fechado ·\s*/, 'A loja está fechada e ')}. Você já pode olhar o cardápio${/abre/.test(st.text) ? '' : ', mas os pedidos voltam quando ela abrir'}.`.replace('fechada e abre', 'fechada agora e abre');
+  if (!st.open) n.textContent = `${st.text.replace(/^Fechado ·\s*/, 'A loja está fechada e ')}. ${canSchedule() ? 'Você já pode agendar o seu pedido' : `Você já pode olhar o cardápio${/abre/.test(st.text) ? '' : ', mas os pedidos voltam quando ela abrir'}`}.`.replace('fechada e abre', 'fechada agora e abre');
 
   // sobre / horários / contato
   $('#s-desc').hidden = !R.description; $('#s-desc').textContent = R.description || '';
@@ -136,19 +142,32 @@ function thumb(p) {
   return `<span class="thumb ph" aria-hidden="true">${esc(p.name.charAt(0).toUpperCase())}</span>`;
 }
 
+function prodBtn(i) {
+  return `<button class="prod" type="button" data-prod="${i.id}" ${i.available ? '' : 'disabled style="opacity:.55"'}>
+          <div class="prod-info"><b>${esc(i.name)}</b>${i.description ? `<p>${esc(i.description)}</p>` : ''}
+            <div class="prod-foot"><span class="price">${i.old_price ? `<s class="old">${brl(i.old_price)}</s> ` : ''}${brl(i.price)}</span>${i.old_price && i.available ? '<span class="badge promo">Promoção</span>' : ''}${(i.options || []).length && i.available ? '<span class="badge soft">Personalizável</span>' : ''}${i.available ? '' : `<span class="badge">${i.offday ? `Só ${esc(i.offday)}` : 'Esgotado'}</span>`}</div></div>
+          ${thumb(i)}
+        </button>`;
+}
+function againHTML() {
+  if (MESA) return '';
+  let last = null;
+  try { const id = localStorage.getItem(LAST); last = id && JSON.parse(localStorage.getItem('bora-order-' + id) || 'null'); } catch (_) {}
+  const lines = (last && last.cart || []).filter((l) => P[l.pid] && P[l.pid].available);
+  if (!lines.length) return '';
+  const names = lines.map((l) => `${l.qty}× ${P[l.pid].name}`).join(', ');
+  return `<section class="again" aria-label="Peça de novo"><div><b>Peça de novo</b><small>${esc(names)}</small></div><button class="btn btn-outline" type="button" data-again>Colocar na sacola</button></section>`;
+}
 function renderMenu(filter = '') {
   const q = filter.trim().toLowerCase();
-  const html = CATS.map((c) => {
+  const feat = q ? [] : Object.values(P).filter((p) => p.featured && p.available);
+  const top = (q ? '' : againHTML()) + (feat.length ? `<section class="section featured" id="sec-dest"><h2>Destaques</h2><div class="feat-row">${feat.map(prodBtn).join('')}</div></section>` : '');
+  const html = top + CATS.map((c) => {
     const items = c.items.filter((i) => !q || (i.name + ' ' + (i.description || '')).toLowerCase().includes(q));
     if (!items.length) return '';
     return `<section class="section" id="sec-${c.id}" data-cat="${c.id}">
       <h2>${esc(c.name)} <small>${items.length} ${items.length === 1 ? 'item' : 'itens'}</small></h2>
-      <div class="grid">${items.map((i) => `
-        <button class="prod" type="button" data-prod="${i.id}" ${i.available ? '' : 'disabled style="opacity:.55"'}>
-          <div class="prod-info"><b>${esc(i.name)}</b>${i.description ? `<p>${esc(i.description)}</p>` : ''}
-            <div class="prod-foot"><span class="price">${brl(i.price)}</span>${(i.options || []).length && i.available ? '<span class="badge soft">Personalizável</span>' : ''}${i.available ? '' : '<span class="badge">Esgotado</span>'}</div></div>
-          ${thumb(i)}
-        </button>`).join('')}</div></section>`;
+      <div class="grid">${items.map(prodBtn).join('')}</div></section>`;
   }).join('');
   $('#menu').innerHTML = html || `<p class="empty-search">${q ? 'Nada encontrado com esse nome.' : 'Esta loja ainda está montando o cardápio. Volte daqui a pouco!'}</p>`;
   $('#cats').innerHTML = CATS.map((c, i) => `<button type="button" data-cat="${c.id}" class="${i === 0 ? 'on' : ''}">${esc(c.name)}</button>`).join('');
@@ -160,7 +179,23 @@ $('#cats').addEventListener('click', (e) => {
   const sec = document.getElementById('sec-' + b.dataset.cat);
   if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + scrollY - 80, behavior: 'smooth' });
 });
-$('#menu').addEventListener('click', (e) => { const b = e.target.closest('[data-prod]'); if (b && !b.disabled) openProduct(+b.dataset.prod); });
+$('#menu').addEventListener('click', (e) => {
+  if (e.target.closest('[data-again]')) {
+    let last = null; try { const id = localStorage.getItem(LAST); last = id && JSON.parse(localStorage.getItem('bora-order-' + id) || 'null'); } catch (_) {}
+    (last && last.cart || []).filter((l) => P[l.pid] && P[l.pid].available).forEach((l) => {
+      const opts = (l.opts || []).filter((id) => optById(l.pid, id));
+      const k = opts.slice().sort().join(); const same = cart.find((x) => x.pid === l.pid && (x.opts || []).slice().sort().join() === k && (x.note || '') === (l.note || ''));
+      if (same) same.qty = Math.min(50, same.qty + l.qty); else cart.push({ pid: l.pid, qty: l.qty, note: l.note || '', opts });
+    });
+    persist(); renderCart(); track('cart'); toast('Itens do último pedido colocados na sacola.'); return;
+  }
+  const b = e.target.closest('[data-prod]'); if (b && !b.disabled) openProduct(+b.dataset.prod);
+});
+/* ---------- funil (contagem anônima por sessão) ---------- */
+function track(kind) {
+  try { const k = 'bora-ev-' + slug + '-' + kind; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (_) {}
+  if (sb && slug) sb.rpc('track_event', { p_slug: slug, p_kind: kind }).then(() => {}, () => {});
+}
 
 /* ---------- opções do produto ---------- */
 function optById(pid, id) {
@@ -190,14 +225,14 @@ function groupHTML(g) {
 }
 function openProduct(id) {
   const p = P[id]; if (!p) return;
-  cur = { id, qty: 1, opts: [] };
+  cur = { id, qty: 1, opts: [] }; track('view');
   $('#pd-form').innerHTML = `
     <div class="pd-hero ${p.image_url ? 'has-photo' : ''}" style="background:var(--red-soft)">
       ${p.image_url ? `<img class="pd-blur" src="${esc(p.image_url)}" alt=""><img class="pd-photo" src="${esc(p.image_url)}" alt="">` : `<span class="thumb ph" style="width:120px;height:120px;font-size:56px;border-radius:28px">${esc(p.name.charAt(0))}</span>`}
       <button class="x" type="button" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-x"/></svg></button>
     </div>
     <div class="pd-body">
-      <div><h2 id="pd-title">${esc(p.name)}</h2>${p.description ? `<p class="pd-desc">${esc(p.description)}</p>` : ''}<p class="pd-base price">${brl(p.price)}</p></div>
+      <div><h2 id="pd-title">${esc(p.name)}</h2>${p.description ? `<p class="pd-desc">${esc(p.description)}</p>` : ''}<p class="pd-base price">${p.old_price ? `<s class="old">${brl(p.old_price)}</s> ` : ''}${brl(p.price)}</p></div>
       ${(p.options || []).map(groupHTML).join('')}
       <div class="field"><label for="pd-obs" style="font-weight:700">Alguma observação?</label><textarea id="pd-obs" maxlength="140" placeholder="Ex.: caprichar no molho, cortar ao meio…"></textarea></div>
     </div>
@@ -234,6 +269,7 @@ dProd.addEventListener('click', (e) => {
     const key = (l) => l.pid === cur.id && l.note === note && [...(l.opts || [])].sort().join() === [...cur.opts].sort().join();
     const same = cart.find(key);
     if (same) same.qty = Math.min(50, same.qty + cur.qty); else cart.push({ pid: cur.id, qty: cur.qty, note, opts: cur.opts });
+    track('cart');
     persist(); renderCart(); dProd.close(); toast(`${P[cur.id].name} na sacola`);
   }
 });
@@ -312,7 +348,7 @@ function go(view) {
   ['menu', 'checkout', 'pay', 'track'].forEach((v) => { $('#v-' + v).hidden = v !== view; });
   $('#bagbar').style.display = view === 'menu' ? '' : 'none';
   if (view === 'checkout') prepareCheckout();
-  if (view === 'menu') renderCart();
+  if (view === 'menu') { renderCart(); if (CATS.length) renderMenu($('#q').value || ''); }
   window.scrollTo(0, 0);
 }
 document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go); });
@@ -362,6 +398,9 @@ function scheduledFor() {
 const co = $('#checkout');
 const modo = () => (MESA ? 'mesa' : co.modo.value || (R.accepts_delivery ? 'entrega' : 'retirada'));
 function prepareCheckout() {
+  if (!MESA) track('checkout');
+  co.obs.closest('.field').hidden = R.allow_notes === false && !MESA;
+  $('#f-cutlery').hidden = !R.ask_cutlery || !!MESA;
   // mesa: só nome; sem entrega e sem pagamento agora
   $('#box-mesa').hidden = !MESA; $('#box-pag').hidden = !!MESA;
   if (MESA) { $('#h-mesa').textContent = `Mesa ${MESA.label}`; $('#box-modo').hidden = true; $('#box-end').hidden = true; $('#box-ret').hidden = true; }
@@ -535,8 +574,9 @@ co.addEventListener('submit', async (e) => {
   const troco = co.pag.value === 'dinheiro' ? parseFloat(co.troco.value.replace(',', '.')) : NaN;
   const btn = $('#confirm'); btn.disabled = true;
   try { localStorage.setItem('bora-cliente', JSON.stringify({ nome: co.nome.value.trim(), tel: co.tel.value, rua: co.rua.value, num: co.num.value, bairro: byZone ? '' : co.bairro.value, zone: byZone ? co.zone.value : '', comp: co.comp.value })); } catch (_) {}
-  const customer = MESA ? { table: MESA.token, name: co.nome.value.trim(), phone: co.tel.value, notes: co.obs.value.trim() }
-    : { name: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: Number.isFinite(troco) ? String(troco) : '', notes: co.obs.value.trim() };
+  const obs = [R.allow_notes === false && !MESA ? '' : co.obs.value.trim(), !MESA && R.ask_cutlery ? (co.cutlery.checked ? 'Mandar talheres e guardanapos' : 'Sem talheres') : ''].filter(Boolean).join(' · ').slice(0, 300);
+  const customer = MESA ? { table: MESA.token, name: co.nome.value.trim(), phone: co.tel.value, notes: obs }
+    : { name: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: Number.isFinite(troco) ? String(troco) : '', notes: obs };
   if (!MESA && CP) customer.coupon = CP.code;
   if (when) customer.scheduled_for = when;
   if (!MESA && LOY.useReward && LOY.rewards > 0) customer.use_reward = 'true';
@@ -548,7 +588,7 @@ co.addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
-  const order = { ...data, scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  const order = { ...data, cart: cart.map((l) => ({ pid: l.pid, qty: l.qty, note: l.note || '', opts: l.opts || [] })), scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
   CP = null; LOY.useReward = false; $('#c-cupom').value = '';
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';

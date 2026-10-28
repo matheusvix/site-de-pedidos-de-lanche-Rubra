@@ -7,8 +7,9 @@ window.BoraPDV = (() => {
   let dlg = null, cart = [], cat = 0, q = '';
   const prods = () => PRODS.filter((p) => p.available);
   const P = (id) => PRODS.find((p) => p.id === id);
+  const base = (p) => (p.promo_price != null && Number(p.promo_price) < Number(p.price) ? Number(p.promo_price) : Number(p.price));
   const optById = (pid, id) => { for (const g of P(pid).options || []) for (const o of g.items || []) if (o.id === id) return { g, o }; return null; };
-  const unit = (l) => Number(P(l.pid).price) + (l.opts || []).reduce((s, id) => { const x = optById(l.pid, id); return s + (x && x.g.kind !== 'remove' ? Number(x.o.price || 0) : 0); }, 0);
+  const unit = (l) => base(P(l.pid)) + (l.opts || []).reduce((s, id) => { const x = optById(l.pid, id); return s + (x && x.g.kind !== 'remove' ? Number(x.o.price || 0) : 0); }, 0);
   const labels = (l) => (l.opts || []).map((id) => optById(l.pid, id)).filter(Boolean).map(({ g, o }) => (g.kind === 'remove' ? `Sem ${o.name}` : g.kind === 'add' ? `+ ${o.name}` : o.name));
 
   function build() {
@@ -66,7 +67,7 @@ window.BoraPDV = (() => {
   }
   function grid() {
     const list = prods().filter((p) => (!cat || p.category_id === cat) && (!q || p.name.toLowerCase().includes(q)));
-    $('#pdv-grid').innerHTML = list.map((p) => `<button type="button" class="pdv-item" data-p="${p.id}">${p.image_url ? `<img src="${esc(p.image_url)}" alt="" loading="lazy">` : ''}<b>${esc(p.name)}</b><span>${brl(p.price)}${(p.options || []).length ? ' · opções' : ''}</span></button>`).join('')
+    $('#pdv-grid').innerHTML = list.map((p) => `<button type="button" class="pdv-item" data-p="${p.id}">${p.image_url ? `<img src="${esc(p.image_url)}" alt="" loading="lazy">` : ''}<b>${esc(p.name)}</b><span>${brl(base(p))}${(p.options || []).length ? ' · opções' : ''}</span></button>`).join('')
       || '<p class="adm-empty">Nenhum produto disponível encontrado.</p>';
   }
   function add(pid, opts, note = '') {

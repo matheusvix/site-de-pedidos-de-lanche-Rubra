@@ -397,3 +397,16 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
 .bm-pin.bm-bike span{background:#E01E2D;border:3px solid #fff}
 .bm-pin.bm-bike.stale span{background:#9A8B8C}
 .bm-pin b{position:absolute;left:50%;top:44px;transform:translateX(-50%);white-space:nowrap;background:#1A1112;color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
+
+/* promoção, destaques, peça de novo, descartáveis */
+s.old{color:var(--muted);font-weight:500;font-size:.85em;text-decoration-thickness:1.5px;margin-right:2px}
+.badge.promo{background:#E6F4EA;color:#1E6B3A}
+.featured .feat-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,320px);gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory}
+.featured .feat-row .prod{scroll-snap-align:start}
+.again{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1.5px dashed var(--red-line,#F6CFD2);border-radius:18px;padding:14px 16px;margin-bottom:18px}
+.again b{display:block;font-family:var(--display);font-size:17px}
+.again small{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.again .btn{flex-shrink:0}
+@media (max-width:520px){.again{flex-direction:column;align-items:stretch}}
+label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;cursor:pointer}
+label.check input{width:20px;height:20px;accent-color:var(--red)}

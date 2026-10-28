@@ -187,6 +187,7 @@ function selectTab(t) {
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== t; });
   if (window.BoraRecursos) window.BoraRecursos.onTab(t);
   if (t === 'desempenho' && window.BoraDesempenho) window.BoraDesempenho.load();
+  if (t === 'relatorios' && window.BoraRelatorios) window.BoraRelatorios.load();
 }
 $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 
@@ -392,12 +393,13 @@ function renderMenu() {
   const loose = PRODS.filter((p) => !p.category_id || !CATS.some((c) => c.id === p.category_id));
   $('#menu-editor').innerHTML = (blocks || '<p class="adm-empty">Crie uma categoria (ex.: Lanches) e depois adicione seus produtos.</p>')
     + (loose.length ? `<section class="cat-block"><div class="cat-head"><h2>Sem categoria</h2></div>${loose.map(prodRow).join('')}</section>` : '');
+  if (window.BoraCardapio) window.BoraCardapio.score();
 }
 function prodRow(p) {
   return `<div class="p-row ${p.available ? '' : 'off'}" data-prod="${p.id}">
     ${p.image_url ? `<img src="${esc(p.image_url)}" alt="" loading="lazy">` : `<span class="ph">${esc(p.name.charAt(0))}</span>`}
-    <div class="info"><b>${esc(p.name)}</b><small>${esc(p.description || '')}</small></div>
-    <span class="price">${brl(p.price)}</span>
+    <div class="info"><b>${esc(p.name)}${p.featured ? ' <span class="ord-tag sched">Destaque</span>' : ''}${p.days && p.days.length ? ` <span class="ord-tag">${p.days.map((d) => H.CURTO[d]).join(', ')}</span>` : ''}</b><small>${esc(p.description || '')}</small></div>
+    <span class="price">${p.promo_price != null && Number(p.promo_price) < Number(p.price) ? `<s class="old-p">${brl(p.price)}</s> ${brl(p.promo_price)}` : brl(p.price)}</span>
     <label class="mini-switch"><input type="checkbox" data-avail ${p.available ? 'checked' : ''}> À venda</label>
     <button class="btn btn-outline row-btn" type="button" data-edit>Editar</button>
   </div>`;
@@ -496,6 +498,9 @@ function openProduct(p, catId) {
   $('#pd-title').textContent = p ? 'Editar produto' : 'Novo produto';
   pf.name.value = p ? p.name : ''; pf.description.value = p ? p.description || '' : '';
   pf.price.value = p ? money(p.price) : ''; pf.available.checked = p ? p.available : true;
+  pf.promo_price.value = p && p.promo_price != null ? money(p.promo_price) : ''; pf.featured.checked = !!(p && p.featured);
+  const dd = (p && p.days) || [];
+  $('#pd-days').innerHTML = [1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" value="${d}" ${dd.includes(d) ? 'checked' : ''}><span>${H.CURTO[d]}</span></label>`).join('');
   pf.category_id.innerHTML = CATS.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join('') + '<option value="">Sem categoria</option>';
   pf.category_id.value = p ? (p.category_id || '') : (catId || '');
   $('#pd-delete').hidden = !p; $('#pd-err').textContent = '';
@@ -534,6 +539,9 @@ pf.addEventListener('submit', async (e) => {
   const name = pf.name.value.trim(), price = num(pf.price.value);
   if (!name) { $('#pd-err').textContent = 'Dê um nome ao produto.'; return; }
   if (!(price >= 0) || !pf.price.value.trim()) { $('#pd-err').textContent = 'Informe o preço.'; return; }
+  const promo = pf.promo_price.value.trim() ? num(pf.promo_price.value) : null;
+  if (promo !== null && !(promo < price)) { $('#pd-err').textContent = 'O preço promocional precisa ser menor que o preço normal.'; return; }
+  const days = [...$('#pd-days').querySelectorAll('input:checked')].map((i) => +i.value).sort();
   const btn = $('#pd-save'); btn.disabled = true; btn.textContent = 'Salvando…';
   let image_url = photo.removed ? null : photo.url;
   if (photo.blob) {
@@ -543,7 +551,8 @@ pf.addEventListener('submit', async (e) => {
     image_url = sb.storage.from('produtos').getPublicUrl(path).data.publicUrl;
   }
   const row = { name: name.slice(0, 80), description: pf.description.value.trim().slice(0, 300) || null, price, available: pf.available.checked,
-    category_id: pf.category_id.value ? +pf.category_id.value : null, image_url, options: cleanOpts() };
+    category_id: pf.category_id.value ? +pf.category_id.value : null, image_url, options: cleanOpts(),
+    promo_price: promo, featured: pf.featured.checked, days: days.length && days.length < 7 ? days : null };
   const q = editing ? sb.from('products').update(row).eq('id', editing.id).select('id').single()
     : sb.from('products').insert({ ...row, restaurant_id: R.id, position: PRODS.length + 1 }).select('id').single();
   const { data: saved, error } = await q;
@@ -604,6 +613,7 @@ function fillStore() {
   f.accepts_delivery.checked = R.accepts_delivery; f.accepts_pickup.checked = R.accepts_pickup;
   f.delivery_mode.value = R.delivery_mode || 'fixa';
   f.delivery_fee.value = money(R.delivery_fee); f.delivery_time.value = R.delivery_time || ''; f.min_order.value = money(R.min_order);
+  f.allow_notes.checked = R.allow_notes !== false; f.ask_cutlery.checked = !!R.ask_cutlery;
   f.schedule_enabled.checked = !!R.schedule_enabled; f.schedule_days.value = String(R.schedule_days ?? 2); f.schedule_step.value = String(R.schedule_step ?? 30);
   $('#sched-box').hidden = !f.schedule_enabled.checked;
   $('#auto-accept').checked = !!R.auto_accept;
@@ -859,6 +869,7 @@ function buildPatch() {
     delivery_mode: mode, delivery_zones: zones,
     delivery_fee: num(f.delivery_fee.value), delivery_time: f.delivery_time.value.trim() || '30–45 min', min_order: num(f.min_order.value),
     opening_hours: hours, hours: null,
+    allow_notes: f.allow_notes.checked, ask_cutlery: f.ask_cutlery.checked,
     schedule_enabled: f.schedule_enabled.checked, schedule_days: +f.schedule_days.value || 0, schedule_step: +f.schedule_step.value || 30,
     payment_methods: pay, pix_key: pixKey, pix_key_type: pixKey ? f.pix_key_type.value : null,
     pix_name: pixKey ? window.BoraPix.plain(f.pix_name.value).slice(0, 25) : null, pix_city: pixKey ? window.BoraPix.plain(f.pix_city.value).slice(0, 15) : null,
