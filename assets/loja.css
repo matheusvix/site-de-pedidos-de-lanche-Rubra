@@ -380,3 +380,20 @@ textarea:focus,.field input:focus,.field select:focus{outline:none;border-color:
 .cp-wrap{display:flex;flex-direction:column;gap:8px}
 .cp-wrap .field{margin:0}
 .mini .disc .price{white-space:nowrap}
+
+/* entrega ao vivo no mapa */
+.live-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.live-dot{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1E6B3A}
+.live-dot::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor;animation:live-pulse 1.6s infinite}
+.live-dot.off{color:var(--muted)}
+.live-dot.off::before{animation:none}
+@keyframes live-pulse{0%{box-shadow:0 0 0 0 rgba(30,107,58,.45)}70%{box-shadow:0 0 0 8px rgba(30,107,58,0)}100%{box-shadow:0 0 0 0 rgba(30,107,58,0)}}
+@media (prefers-reduced-motion:reduce){.live-dot::before{animation:none}}
+.live-map{height:300px;border-radius:16px;overflow:hidden;background:#EFE9E8;border:1px solid var(--line);z-index:0}
+.live-txt{margin:0;color:var(--muted);font-size:14px}
+.live-txt b{color:var(--ink)}
+.bm-pin{background:none;border:0}
+.bm-pin span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);font-size:20px;line-height:1}
+.bm-pin.bm-bike span{background:#E01E2D;border:3px solid #fff}
+.bm-pin.bm-bike.stale span{background:#9A8B8C}
+.bm-pin b{position:absolute;left:50%;top:44px;transform:translateX(-50%);white-space:nowrap;background:#1A1112;color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}

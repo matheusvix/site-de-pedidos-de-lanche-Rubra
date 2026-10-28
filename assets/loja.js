@@ -550,14 +550,50 @@ async function showTrack(publicId, order) {
     return st === 'entregue';
   };
   render('novo');
-  clearInterval(poll);
+  clearInterval(poll); clearTimeout(poll); live(null);
   const tick = async () => {
-    const { data } = await sb.rpc('order_status', { p_public_id: publicId });
+    let data = null;
+    try { ({ data } = await sb.rpc('order_status', { p_public_id: publicId })); } catch (_) {}
     if (data && order.payment === 'pix' && R.pix_key) { const el = $('#t-pix'); el.hidden = false; el.className = 'pix-state ok'; el.textContent = 'Pagamento Pix confirmado ✓'; }
     if (data) { order.status = data.status; saveOrder(publicId, order); }
-    if (data && render(data.status)) clearInterval(poll);
+    live(data && data.status === 'saiu' ? data : null);
+    if (data && render(data.status)) return;
+    if ($('#v-track').hidden) return;
+    // em rota: atualiza mais rápido para o motoboy andar no mapa
+    poll = setTimeout(tick, data && data.status === 'saiu' ? (document.hidden ? 20000 : 5000) : 15000);
   };
-  tick(); poll = setInterval(tick, 15000);
+  tick();
+}
+/* ---------- motoboy ao vivo no mapa ---------- */
+let LIVE = null;
+async function live(d) {
+  const box = $('#t-live');
+  if (!d || (!d.courier && !d.dest)) { box.hidden = true; return; }
+  const c = d.courier || {};
+  const has = Number.isFinite(c.lat) && Number.isFinite(c.lng);
+  const dest = window.BoraMapa ? window.BoraMapa.parse(d.dest) : null;
+  if (!has && !dest) { box.hidden = true; return; }
+  box.hidden = false;
+  const ago = has && c.at ? Math.max(0, Math.round((Date.now() - new Date(c.at)) / 1000)) : null;
+  const stale = ago !== null && ago > 120;
+  const st = $('#t-live-st');
+  st.textContent = has && !stale ? 'Ao vivo' : 'Sem sinal agora';
+  st.classList.toggle('off', !has || stale);
+  const who = c.name ? `<b>${esc(c.name)}</b>` : 'O motoboy';
+  $('#t-live-txt').innerHTML = has
+    ? `${who} está a caminho${dest ? ` · cerca de <b>${km(c, dest)}</b> do seu endereço` : ''}. ${stale ? `Última posição há ${Math.round(ago / 60)} min.` : 'Atualiza sozinho.'}`
+    : `${who} já saiu com o seu pedido. A posição aparece aqui assim que o GPS dele conectar.`;
+  try {
+    if (!LIVE) LIVE = await window.BoraMapa.create($('#t-map'));
+    LIVE.resize();
+    LIVE.set({ store: d.store, dest, couriers: has ? [{ id: 'c', lat: c.lat, lng: c.lng, name: c.name, stale }] : [] });
+  } catch (_) { $('#t-map').hidden = true; }
+}
+function km(a, b) {
+  const r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lng - a.lng) * r;
+  const h = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
+  const m = 2 * 6371e3 * Math.asin(Math.sqrt(h));
+  return m < 1000 ? `${Math.max(50, Math.round(m / 50) * 50)} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 }
 /* ---------- Pix: pagar primeiro; quando o pagamento é confirmado, a tela muda sozinha ---------- */
 function renderPix() { $('#t-pix').hidden = true; }

@@ -252,6 +252,7 @@ function orderCard(o, fresh) {
     <div class="ord-info">
       ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
       ${ent && o.delivery_info ? `<span><b>Entrega:</b> ${esc(o.delivery_info)}</span>` : ''}
+      ${ent && window.BoraRecursos ? window.BoraRecursos.courierPick(o) : ''}
       <span><b>Pagamento:</b> ${PAG[o.payment] || esc(o.payment)}${o.payment === 'dinheiro' && o.change_for ? ` (troco para ${brl(o.change_for)})` : ''}${o.payment === 'pix' ? (o.paid ? ' <em class="paid yes">Pix recebido ✓</em>' : o.pix_informed_at ? ` <em class="paid">Cliente pagou às ${new Date(o.pix_informed_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}: confira no app do banco</em>` : ' <em class="paid">Aguardando Pix: confira no app do banco</em>') : ''}</span>
       ${o.customer_phone ? `<span><b>WhatsApp:</b> ${esc(o.customer_phone)}</span>` : ''}
       ${Number(o.discount) > 0 ? `<span><b>Desconto:</b> −${brl(o.discount)}${o.coupon_code ? ` (cupom ${esc(o.coupon_code)})` : ''}${o.reward_used ? ' (prêmio fidelidade)' : ''}</span>` : ''}

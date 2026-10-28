@@ -403,3 +403,15 @@
   .ms-total{font-size:20px}
   .ms-acts .btn{padding:6px 8px;font-size:13px;min-height:36px}
 }
+
+/* entregas: motoboys e mapa ao vivo */
+.en-live{margin-bottom:16px}
+.en-map{height:420px;border-radius:16px;overflow:hidden;background:#EFE9E8;border:1px solid var(--line);z-index:0}
+@media (max-width:640px){.en-map{height:300px}}
+.en-pick{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.en-pick select{font:inherit;font-size:14px;min-height:38px;padding:4px 10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;max-width:100%}
+.bm-pin{background:none;border:0}
+.bm-pin span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25);font-size:20px;line-height:1}
+.bm-pin.bm-bike span{background:#E01E2D;border:3px solid #fff}
+.bm-pin.bm-bike.stale span{background:#9A8B8C}
+.bm-pin b{position:absolute;left:50%;top:44px;transform:translateX(-50%);white-space:nowrap;background:#1A1112;color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}

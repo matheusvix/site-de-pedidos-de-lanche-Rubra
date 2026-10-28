@@ -4,9 +4,9 @@
    ============================================================ */
 window.BoraPlanos = (() => {
   const ORDEM = ['Essencial', 'Profissional', 'Completo'];
-  const MINIMO = { robo: 'Profissional', inbox: 'Profissional', cupons: 'Profissional', mesas: 'Completo', estoque: 'Completo', prioritario: 'Completo' };
+  const MINIMO = { robo: 'Profissional', inbox: 'Profissional', cupons: 'Profissional', entregas: 'Profissional', mesas: 'Completo', estoque: 'Completo', prioritario: 'Completo' };
   const NOME = {
-    robo: 'Robô de atendimento no WhatsApp', inbox: 'Caixa de entrada única', cupons: 'Cupons e fidelidade',
+    robo: 'Robô de atendimento no WhatsApp', inbox: 'Caixa de entrada única', cupons: 'Cupons e fidelidade', entregas: 'Motoboys e entrega ao vivo',
     mesas: 'App do garçom e mesas', estoque: 'Estoque e financeiro', prioritario: 'Suporte prioritário',
   };
   const has = (plan, feat) => !MINIMO[feat] || ORDEM.indexOf(plan) >= ORDEM.indexOf(MINIMO[feat]);

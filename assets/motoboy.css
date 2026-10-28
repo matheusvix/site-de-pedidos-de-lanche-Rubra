@@ -1,0 +1,29 @@
+/* BoraLanchar! — app do motoboy (usa a base do garcom.css) */
+.gps{position:sticky;top:60px;z-index:15;display:flex;align-items:center;gap:10px;padding:10px 16px;font-weight:600;font-size:14px;background:var(--ok-soft);color:var(--ok);border-bottom:1px solid #CFE7D6}
+.gps::before{content:"";flex:0 0 10px;height:10px;border-radius:50%;background:currentColor;animation:gps-pulse 1.6s infinite}
+.gps.off{background:var(--warn-soft);color:var(--warn);border-color:#F0DDA8}
+.gps.off::before{animation:none}
+.gps small{display:block;font-weight:500;opacity:.85}
+@keyframes gps-pulse{0%{box-shadow:0 0 0 0 rgba(30,107,58,.45)}70%{box-shadow:0 0 0 10px rgba(30,107,58,0)}100%{box-shadow:0 0 0 0 rgba(30,107,58,0)}}
+@media (prefers-reduced-motion:reduce){.gps::before{animation:none}}
+
+.free-head{margin-top:26px}
+.free-head h1{font-size:20px}
+
+.d-card{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.d-card.rota{border-color:#9FD1AE;box-shadow:0 6px 20px rgba(30,107,58,.12)}
+.d-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.d-h b{font:800 18px var(--display);display:block}
+.d-h small{color:var(--muted);font-size:13px}
+.d-addr{margin:10px 0 6px;font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.d-meta{display:grid;gap:4px;font-size:14px;color:var(--muted)}
+.d-meta b{color:var(--ink)}
+.d-pay{margin-top:8px;padding:8px 10px;border-radius:10px;font-weight:700;font-size:14px;background:var(--warn-soft);color:var(--warn)}
+.d-pay.ok{background:var(--ok-soft);color:var(--ok)}
+.d-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px;margin-top:12px}
+.d-links a{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:12px;border:1.5px solid var(--line);font-weight:700;font-size:14px;color:var(--ink);text-decoration:none;background:var(--paper)}
+.d-acts{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:10px}
+.d-acts .g-btn{min-height:52px;font-size:16px}
+.d-acts .g-btn:only-child{grid-column:1 / -1}
+.st-saiu{background:var(--ok-soft);color:var(--ok)}
+.empty-box{background:#fff;border:1.5px dashed var(--line);border-radius:16px;padding:18px;text-align:center;color:var(--muted)}

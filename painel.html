@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=15">
+<link rel="stylesheet" href="assets/painel.css?v=16">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -88,6 +88,7 @@
 
   <nav class="p-tabs" role="tablist" aria-label="Seções do painel">
     <button role="tab" aria-selected="true" data-tab="pedidos">Pedidos <b class="p-count" id="new-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="entregas" data-feat="entregas">Entregas <b class="p-count" id="entregas-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="cardapio">Cardápio</button>
     <button role="tab" aria-selected="false" data-tab="mesas" data-feat="mesas">Mesas <b class="p-count" id="mesas-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="mensagens" data-feat="inbox">Mensagens <b class="p-count" id="inbox-count" hidden>0</b></button>
@@ -200,6 +201,32 @@
         <div class="p-card">
           <div class="rx-card-head"><h2>Contas fechadas hoje</h2></div>
           <div id="ms-closed" class="rx-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-panel="entregas" data-feat="entregas" hidden>
+      <div class="adm-head">
+        <div><h1>Entregas</h1><p class="adm-muted">Veja os motoboys no mapa em tempo real. Quando o motoboy toca em "Saí para entrega" no app dele, o cliente passa a acompanhar a moto chegando na tela do pedido.</p></div>
+        <div class="adm-actions"><button class="btn btn-primary" type="button" id="cr-add">Novo motoboy</button></div>
+      </div>
+      <div class="en-live p-card">
+        <div class="rx-card-head"><h2>Ao vivo</h2><button class="btn btn-ghost" type="button" id="en-fit">Centralizar</button></div>
+        <div class="en-map" id="en-map" role="img" aria-label="Mapa com os motoboys em rota"></div>
+        <div id="en-route" class="rx-list"></div>
+      </div>
+      <div class="rx-grid">
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Esperando motoboy</h2></div>
+          <p class="adm-muted">Escolha quem leva cada pedido, ou deixe o próprio motoboy pegar pelo app.</p>
+          <div id="en-wait" class="rx-list"></div>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>App do motoboy</h2></div>
+          <p class="adm-muted">O motoboy abre este link no celular dele e entra com o PIN. Lá ele pega as entregas, abre o endereço no Google Maps ou Waze e marca quando entregou.</p>
+          <div class="copy-row"><code id="cr-link"></code><button class="btn btn-ghost" type="button" id="cr-copy">Copiar</button></div>
+          <div class="rx-card-head"><h3 class="rx-sub">Motoboys</h3></div>
+          <div id="cr-list" class="rx-list"></div>
         </div>
       </div>
     </section>
@@ -596,10 +623,11 @@
 <script defer src="assets/pix.js?v=6"></script>
 <script defer src="assets/config.js"></script>
 <script defer src="assets/horario.js?v=5"></script>
-<script defer src="assets/planos.js?v=1"></script>
-<script defer src="assets/painel.js?v=17"></script>
+<script defer src="assets/planos.js?v=2"></script>
+<script defer src="assets/mapa.js?v=1"></script>
+<script defer src="assets/painel.js?v=18"></script>
 <script defer src="assets/robo.js?v=2"></script>
-<script defer src="assets/recursos.js?v=2"></script>
+<script defer src="assets/recursos.js?v=3"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 </body>
 </html>

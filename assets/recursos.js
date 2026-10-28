@@ -45,6 +45,7 @@ window.BoraRecursos = (() => {
     cupons: 'Crie cupons de desconto e um cartão fidelidade digital ("compre 10, ganhe 1") para o cliente voltar sempre.',
     robo: 'Um atendente automático no WhatsApp que manda o cardápio, responde dúvidas e avisa o status do pedido.',
     mesas: 'QR Code em cada mesa, app do garçom para lançar pedidos e fechar a conta com taxa de serviço.',
+    entregas: 'Cadastre os motoboys, veja todos no mapa em tempo real e deixe o cliente acompanhar a moto chegando.',
     estoque: 'Baixa automática dos insumos a cada pedido, relatório de vendas, despesas, lucro e controle de caixa.',
   };
   function applyLocks() {
@@ -565,24 +566,140 @@ window.BoraRecursos = (() => {
 
   /* ---------- ciclo de vida ---------- */
   const loaded = {};
+  /* ============================================================
+     ENTREGAS: motoboys e mapa ao vivo
+     ============================================================ */
+  let COURIERS = [], POS = [], posCh = null, EN = null, enTick = null;
+  const enOrders = () => (typeof ORDERS !== 'undefined' ? ORDERS : []).filter((o) => o.mode === 'entrega');
+  const cName = (id) => { const c = COURIERS.find((x) => x.id === id); return c ? c.name : 'Motoboy'; };
+  const secAgo = (t) => Math.max(0, Math.round((Date.now() - new Date(t)) / 1000));
+  async function loadCouriers() {
+    const { data } = await sb.from('couriers').select('id, name, phone, active').eq('restaurant_id', R.id).order('name');
+    COURIERS = data || []; renderCouriers(); renderEntregas();
+    if (typeof renderOrders === 'function') renderOrders();
+  }
+  async function loadPositions() {
+    const { data } = await sb.from('courier_positions').select('*').eq('restaurant_id', R.id);
+    POS = data || []; renderEntregas();
+  }
+  function listenPositions() {
+    if (posCh) return;
+    posCh = sb.channel('motoboys-' + R.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courier_positions', filter: `restaurant_id=eq.${R.id}` }, (p) => {
+        if (p.eventType === 'DELETE') POS = POS.filter((x) => x.courier_id !== (p.old && p.old.courier_id));
+        else { POS = POS.filter((x) => x.courier_id !== p.new.courier_id); POS.push(p.new); }
+        if (loaded.entregas) renderEntregas();
+      })
+      .subscribe();
+  }
+  function courierPick(o) {
+    if (!has('entregas') || o.mode !== 'entrega' || !['novo', 'preparo', 'pronto', 'saiu'].includes(o.status)) return '';
+    const list = COURIERS.filter((c) => c.active || c.id === o.courier_id);
+    if (!list.length) return o.courier_id ? `<span><b>Motoboy:</b> ${esc(cName(o.courier_id))}</span>` : '';
+    return `<label class="en-pick"><b>Motoboy:</b><select data-assign="${o.id}" aria-label="Motoboy do pedido #${o.number}">
+      <option value="">${o.courier_id ? 'Tirar o motoboy' : 'Escolher…'}</option>
+      ${list.map((c) => `<option value="${c.id}" ${c.id === o.courier_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+  }
+  document.addEventListener('change', async (e) => {
+    const s = e.target.closest('select[data-assign]'); if (!s) return;
+    const id = +s.dataset.assign, v = s.value ? +s.value : null;
+    s.disabled = true;
+    const { error } = await sb.from('orders').update({ courier_id: v }).eq('id', id);
+    s.disabled = false;
+    if (error) { toast(errMsg(error, 'Não foi possível escolher o motoboy.')); return; }
+    const o = (typeof ORDERS !== 'undefined' ? ORDERS : []).find((x) => x.id === id); if (o) o.courier_id = v;
+    toast(v ? `Entrega do pedido #${o ? o.number : ''} com ${cName(v)}.` : 'Motoboy retirado do pedido.');
+    if (typeof renderOrders === 'function') renderOrders();
+    renderEntregas();
+  });
+  function renderCouriers() {
+    const el = $('#cr-list'); if (!el) return;
+    el.innerHTML = COURIERS.map((c) => `<div class="rx-row" data-cr="${c.id}"><div class="rx-main"><b>${esc(c.name)}</b><small class="adm-muted">${c.phone ? esc(fmtPhone(c.phone)) + ' · ' : ''}Entra com PIN</small></div><span class="mp-state ${c.active ? 'on' : ''}">${c.active ? 'Ativo' : 'Inativo'}</span><div class="rx-acts">${c.phone && digits(c.phone).length >= 10 ? `<a class="btn btn-ghost" target="_blank" rel="noopener" href="https://wa.me/${digits(c.phone).length <= 11 ? '55' : ''}${digits(c.phone)}?text=${encodeURIComponent(`Olá, ${c.name}! Este é o app de entregas da ${R.name}: ${SITE}/motoboy.html?loja=${R.slug}\nEntre com o seu PIN.`)}">Mandar link</a>` : ''}<button class="btn btn-outline" type="button" data-credit>Editar</button></div></div>`).join('')
+      || '<p class="adm-empty">Cadastre os motoboys com um PIN de 4 a 6 números.</p>';
+  }
+  function courierDialog(c) {
+    dialog({
+      title: c ? `Motoboy ${c.name}` : 'Novo motoboy', sub: 'O PIN é a senha que o motoboy usa no app.',
+      body: field('Nome', `<input name="name" maxlength="40" required value="${esc(c ? c.name : '')}" placeholder="Ex.: Carlos">`)
+        + field('WhatsApp (opcional)', `<input name="phone" type="tel" inputmode="tel" maxlength="20" value="${esc(c && c.phone ? fmtPhone(c.phone) : '')}" placeholder="(27) 99999-9999">`, 'Para mandar o link do app para ele.')
+        + field(c ? 'Novo PIN (opcional)' : 'PIN', `<input name="pin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="${c ? 'Deixe em branco para manter' : '4 a 6 números'}">`)
+        + (c ? `<label class="check"><input type="checkbox" name="active" ${c.active ? 'checked' : ''}> <span>Pode entrar no app</span></label>` : ''),
+      ok: c ? 'Salvar' : 'Cadastrar motoboy',
+      danger: c ? 'Excluir' : null,
+      onDanger: async () => {
+        if (!confirm(`Excluir ${c.name}? As entregas antigas continuam no histórico.`)) return 'Exclusão cancelada.';
+        const { error } = await sb.from('couriers').delete().eq('id', c.id);
+        if (error) return errMsg(error, 'Não foi possível excluir.');
+        await loadCouriers(); toast('Motoboy excluído.'); return null;
+      },
+      onSubmit: async (f) => {
+        const name = f.name.value.trim(), pin = f.pin.value.trim();
+        if (!name) return 'Informe o nome.'; if (!c && !/^\d{4,6}$/.test(pin)) return 'O PIN precisa ter de 4 a 6 números.'; if (c && pin && !/^\d{4,6}$/.test(pin)) return 'O PIN precisa ter de 4 a 6 números.';
+        if (pin && /^(\d)\1+$/.test(pin)) return 'Use um PIN menos óbvio (não repita o mesmo número).';
+        const { error } = await sb.rpc('courier_save', { p_rid: R.id, p_id: c ? c.id : null, p_name: name, p_phone: f.phone.value.trim() || null, p_pin: pin || null, p_active: c ? f.active.checked : true });
+        if (error) return errMsg(error, 'Não foi possível salvar.');
+        await loadCouriers(); toast(c ? 'Motoboy atualizado.' : `${name} cadastrado. Mande o link do app e o PIN para ele.`); return null;
+      },
+    });
+  }
+  function renderEntregas() {
+    const all = enOrders();
+    const route = all.filter((o) => o.status === 'saiu');
+    const wait = all.filter((o) => ['novo', 'preparo', 'pronto'].includes(o.status) && !o.courier_id);
+    const cnt = $('#entregas-count'); if (cnt) { cnt.hidden = !route.length; cnt.textContent = route.length; }
+    if (!loaded.entregas) return;
+    // em rota, agrupado por motoboy
+    const by = new Map();
+    route.forEach((o) => { const k = o.courier_id || 0; if (!by.has(k)) by.set(k, []); by.get(k).push(o); });
+    POS.forEach((p) => { if (!by.has(p.courier_id)) by.set(p.courier_id, []); });
+    $('#en-route').innerHTML = [...by.entries()].map(([cid, os]) => {
+      const p = POS.find((x) => x.courier_id === cid); const s = p ? secAgo(p.at) : null;
+      const sig = !cid ? '<span class="mp-state">Sem motoboy no app</span>' : !p ? '<span class="mp-state">Esperando o GPS</span>' : s > 120 ? `<span class="mp-state">Sem sinal há ${Math.round(s / 60)} min</span>` : '<span class="mp-state on">Ao vivo</span>';
+      return `<div class="rx-row"><div class="rx-main"><b>${cid ? esc(cName(cid)) : 'Saiu sem motoboy no app'}</b><small class="adm-muted">${os.length ? os.map((o) => `#${o.number} ${esc((o.customer_name || '').split(' ')[0])}${o.out_at ? ` · saiu às ${hm(o.out_at)}` : ''}`).join(' · ') : 'Sem pedido em rota'}</small></div>${sig}</div>`;
+    }).join('') || '<p class="adm-empty">Nenhum motoboy em rota agora.</p>';
+    $('#en-wait').innerHTML = wait.map((o) => `<div class="rx-row"><div class="rx-main"><b>#${o.number} · ${esc(o.customer_name)}</b><small class="adm-muted">${esc(o.address || '')} · ${o.status === 'novo' ? 'Novo' : o.status === 'pronto' ? 'Pronto' : 'Em preparo'}</small></div><div class="rx-acts">${courierPick(o) || '<small class="adm-muted">Cadastre um motoboy</small>'}</div></div>`).join('')
+      || '<p class="adm-empty">Nenhum pedido de entrega esperando motoboy.</p>';
+    drawMap();
+  }
+  async function drawMap() {
+    const el = $('#en-map'); if (!el || el.closest('[hidden]')) return;
+    try {
+      if (!EN) EN = await window.BoraMapa.create(el, { scroll: true });
+      EN.resize();
+      EN.set({ store: R.lat != null ? { lat: R.lat, lng: R.lng } : null, couriers: POS.map((p) => ({ id: p.courier_id, lat: p.lat, lng: p.lng, name: cName(p.courier_id).split(' ')[0], stale: secAgo(p.at) > 120 })) });
+    } catch (_) { el.innerHTML = '<p class="adm-empty">Não foi possível carregar o mapa agora.</p>'; }
+  }
+  async function loadEntregas() {
+    $('#cr-link').textContent = `${SITE}/motoboy.html?loja=${R.slug}`;
+    await Promise.all([loadCouriers(), loadPositions()]);
+    renderEntregas();
+    clearInterval(enTick); enTick = setInterval(() => { if (!document.hidden && !$('[data-panel="entregas"]').hidden) renderEntregas(); }, 15000);
+  }
+  $('#cr-add').addEventListener('click', () => courierDialog(null));
+  $('#cr-list').addEventListener('click', (e) => { const r = e.target.closest('[data-cr]'); if (r && e.target.closest('[data-credit]')) courierDialog(COURIERS.find((x) => x.id === +r.dataset.cr)); });
+  $('#cr-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#cr-link').textContent); toast('Link do app do motoboy copiado!'); } catch (_) { toast('Selecione e copie o link.'); } });
+  $('#en-fit').addEventListener('click', () => { if (EN) EN.fit(); });
+
+
   function onTab(t) {
     if (!started) return;
-    const map = { cupons: ['cupons', loadCupons], mensagens: ['inbox', loadInbox], mesas: ['mesas', loadMesas], estoque: ['estoque', loadStock], financeiro: ['estoque', loadFin] };
+    const map = { cupons: ['cupons', loadCupons], mensagens: ['inbox', loadInbox], mesas: ['mesas', loadMesas], estoque: ['estoque', loadStock], financeiro: ['estoque', loadFin], entregas: ['entregas', loadEntregas] };
     const m = map[t]; if (!m || !has(m[0])) return;
     m[1](); loaded[t] = true;
   }
   const refreshStock = debounce(() => loadStock(), 800);
-  function onOrder(o) { if (!started || !o) return; if (o.mode === 'mesa') refreshMesas(); if (loaded.estoque && o.status !== 'pagamento') refreshStock(); }
+  function onOrder(o) { if (!started || !o) return; if (o.mode === 'mesa') refreshMesas(); if (o.mode === 'entrega' && has('entregas')) setTimeout(renderEntregas, 0); if (loaded.estoque && o.status !== 'pagamento') refreshStock(); }
   function start() {
     if (started || typeof R === 'undefined' || !R) return;
     started = true;
     applyLocks();
     if (has('inbox')) { loadInbox(); listenInbox(); }
     if (has('mesas')) loadMesas();
+    if (has('entregas')) { loadCouriers(); listenPositions(); }
     if (has('estoque')) sb.from('stock_items').select('*').eq('restaurant_id', R.id).order('name').then(({ data }) => { STOCK = data || []; renderStock(); });
     const cur = $('.p-tabs [aria-selected="true"]'); if (cur) onTab(cur.dataset.tab);
   }
-  return { start, onTab, onOrder, recipeOpen, recipeSave };
+  return { start, onTab, onOrder, recipeOpen, recipeSave, courierPick: (o) => (started ? courierPick(o) : '') };
 })();
 // o painel pode ter aberto antes deste arquivo carregar
 try { if (typeof R !== 'undefined' && R) window.BoraRecursos.start(); } catch (_) {}

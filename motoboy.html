@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>App do motoboy · BoraLanchar!</title>
+<meta name="theme-color" content="#1A1112">
+<link rel="icon" href="/assets/brand/boralanchar-icone-app.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="stylesheet" href="/assets/garcom.css?v=1">
+<link rel="stylesheet" href="/assets/motoboy.css?v=1">
+</head>
+<body>
+
+<!-- ENTRAR -->
+<section class="g-login" id="v-login" hidden>
+  <div class="g-card">
+    <div class="g-brand"><img id="lg-logo" alt="" hidden><span id="lg-ini">B</span></div>
+    <h1 id="lg-store">App do motoboy</h1>
+    <p class="g-muted">Digite o seu PIN para entrar.</p>
+    <div class="pin" id="pin" aria-live="polite"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="keys" id="keys">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <button type="button" data-k="del" aria-label="Apagar">⌫</button><button type="button" data-k="0">0</button><button type="button" data-k="ok" class="ok">Entrar</button>
+    </div>
+    <p class="g-err" id="lg-err" role="alert"></p>
+  </div>
+</section>
+
+<!-- ENTREGAS -->
+<section id="v-list" hidden>
+  <header class="g-top">
+    <div><b id="tp-store"></b><small id="tp-who"></small></div>
+    <button class="g-btn ghost" type="button" id="logout">Sair</button>
+  </header>
+  <div class="gps" id="gps" hidden role="status" aria-live="polite"></div>
+  <main class="g-main">
+    <div class="g-head"><h1>Minhas entregas</h1><button class="g-btn ghost" type="button" id="refresh">Atualizar</button></div>
+    <div id="mine"></div>
+    <div class="g-head free-head"><h1>Esperando motoboy</h1><small class="g-muted" id="done-today"></small></div>
+    <div id="free"></div>
+  </main>
+</section>
+
+<div class="state" id="v-state"><p id="st-text">Carregando…</p></div>
+<div class="toast" role="status" aria-live="polite"></div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script defer src="/assets/config.js"></script>
+<script defer src="/assets/motoboy.js?v=1"></script>
+</body>
+</html>

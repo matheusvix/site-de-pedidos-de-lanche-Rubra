@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="/assets/loja.css?v=9">
+<link rel="stylesheet" href="/assets/loja.css?v=10">
 </head>
 <body>
 
@@ -198,6 +198,11 @@
       <h2 id="h-st">Acompanhe seu pedido</h2>
       <ol class="steps" id="steps"></ol>
     </section>
+    <section class="card live" id="t-live" hidden aria-labelledby="h-live">
+      <div class="live-head"><h2 id="h-live">Seu pedido no mapa</h2><span class="live-dot" id="t-live-st">Ao vivo</span></div>
+      <div class="live-map" id="t-map" role="img" aria-label="Mapa com o motoboy e o endereço de entrega"></div>
+      <p class="live-txt" id="t-live-txt"></p>
+    </section>
     <section class="card" aria-labelledby="h-it">
       <h2 id="h-it">Itens do pedido</h2>
       <div class="mini" id="t-items"></div>
@@ -228,7 +233,8 @@
 <script defer src="/assets/horario.js?v=5"></script>
 <script defer src="/assets/vendor/qr.js"></script>
 <script defer src="/assets/pix.js?v=6"></script>
-<script defer src="/assets/planos.js?v=1"></script>
-<script defer src="/assets/loja.js?v=10"></script>
+<script defer src="/assets/planos.js?v=2"></script>
+<script defer src="/assets/mapa.js?v=1"></script>
+<script defer src="/assets/loja.js?v=11"></script>
 </body>
 </html>
