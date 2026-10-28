@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=20">
+<link rel="stylesheet" href="assets/painel.css?v=21">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -602,12 +602,41 @@
           <div class="p-card robo-conn" id="robo-conn">
             <div class="robo-conn-head">
               <svg width="28" height="28" aria-hidden="true"><use href="#i-wa"/></svg>
-              <div><b>Número do WhatsApp</b><span class="adm-muted" id="robo-conn-sub">API oficial do WhatsApp (Meta)</span></div>
+              <div><b>Número do WhatsApp</b><span class="adm-muted" id="robo-conn-sub">Conecte o número da loja</span></div>
               <span class="mp-state" id="robo-state">Desconectado</span>
             </div>
 
             <div id="robo-off">
-              <details class="mp-help" id="robo-help"><summary>Como conseguir esses dados na Meta (passo a passo)</summary>
+              <!-- 1) número -->
+              <div class="qr-step" id="qr-step1">
+                <p class="qr-lead">Ligue o robô em 1 minuto. O número continua funcionando normalmente no seu celular: o robô entra como um <b>aparelho conectado</b>, igual ao WhatsApp Web.</p>
+                <p class="qr-alert" id="qr-lost" hidden>O celular da loja desconectou o robô. Gere um código novo para ligar de novo.</p>
+                <div class="field"><label for="qr-phone">Número do WhatsApp da loja</label>
+                  <div class="qr-phone"><span aria-hidden="true">+55</span><input id="qr-phone" inputmode="tel" autocomplete="tel" maxlength="16" placeholder="(27) 99999-9999"></div>
+                  <small class="adm-muted">Com DDD. Você pode trocar o número depois.</small></div>
+                <button class="btn btn-primary btn-lg" type="button" id="qr-start">Gerar código</button>
+                <p class="adm-muted" id="qr-unavail" hidden>A conexão por código está sendo preparada. Enquanto isso, use a API oficial da Meta logo abaixo.</p>
+              </div>
+              <!-- 2) código -->
+              <div class="qr-step" id="qr-step2" hidden>
+                <p class="qr-lead">Digite este código no WhatsApp da loja</p>
+                <div class="qr-code"><b id="qr-code">····-····</b><button class="btn btn-ghost" type="button" id="qr-copy">Copiar</button></div>
+                <p class="qr-timer" id="qr-timer"></p>
+                <ol class="qr-steps">
+                  <li><span>Abra o WhatsApp no celular <b id="qr-num"></b> <button class="link-btn" type="button" id="qr-change">Trocar número</button></span></li>
+                  <li><span>Toque em <b>⋮</b> (Android) ou em <b>Configurações</b> (iPhone) e depois em <b>Dispositivos conectados</b></span></li>
+                  <li><span>Toque em <b>Conectar dispositivo</b></span></li>
+                  <li><span>Toque em <b>Conectar com número de telefone</b> e digite o código acima</span></li>
+                  <li><span>Pronto! Esta tela muda sozinha quando conectar.</span></li>
+                </ol>
+                <details class="mp-help" id="qr-qrbox" hidden><summary>Prefere ler um QR Code?</summary><p class="adm-muted">Em <b>Conectar dispositivo</b>, aponte a câmera para este código:</p><img id="qr-img" alt="QR Code para conectar o WhatsApp" width="220" height="220"></details>
+                <div class="qr-wait" id="qr-wait"><span class="qr-spin" aria-hidden="true"></span><span>Esperando você digitar o código no celular…</span></div>
+                <button class="btn btn-outline" type="button" id="qr-again" hidden>Gerar outro código</button>
+              </div>
+              <!-- API oficial (avançado) -->
+              <details class="robo-meta" id="robo-meta"><summary>Tenho a API oficial da Meta (avançado)</summary>
+              <p class="adm-muted">Para quem já tem app, número e token na Meta. Neste modo o número não pode estar em uso no aplicativo do WhatsApp.</p>
+              <details class="mp-help" id="robo-help"><summary>Passo a passo na Meta</summary>
                 <ol>
                   <li>Entre em <b>business.facebook.com</b> e crie (ou use) o <b>portfólio empresarial</b> da loja.</li>
                   <li>Em <b>developers.facebook.com › Meus apps › Criar app</b>, escolha o tipo <b>Empresa</b> e adicione o produto <b>WhatsApp</b>.</li>
@@ -629,6 +658,7 @@
               <div class="field"><label for="wa-token">Token de acesso permanente</label><input id="wa-token" type="password" autocomplete="off" spellcheck="false" placeholder="EAA…"></div>
               <div class="field"><label for="wa-secret">Chave secreta do aplicativo</label><input id="wa-secret" type="password" autocomplete="off" spellcheck="false" placeholder="32 letras e números"><small class="adm-muted" id="wa-secret-hint">Usada para conferir que as mensagens vieram mesmo da Meta.</small></div>
               <button class="btn btn-primary" type="button" id="wa-connect">Conectar número</button>
+              </details>
             </div>
 
             <div id="robo-on" hidden>
@@ -770,7 +800,7 @@
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
 <script defer src="assets/painel.js?v=22"></script>
-<script defer src="assets/robo.js?v=3"></script>
+<script defer src="assets/robo.js?v=4"></script>
 <script defer src="assets/recursos.js?v=4"></script>
 <script defer src="assets/pdv.js?v=2"></script>
 <script defer src="assets/desempenho.js?v=1"></script>

@@ -1,4 +1,7 @@
-// BoraLanchar! — Robô de atendimento no WhatsApp (API oficial da Meta / WhatsApp Cloud API)
+// BoraLanchar! — Robô de atendimento no WhatsApp
+// Duas formas de ligar o número da loja:
+//   • "qr"   — código de aparelho conectado (o número continua no celular), via servidor Evolution API do BoraLanchar
+//   • "meta" — API oficial da Meta (WhatsApp Cloud API), para quem já tem app e token na Meta
 //
 // Endereço (Callback URL na Meta): https://<projeto>.supabase.co/functions/v1/whatsapp
 //   GET  ?hub.mode=subscribe...      -> verificação do webhook pela Meta
@@ -6,7 +9,9 @@
 //   POST ?action=notify              -> aviso de status do pedido (chamado pelo banco, header x-bora-hook)
 // Ações do dono da loja (logado, Authorization: Bearer <jwt>), corpo JSON { action }:
 //   account | connect { phone_number_id, waba_id, token, app_secret? } | disconnect
+//   qr_start { phone } | qr_check | qr_disconnect   (conexão por código)
 //   send { conversation_id, text } | test { to }
+//   POST com header x-bora-evo       -> eventos do servidor Evolution (mensagens e conexão)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const GRAPH = "https://graph.facebook.com/v23.0";
@@ -50,7 +55,7 @@ function safeEqual(a: string, b: string) {
 }
 
 async function platform(): Promise<Row> {
-  const { data } = await admin.from("platform_secrets").select("wa_verify_token, wa_app_secret, wa_hook_secret").eq("id", 1).maybeSingle();
+  const { data } = await admin.from("platform_secrets").select("wa_verify_token, wa_app_secret, wa_hook_secret, evo_url, evo_key, evo_hook_secret").eq("id", 1).maybeSingle();
   return data || {};
 }
 async function secretsFor(rid: string): Promise<Row> {
@@ -66,6 +71,34 @@ async function graph(token: string, path: string, init: RequestInit = {}) {
   const data = await r.json().catch(() => ({}));
   return { ok: r.ok, status: r.status, data: data as Row };
 }
+// servidor Evolution API (conexão por código)
+async function evo(path: string, init: RequestInit = {}) {
+  const p = await platform();
+  if (!p.evo_url || !p.evo_key) return { ok: false, status: 0, data: { error: "servidor do robô não configurado" } as Row };
+  try {
+    const r = await fetch(String(p.evo_url).replace(/\/$/, "") + path, {
+      ...init, headers: { apikey: p.evo_key, "Content-Type": "application/json", ...(init.headers || {}) },
+    });
+    const data = await r.json().catch(() => ({}));
+    return { ok: r.ok, status: r.status, data: data as Row };
+  } catch (e) {
+    return { ok: false, status: 0, data: { error: `servidor do robô fora do ar (${String(e).slice(0, 80)})` } as Row };
+  }
+}
+const evoError = (d: Row) => {
+  const m = d?.response?.message;
+  const t = Array.isArray(m) ? m.flat().map((x: unknown) => (typeof x === "string" ? x : JSON.stringify(x))).join("; ") : m || d?.error || d?.message;
+  return String(t || "erro desconhecido").slice(0, 300);
+};
+const fmtCode = (c: unknown) => { const t = String(c || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase(); return t.length === 8 ? `${t.slice(0, 4)}-${t.slice(4)}` : t || null; };
+const fmtPhone = (w: string) => {
+  const d = digits(w); const n = d.startsWith("55") ? d.slice(2) : d;
+  if (n.length === 11) return `+55 (${n.slice(0, 2)}) ${n.slice(2, 7)}-${n.slice(7)}`;
+  if (n.length === 10) return `+55 (${n.slice(0, 2)}) ${n.slice(2, 6)}-${n.slice(6)}`;
+  return "+" + d;
+};
+const isQr = (bot: Row) => bot && bot.provider === "qr";
+const live = (bot: Row, sec: Row) => (isQr(bot) ? !!(bot.qr_instance && bot.qr_state === "open") : !!(bot.phone_number_id && sec.wa_token));
 const metaError = (d: Row) => String(d?.error?.error_user_msg || d?.error?.message || "erro desconhecido").slice(0, 300);
 
 /* ---------------- horário (mesma regra do assets/horario.js) ---------------- */
@@ -205,14 +238,20 @@ async function lastOrder(R: Row, waId: string) {
 const toAddr = (waId: string) => (/^55\d{2}[6-9]\d{7}$/.test(waId) ? waId.slice(0, 4) + "9" + waId.slice(4) : waId);
 
 async function send(bot: Row, token: string, conv: Row, payload: Row, logBody: string, sender = "robo") {
-  const r = await graph(token, `/${bot.phone_number_id}/messages`, {
-    method: "POST",
-    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: toAddr(conv.wa_id), ...payload }),
-  });
-  const id = r.ok ? String(r.data?.messages?.[0]?.id || "") || null : null;
+  const qr = isQr(bot);
+  const r = qr
+    ? await evo(`/message/sendText/${bot.qr_instance}`, {
+      method: "POST",
+      body: JSON.stringify({ number: conv.wa_id, text: (payload.type === "text" ? String(payload.text?.body || "") : logBody).slice(0, 4096), linkPreview: true }),
+    })
+    : await graph(token, `/${bot.phone_number_id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: toAddr(conv.wa_id), ...payload }),
+    });
+  const id = r.ok ? String((qr ? r.data?.key?.id : r.data?.messages?.[0]?.id) || "") || null : null;
   await admin.from("wa_messages").insert({
     conversation_id: conv.id, restaurant_id: bot.restaurant_id, direction: "out", sender,
-    body: (r.ok ? logBody : `⚠️ Não enviado: ${metaError(r.data)}\n${logBody}`).slice(0, 4096), wa_msg_id: id, status: r.ok ? "sent" : "failed",
+    body: (r.ok ? logBody : `⚠️ Não enviado: ${qr ? evoError(r.data) : metaError(r.data)}\n${logBody}`).slice(0, 4096), wa_msg_id: id, status: r.ok ? "sent" : "failed",
   });
   await admin.from("wa_conversations").update({ last_msg_at: new Date().toISOString() }).eq("id", conv.id);
   return r;
@@ -221,6 +260,10 @@ const sendText = (bot: Row, token: string, conv: Row, text: string, sender = "ro
   send(bot, token, conv, { type: "text", text: { body: text.slice(0, 4096), preview_url: true } }, text, sender);
 
 function sendMenu(bot: Row, token: string, conv: Row, intro: string) {
+  if (isQr(bot)) { // aparelho conectado: lista com números (botões de lista não aparecem em todos os celulares)
+    const list = MENU.map((m, i) => `*${i + 1}* ${m.title}`).join("\n");
+    return sendText(bot, token, conv, `${intro}\n\nDigite o número da opção 👇\n${list}`);
+  }
   const body = `${intro}\n\nEscolha uma opção abaixo 👇 (ou digite o número)`.slice(0, 1024);
   const list = MENU.map((m, i) => `${i + 1}. ${m.title.replace(/^\S+\s/, "")}`).join("\n");
   return send(bot, token, conv, {
@@ -255,7 +298,7 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
   if (msg.type === "text") text = String(msg.text?.body || "");
   else if (msg.type === "interactive") { choice = String(msg.interactive?.list_reply?.id || msg.interactive?.button_reply?.id || ""); text = String(msg.interactive?.list_reply?.title || msg.interactive?.button_reply?.title || ""); }
   else if (msg.type === "button") text = String(msg.button?.text || "");
-  else text = `[${msg.type === "image" ? "foto" : msg.type === "audio" ? "áudio" : msg.type === "location" ? "localização" : msg.type === "sticker" ? "figurinha" : msg.type}]`;
+  else text = (msg.text?.body ? String(msg.text.body) + " " : "") + `[${msg.type === "image" ? "foto" : msg.type === "audio" ? "áudio" : msg.type === "location" ? "localização" : msg.type === "sticker" ? "figurinha" : msg.type === "video" ? "vídeo" : msg.type === "document" ? "arquivo" : "mensagem"}]`;
 
   // guarda a mensagem (o id da Meta é único: aviso repetido não responde duas vezes)
   const saved = await admin.from("wa_messages").insert({
@@ -266,7 +309,9 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
   conv.last_inbound_at = now;
 
   // marca como lida (os dois tracinhos azuis)
-  if (msg.id) graph(token, `/${bot.phone_number_id}/messages`, { method: "POST", body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: msg.id }) }).catch(() => {});
+  if (msg.id && isQr(bot)) {
+    if (msg._jid) evo(`/chat/markMessageAsRead/${bot.qr_instance}`, { method: "POST", body: JSON.stringify({ readMessages: [{ remoteJid: msg._jid, fromMe: false, id: String(msg.id) }] }) }).catch(() => {});
+  } else if (msg.id) graph(token, `/${bot.phone_number_id}/messages`, { method: "POST", body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: msg.id }) }).catch(() => {});
 
   if (!bot.enabled || !planRobo(R.plan)) return; // robô só nos planos Profissional e Completo
   if (conv.human_until && new Date(conv.human_until).getTime() > Date.now()) return; // atendente da loja está cuidando
@@ -375,15 +420,68 @@ async function handleWebhook(raw: string, sig: string) {
   }
 }
 
+/* ---------------- eventos do servidor Evolution (conexão por código) ---------------- */
+// a loja respondeu pelo próprio celular: guarda na conversa e deixa o robô em silêncio
+async function ownerTyped(bot: Row, jid: string, id: string, text: string) {
+  await new Promise((r) => setTimeout(r, 4000)); // dá tempo de o robô registrar as mensagens que ele mesmo mandou
+  const waId = digits(jid.split("@")[0]);
+  if (!waId || !id) return;
+  const { data: conv } = await admin.from("wa_conversations").select("id").eq("restaurant_id", bot.restaurant_id).eq("wa_id", waId).maybeSingle();
+  if (!conv) return;
+  const ins = await admin.from("wa_messages").insert({ conversation_id: conv.id, restaurant_id: bot.restaurant_id, direction: "out", sender: "loja", body: text.slice(0, 4096), wa_msg_id: id.slice(0, 200), status: "sent" });
+  if (ins.error) return; // mensagem do próprio robô
+  await admin.from("wa_conversations").update({ human_until: new Date(Date.now() + (bot.human_minutes || 120) * 60000).toISOString(), last_msg_at: new Date().toISOString() }).eq("id", conv.id);
+}
+
+async function handleEvo(body: Row) {
+  const inst = String(body.instance || "");
+  const ev = String(body.event || "").toLowerCase().replace(/_/g, ".");
+  if (!inst) return;
+  const { data: bot } = await admin.from("whatsapp_bots").select("*").eq("qr_instance", inst).maybeSingle();
+  if (!bot) return;
+
+  if (ev === "connection.update") {
+    const st = String(body.data?.state || "").slice(0, 20);
+    if (!st) return;
+    const patch: Row = { qr_state: st };
+    if (st === "open") {
+      patch.provider = "qr"; patch.enabled = true; patch.phone_number_id = null; patch.waba_id = null;
+      const w = digits(String(body.data?.wuid || "").split("@")[0]);
+      if (w) patch.display_phone = fmtPhone(w);
+      if (body.data?.profileName) patch.verified_name = String(body.data.profileName).slice(0, 120);
+    }
+    await admin.from("whatsapp_bots").update(patch).eq("restaurant_id", bot.restaurant_id);
+    return;
+  }
+  if (ev !== "messages.upsert" || !isQr(bot)) return;
+  const { data: R } = await admin.from("restaurants").select("*").eq("id", bot.restaurant_id).maybeSingle();
+  if (!R) return;
+  for (const d of (Array.isArray(body.data) ? body.data : [body.data])) {
+    const key = d?.key || {};
+    let jid = String(key.remoteJid || "");
+    if (jid.endsWith("@lid") && key.remoteJidAlt) jid = String(key.remoteJidAlt);
+    if (!jid.endsWith("@s.whatsapp.net")) continue; // grupos, status e canais ficam de fora
+    const m = d.message || {};
+    const text = String(m.conversation || m.extendedTextMessage?.text || m.imageMessage?.caption || m.videoMessage?.caption || "");
+    const type = m.conversation || m.extendedTextMessage ? "text" : m.imageMessage ? "image" : m.audioMessage ? "audio" : m.videoMessage ? "video"
+      : m.documentMessage ? "document" : m.locationMessage ? "location" : m.stickerMessage ? "sticker"
+      : m.reactionMessage || m.protocolMessage || m.senderKeyDistributionMessage ? "" : "outro";
+    if (!type) continue;
+    if (key.fromMe) { await ownerTyped(bot, jid, String(key.id || ""), text || "[mensagem]"); continue; }
+    const msg = { from: jid.split("@")[0], id: String(key.id || ""), type, text: { body: text }, _jid: jid };
+    try { await handleMessage(bot, R, "", msg, { profile: { name: d.pushName } }); } catch (e) { console.error("whatsapp: erro ao responder (código)", e); }
+  }
+}
+
 /* ---------------- aviso de status do pedido ---------------- */
 async function notify(orderId: number, status: string) {
   const { data: o } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (!o || o.status !== status || !ST[status] || status === "pagamento") return { skipped: "status" };
   if (o.mode === "mesa") return { skipped: "pedido na mesa" };
   const { data: bot } = await admin.from("whatsapp_bots").select("*").eq("restaurant_id", o.restaurant_id).maybeSingle();
-  if (!bot || !bot.enabled || !bot.notify_status || !bot.phone_number_id) return { skipped: "robô desligado" };
+  if (!bot || !bot.enabled || !bot.notify_status) return { skipped: "robô desligado" };
   const sec = await secretsFor(o.restaurant_id);
-  if (!sec.wa_token) return { skipped: "sem token" };
+  if (!live(bot, sec)) return { skipped: "número não conectado" };
   const { data: R } = await admin.from("restaurants").select("*").eq("id", o.restaurant_id).single();
   if (!planRobo(R.plan)) return { skipped: "plano sem robô" };
 
@@ -406,7 +504,8 @@ async function notify(orderId: number, status: string) {
     cancelado: say(bot, "cancelado", "Seu pedido *#{numero}* na *{loja}* foi cancelado. Se tiver dúvida, responda esta mensagem com *6* para falar com a loja.", v),
   };
   const inWindow = conv.last_inbound_at && Date.now() - new Date(conv.last_inbound_at).getTime() < 23.5 * 3600e3;
-  if (inWindow) { await sendText(bot, sec.wa_token, conv, msg[status], "aviso"); return { sent: "texto" }; }
+  // pelo código (aparelho conectado) não existe a janela de 24h da API oficial
+  if (inWindow || isQr(bot)) { await sendText(bot, sec.wa_token, conv, msg[status], "aviso"); return { sent: "texto" }; }
   if (!bot.template_name) return { skipped: "fora da janela de 24h e sem modelo aprovado" };
   // fora da janela de 24h o WhatsApp só aceita modelo (template) aprovado pela Meta
   // modelo sugerido: "Olá, {{1}}! Seu pedido #{{2}} na {{4}} está {{3}}."
@@ -445,7 +544,8 @@ async function ownerAction(req: Request, action: string, body: Row) {
   if (action === "account") {
     const plat = await platform();
     return json({
-      connected: !!(bot.phone_number_id && sec.wa_token), display_phone: bot.display_phone, verified_name: bot.verified_name,
+      connected: live(bot, sec), provider: bot.provider || "meta", qr_state: bot.qr_state || null, qr_available: !!(plat.evo_url && plat.evo_key),
+      display_phone: bot.display_phone, verified_name: bot.verified_name,
       webhook_url: `${SUPABASE_URL}/functions/v1/whatsapp`, verify_token: plat.wa_verify_token || null,
       app_secret_ok: !!(sec.wa_app_secret || plat.wa_app_secret),
     });
@@ -465,10 +565,63 @@ async function ownerAction(req: Request, action: string, body: Row) {
     const sub = await graph(token, `/${waba}/subscribed_apps`, { method: "POST" });
     if (!sub.ok) return json({ error: `Não consegui ligar os avisos de mensagens (WABA ID certo?): ${metaError(sub.data)}` }, 400);
     await admin.from("restaurant_secrets").upsert({ restaurant_id: R.id, wa_token: token, ...(appSecret ? { wa_app_secret: appSecret } : {}), updated_at: new Date().toISOString() }, { onConflict: "restaurant_id" });
+    if (bot.qr_instance) await evo(`/instance/delete/${bot.qr_instance}`, { method: "DELETE" });
     const up = await admin.from("whatsapp_bots").update({
+      provider: "meta", qr_instance: null, qr_state: null,
       phone_number_id: pnid, waba_id: waba, display_phone: String(ph.data.display_phone_number || "").slice(0, 30), verified_name: String(ph.data.verified_name || "").slice(0, 120), enabled: true,
     }).eq("restaurant_id", R.id).select().single();
     if (up.error) return json({ error: "Não foi possível salvar a conexão." }, 500);
+    return json({ ok: true, bot: up.data });
+  }
+
+  if (action === "qr_start") {
+    const plat = await platform();
+    if (!plat.evo_url || !plat.evo_key) return json({ error: "A conexão por código ainda não está disponível. Fale com o suporte do BoraLanchar!." }, 503);
+    let ph = digits(body.phone);
+    if (ph.length === 10 || ph.length === 11) ph = "55" + ph;
+    if (!/^55\d{10,11}$/.test(ph)) return json({ error: "Digite o número do WhatsApp da loja com DDD." }, 400);
+    if (bot.qr_instance) await evo(`/instance/delete/${bot.qr_instance}`, { method: "DELETE" }); // começa do zero
+    const inst = `bora_${String(R.id).replace(/-/g, "").slice(0, 12)}_${Date.now().toString(36)}`;
+    const hook = { enabled: true, url: `${SUPABASE_URL}/functions/v1/whatsapp`, headers: { "x-bora-evo": plat.evo_hook_secret }, byEvents: false, base64: false, events: ["MESSAGES_UPSERT", "CONNECTION_UPDATE"] };
+    const cr = await evo("/instance/create", {
+      method: "POST",
+      body: JSON.stringify({ instanceName: inst, integration: "WHATSAPP-BAILEYS", number: ph, qrcode: true, groupsIgnore: true, rejectCall: false, alwaysOnline: false, readMessages: false, readStatus: false, syncFullHistory: false, webhook: hook }),
+    });
+    if (!cr.ok) return json({ error: `Não consegui gerar o código agora: ${evoError(cr.data)}` }, 502);
+    await evo(`/webhook/set/${inst}`, { method: "POST", body: JSON.stringify({ webhook: hook }) }); // garante o aviso de mensagens
+    await admin.from("whatsapp_bots").update({ qr_instance: inst, qr_state: "connecting" }).eq("restaurant_id", R.id);
+    let code = fmtCode(cr.data?.qrcode?.pairingCode), qr = cr.data?.qrcode?.base64 || null;
+    if (!code) { const c = await evo(`/instance/connect/${inst}`); code = fmtCode(c.data?.pairingCode); qr = c.data?.base64 || qr; }
+    return json({ ok: true, code, qr, phone: fmtPhone(ph) });
+  }
+
+  if (action === "qr_check") {
+    if (!bot.qr_instance) return json({ state: "close" });
+    const cs = await evo(`/instance/connectionState/${bot.qr_instance}`);
+    if (!cs.ok) return json({ state: bot.qr_state || "close", error: evoError(cs.data) });
+    const st = String(cs.data?.instance?.state || "close");
+    if (st === "open") {
+      const patch: Row = { provider: "qr", qr_state: "open", enabled: true, phone_number_id: null, waba_id: null };
+      const fi = await evo(`/instance/fetchInstances?instanceName=${encodeURIComponent(bot.qr_instance)}`);
+      const it = Array.isArray(fi.data) ? fi.data[0] : null;
+      if (it) {
+        const w = digits(String(it.ownerJid || "").split("@")[0]);
+        if (w) patch.display_phone = fmtPhone(w);
+        if (it.profileName) patch.verified_name = String(it.profileName).slice(0, 120);
+      }
+      const up = await admin.from("whatsapp_bots").update(patch).eq("restaurant_id", R.id).select().single();
+      await admin.from("restaurant_secrets").update({ wa_token: null, updated_at: new Date().toISOString() }).eq("restaurant_id", R.id);
+      return json({ state: "open", bot: up.data });
+    }
+    let code = null, qr = null;
+    if (st === "connecting") { const c = await evo(`/instance/connect/${bot.qr_instance}`); code = fmtCode(c.data?.pairingCode); qr = c.data?.base64 || null; }
+    if (st !== bot.qr_state) await admin.from("whatsapp_bots").update({ qr_state: st }).eq("restaurant_id", R.id);
+    return json({ state: st, code, qr });
+  }
+
+  if (action === "qr_disconnect") {
+    if (bot.qr_instance) await evo(`/instance/delete/${bot.qr_instance}`, { method: "DELETE" });
+    const up = await admin.from("whatsapp_bots").update({ provider: "meta", qr_instance: null, qr_state: null, display_phone: null, verified_name: null, enabled: false }).eq("restaurant_id", R.id).select().single();
     return json({ ok: true, bot: up.data });
   }
 
@@ -478,20 +631,27 @@ async function ownerAction(req: Request, action: string, body: Row) {
     return json({ ok: true, bot: up.data });
   }
 
-  if (!bot.phone_number_id || !sec.wa_token) return json({ error: "Conecte o número do WhatsApp primeiro." }, 400);
+  if (!live(bot, sec)) return json({ error: "Conecte o número do WhatsApp primeiro." }, 400);
 
   if (action === "send") {
     const text = String(body.text || "").trim().slice(0, 4000);
     if (!text) return json({ error: "Escreva a mensagem." }, 400);
     const { data: conv } = await admin.from("wa_conversations").select("*").eq("id", Number(body.conversation_id) || 0).eq("restaurant_id", R.id).maybeSingle();
     if (!conv) return json({ error: "Conversa não encontrada." }, 404);
-    if (!conv.last_inbound_at || Date.now() - new Date(conv.last_inbound_at).getTime() > 24 * 3600e3)
+    if (!isQr(bot) && (!conv.last_inbound_at || Date.now() - new Date(conv.last_inbound_at).getTime() > 24 * 3600e3))
       return json({ error: "Já passou 24h da última mensagem do cliente. Pela regra do WhatsApp, só dá para responder quando ele mandar mensagem de novo (ou abra a conversa no seu celular)." }, 400);
     const r = await sendText(bot, sec.wa_token, conv, text, "loja");
-    if (!r.ok) return json({ error: `O WhatsApp recusou: ${metaError(r.data)}` }, 400);
+    if (!r.ok) return json({ error: `O WhatsApp recusou: ${isQr(bot) ? evoError(r.data) : metaError(r.data)}` }, 400);
     const until = new Date(Date.now() + (bot.human_minutes || 120) * 60000).toISOString();
     await admin.from("wa_conversations").update({ human_until: until, unread: 0 }).eq("id", conv.id);
     return json({ ok: true });
+  }
+
+  if (action === "test" && isQr(bot)) {
+    const cs = await evo(`/instance/connectionState/${bot.qr_instance}`);
+    const st = String(cs.data?.instance?.state || "close");
+    if (st !== "open") { await admin.from("whatsapp_bots").update({ qr_state: st }).eq("restaurant_id", R.id); return json({ error: "O celular da loja desconectou o robô. Gere um código novo para conectar de novo." }, 400); }
+    return json({ ok: true, display_phone: bot.display_phone, quality: null });
   }
 
   if (action === "test") {
@@ -536,6 +696,17 @@ Deno.serve(async (req) => {
 
     const raw = await req.text();
     const sig = req.headers.get("x-hub-signature-256") || "";
+
+    // 3a) eventos do servidor Evolution (conexão por código)
+    const evoSig = req.headers.get("x-bora-evo");
+    if (evoSig) {
+      const plat = await platform();
+      if (!plat.evo_hook_secret || !safeEqual(evoSig, plat.evo_hook_secret)) return new Response("forbidden", { status: 403 });
+      let b: Row = {}; try { b = JSON.parse(raw); } catch { return new Response("ok", { status: 200 }); }
+      const job = handleEvo(b).catch((e) => console.error("whatsapp evo:", e));
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(job); else await job;
+      return new Response("ok", { status: 200 });
+    }
 
     // 3) mensagens da Meta: responde 200 na hora e trabalha em segundo plano
     if (sig) {

@@ -17,8 +17,10 @@ window.BoraRobo = (() => {
   }
 
   /* ---------- conexão ---------- */
+  const isQr = () => !!(BOT && BOT.provider === 'qr');
+  const connected = () => !!(BOT && (isQr() ? BOT.qr_state === 'open' : BOT.phone_number_id));
   function renderConn() {
-    const on = !!(BOT && BOT.phone_number_id);
+    const on = connected();
     $('#robo-off').hidden = on; $('#robo-on').hidden = !on;
     const st = $('#robo-state');
     st.textContent = !on ? 'Desconectado' : BOT.enabled ? 'Robô ligado' : 'Robô pausado';
@@ -28,15 +30,26 @@ window.BoraRobo = (() => {
       $('#robo-vname').textContent = BOT.verified_name ? `Nome no WhatsApp: ${BOT.verified_name}` : '';
       $('#robo-enabled').checked = !!BOT.enabled;
       $('#robo-enabled-label').textContent = BOT.enabled ? 'Robô ligado' : 'Robô pausado';
+      $('#robo-conn-sub').textContent = isQr() ? 'Conectado como aparelho do WhatsApp' : 'API oficial do WhatsApp (Meta)';
+      $('#robo-on-hint').textContent = isQr()
+        ? 'Para testar, mande um "oi" para este número de outro celular. Se você desconectar este aparelho em "Dispositivos conectados" no celular, o robô para.'
+        : 'Para testar, mande um "oi" para este número de outro celular.';
+    } else {
+      $('#robo-conn-sub').textContent = 'Conecte o número da loja';
+      $('#qr-lost').hidden = !(BOT && BOT.qr_instance && BOT.qr_state === 'close' && !POLL);
+      const ph = $('#qr-phone'); if (!ph.value && R.whatsapp) ph.value = fmtPhone(R.whatsapp);
     }
     if (ACC) {
+      const qrOk = ACC.qr_available !== false;
+      $('#qr-start').hidden = !qrOk; $('#qr-phone').closest('.field').hidden = !qrOk; $('#qr-unavail').hidden = qrOk;
+      if (!qrOk) $('#robo-meta').open = true;
       $('#robo-hook').hidden = !ACC.webhook_url;
       $('#robo-hook-url').textContent = ACC.webhook_url || '';
       $('#robo-hook-token').textContent = ACC.verify_token || '(ainda não gerado)';
       $('#wa-secret-hint').textContent = ACC.app_secret_ok ? 'Opcional: só se você criou um app próprio na Meta.' : 'Usada para conferir que as mensagens vieram mesmo da Meta.';
     }
     if (SUPPORT) {
-      $('#wa-connect').disabled = true; $('#wa-disconnect').hidden = true;
+      $('#wa-connect').disabled = true; $('#wa-disconnect').hidden = true; $('#qr-start').disabled = true;
       $('#robo-conn-sub').textContent = 'No modo suporte, só o dono conecta ou desconecta o número.';
     }
     $('#robo-count').hidden = true;
@@ -55,9 +68,60 @@ window.BoraRobo = (() => {
     BOT = r.bot; renderConn(); renderPreview();
     toast('WhatsApp conectado! Mande um "oi" de outro celular para testar.');
   });
+  /* ---------- conexão por código (aparelho conectado) ---------- */
+  let POLL = null, TICK = null, LEFT = 0;
+  const qstep = (n) => { $('#qr-step1').hidden = n !== 1; $('#qr-step2').hidden = n !== 2; };
+  function stopPoll() { clearInterval(POLL); clearInterval(TICK); POLL = null; TICK = null; }
+  function showCode(r) {
+    if (r.code) $('#qr-code').textContent = r.code;
+    if (r.qr) { $('#qr-img').src = r.qr; $('#qr-qrbox').hidden = false; }
+  }
+  function timer() {
+    LEFT = 300;
+    const draw = () => { const m = Math.floor(LEFT / 60), s = String(LEFT % 60).padStart(2, '0'); $('#qr-timer').textContent = LEFT > 0 ? `O código vale por ${m}:${s}` : 'O código expirou.'; };
+    draw(); clearInterval(TICK);
+    TICK = setInterval(() => {
+      LEFT--; draw();
+      if (LEFT <= 0) { stopPoll(); $('#qr-wait').hidden = true; $('#qr-again').hidden = false; $('#qr-code').classList.add('old'); }
+    }, 1000);
+  }
+  function poll() {
+    clearInterval(POLL);
+    POLL = setInterval(async () => {
+      if (document.hidden) return;
+      const r = await call('qr_check');
+      if (r.state === 'open') {
+        stopPoll(); BOT = r.bot || { ...BOT, provider: 'qr', qr_state: 'open', enabled: true };
+        qstep(1); renderConn(); renderPreview();
+        toast('Robô ativado! 🎉 Mande um "oi" de outro celular para testar.');
+      } else if (r.code && r.code !== $('#qr-code').textContent) showCode(r);
+    }, 3000);
+  }
+  async function qrStart() {
+    const d = $('#qr-phone').value.replace(/\D/g, '');
+    if (d.length < 10 || d.length > 13) { toast('Digite o número do WhatsApp da loja com DDD.'); $('#qr-phone').focus(); return; }
+    const b = $('#qr-start'), again = $('#qr-again');
+    b.disabled = true; again.disabled = true; b.textContent = 'Gerando código…';
+    const r = await call('qr_start', { phone: d });
+    b.disabled = false; again.disabled = false; b.textContent = 'Gerar código';
+    if (r.error) return toast(r.error);
+    if (!r.code && !r.qr) return toast('O WhatsApp não devolveu o código. Tente de novo em instantes.');
+    $('#qr-code').classList.remove('old'); $('#qr-code').textContent = r.code || '—';
+    $('#qr-qrbox').hidden = true; showCode(r);
+    $('#qr-num').textContent = r.phone || fmtPhone(d);
+    $('#qr-wait').hidden = false; again.hidden = true; $('#qr-lost').hidden = true;
+    qstep(2); timer(); poll();
+  }
+  $('#qr-start').addEventListener('click', qrStart);
+  $('#qr-again').addEventListener('click', qrStart);
+  $('#qr-phone').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); qrStart(); } });
+  $('#qr-phone').addEventListener('input', (e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 11); e.target.value = d.length > 6 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : d.length > 2 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d; });
+  $('#qr-change').addEventListener('click', () => { stopPoll(); qstep(1); $('#qr-phone').focus(); });
+  $('#qr-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#qr-code').textContent.replace(/[^A-Z0-9]/gi, '')); toast('Código copiado!'); } catch (_) {} });
+
   $('#wa-disconnect').addEventListener('click', async () => {
     if (!confirm('Desconectar o número? O robô para de responder e os avisos de pedido param.')) return;
-    const r = await call('disconnect'); if (r.error) return toast(r.error);
+    const r = await call(isQr() ? 'qr_disconnect' : 'disconnect'); if (r.error) return toast(r.error);
     BOT = r.bot; renderConn(); toast('Número desconectado.');
   });
   $('#wa-test').addEventListener('click', async () => {
