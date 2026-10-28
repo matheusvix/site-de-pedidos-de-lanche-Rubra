@@ -351,7 +351,7 @@ function prepareWhen() {
 }
 function fillHours() { const s = SLOTS[+co.dia.value || 0]; $('#c-hora').innerHTML = s ? s.times.map((t) => `<option value="${t}">${t}</option>`).join('') : ''; }
 function syncWhen() { $('#when-pick').hidden = co.quando.value !== 'agendar'; }
-co.addEventListener('change', (e) => { if (e.target.name === 'quando') syncWhen(); if (e.target.name === 'dia') fillHours(); });
+$('#checkout').addEventListener('change', (e) => { if (e.target.name === 'quando') syncWhen(); if (e.target.name === 'dia') fillHours(); });
 function scheduledFor() {
   if (!canSchedule() || co.quando.value !== 'agendar') return null;
   const s = SLOTS[+co.dia.value || 0]; const t = co.hora.value;
