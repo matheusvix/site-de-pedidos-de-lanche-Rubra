@@ -44,7 +44,9 @@ function syncPay() {
   [['cartao', mp], ['boleto', mp], ['pix', pixOk]].forEach(([k, ok]) => {
     const l = $('#m-' + k); l.classList.toggle('off', !ok); $('input', l).disabled = !ok;
   });
-  if (!mp) { $('#m-cartao-txt').textContent = 'Em breve'; $('#m-boleto-txt').textContent = 'Em breve'; }
+  // o texto volta ao normal quando as configurações chegam (antes ficava "Em breve" para sempre)
+  $('#m-cartao-txt').textContent = mp ? 'Página segura do Mercado Pago' : 'Em breve';
+  $('#m-boleto-txt').textContent = mp ? 'Libera em até 3 dias úteis após pagar' : 'Em breve';
   if ($('input[name="metodo"]:checked')?.disabled) { const first = $('input[name="metodo"]:not(:disabled)'); if (first) first.checked = true; }
   const m = method();
   $('#pay-txt').textContent = m === 'pix' ? `Pagar ${brl(PLANS[plan].price)} com Pix` : m === 'cartao' ? `Pagar ${brl(PLANS[plan].price)} no cartão` : `Gerar boleto de ${brl(PLANS[plan].price)}`;
