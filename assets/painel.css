@@ -550,3 +550,12 @@ dialog.mass{width:min(1240px,calc(100% - 24px));height:min(860px,calc(100% - 24p
 .fn-bar{width:var(--w);min-width:44px;height:38px;border-radius:10px;background:linear-gradient(90deg,#E01E2D,#FF6B5B);display:flex;align-items:center;justify-content:flex-end;padding:0 10px;color:#fff;font-weight:800}
 .fn-row small{display:block}
 @media (max-width:640px){.fn-row{grid-template-columns:1fr}.rep-acts input{min-width:0;flex:1}}
+.cb-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cb-kpi{background:#FBF7F6;border:1px solid var(--line);border-radius:14px;padding:12px}
+.cb-kpi b{display:block;font:800 22px var(--display)}
+.cb-kpi span{font-size:13px;color:var(--muted)}
+#rc-msg{font:inherit;font-size:15px;width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;resize:vertical}
+.rate-row b{color:#C98A00}
+.rate-row b .adm-muted{color:#E3D7D8}
+.rate-row small{display:block}
+.rate-row.low{border-color:#F6CFD2;background:#FFF8F8}

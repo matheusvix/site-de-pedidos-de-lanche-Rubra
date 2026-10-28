@@ -23,6 +23,7 @@ window.BoraRelatorios = (() => {
   }
   function render() {
     if (!D) return;
+    if (tab === 'avaliacoes') { avaliacoes(); return; }
     const f = { clientes, vendas, itens, entregas, equipe, funil }[tab];
     $('#rep-body').innerHTML = f();
   }
@@ -111,7 +112,32 @@ window.BoraRelatorios = (() => {
       <p class="adm-muted">O funil começou a contar a partir desta atualização do sistema.</p></div>`;
   }
 
-  $$('[data-rp]').forEach((b) => b.addEventListener('click', () => { days = +b.dataset.rp; $$('[data-rp]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); load(); }));
+  /* ---------- avaliações ---------- */
+  async function avaliacoes() {
+    $('#rep-body').innerHTML = empty('Carregando…');
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const { data, error } = await sb.from('order_ratings').select('stars, comment, created_at, orders(number, customer_name, customer_phone)')
+      .eq('restaurant_id', R.id).gte('created_at', since).order('created_at', { ascending: false }).limit(500);
+    if (tab !== 'avaliacoes') return;
+    if (error) { $('#rep-body').innerHTML = empty('Não foi possível carregar as avaliações.'); return; }
+    const L = data || [];
+    if (!L.length) { $('#rep-body').innerHTML = `<div class="p-card"><h2>Avaliações</h2><p class="adm-muted">Ainda não há avaliações no período. Quando o pedido é marcado como entregue, o cliente vê as estrelinhas na tela de acompanhamento do pedido. A nota da loja aparece no cardápio a partir de 5 avaliações.</p></div>`; return; }
+    const avg = L.reduce((s, r) => s + r.stars, 0) / L.length;
+    const dist = [5, 4, 3, 2, 1].map((n) => ({ n, c: L.filter((r) => r.stars === n).length }));
+    const bad = L.filter((r) => r.stars <= 3);
+    $('#rep-body').innerHTML = `<section class="adm-kpis">
+        <div class="adm-kpi"><span>Nota média</span><b>★ ${avg.toFixed(1).replace('.', ',')}</b><small>${L.length} avaliação(ões)</small></div>
+        <div class="adm-kpi"><span>Satisfeitos (4 e 5)</span><b>${Math.round(L.filter((r) => r.stars >= 4).length / L.length * 100)}%</b></div>
+        <div class="adm-kpi"><span>Para dar atenção (1 a 3)</span><b>${bad.length}</b></div>
+      </section>
+      <div class="rx-grid"><div class="p-card"><h2>Distribuição</h2><div class="fin-split">${dist.map((x) => `<div class="fs"><span>${'★'.repeat(x.n)}</span><b>${x.c}</b><i style="--w:${Math.round(x.c / L.length * 100)}%"></i></div>`).join('')}</div></div>
+      <div class="p-card"><h2>Comentários</h2><div class="rx-list">${L.filter((r) => r.comment).slice(0, 100).map((r) => {
+        const o = r.orders || {}; const ph = digits(o.customer_phone).replace(/^55(?=\d{10,11}$)/, '');
+        return `<div class="rx-row rate-row ${r.stars <= 3 ? 'low' : ''}"><div class="rx-main"><b>${'★'.repeat(r.stars)}<span class="adm-muted">${'★'.repeat(5 - r.stars)}</span> · ${esc(o.customer_name || 'Cliente')}${o.number ? ` · #${o.number}` : ''}</b><small>${esc(r.comment)}</small><small class="adm-muted">${dt(r.created_at)}</small></div>${r.stars <= 3 && ph.length >= 10 ? `<a class="btn btn-ghost sm" href="${wa(ph, o.customer_name)}" target="_blank" rel="noopener">Responder</a>` : ''}</div>`;
+      }).join('') || empty('Ninguém deixou comentário ainda, só estrelas.')}</div></div></div>`;
+  }
+
+  $$('[data-rp]').forEach((b) => b.addEventListener('click', () => { days = +b.dataset.rp; $$('[data-rp]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); if (tab === 'avaliacoes') avaliacoes(); else load(); }));
   $$('[data-rt]').forEach((b) => b.addEventListener('click', () => { tab = b.dataset.rt; $$('[data-rt]').forEach((x) => x.setAttribute('aria-selected', String(x === b))); render(); }));
   $('#rep-body').addEventListener('click', (e) => {
     const k = e.target.closest('[data-cf]'); if (k) { cf = k.dataset.cf; render(); return; }

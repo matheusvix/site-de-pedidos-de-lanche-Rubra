@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=18">
+<link rel="stylesheet" href="assets/painel.css?v=19">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -194,6 +194,31 @@
           <div id="ly-list" class="rx-list"></div>
         </div>
       </div>
+      <div class="rx-grid">
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Cashback</h2><span class="mp-state" id="cb-state">Desligado</span></div>
+          <p class="adm-muted">Uma parte de cada pedido entregue volta para o cliente como saldo para o próximo pedido. Ele vê o saldo no cardápio pelo WhatsApp e usa na hora de finalizar (não soma com cupom).</p>
+          <form class="form" id="cb-form" novalidate>
+            <label class="open-switch rx-switch"><input type="checkbox" name="cashback_enabled"><span class="sw" aria-hidden="true"></span><b>Cashback ligado</b></label>
+            <div class="row2">
+              <div class="field"><label for="cb-pct">Quanto volta (%)</label><input id="cb-pct" name="cashback_pct" inputmode="decimal" placeholder="5"><small class="adm-muted">Calculado sobre o pedido, sem a taxa de entrega</small></div>
+              <div class="field"><label for="cb-days">Validade do saldo (dias)</label><input id="cb-days" name="cashback_days" inputmode="numeric" placeholder="30"><small class="adm-muted">Cada pedido novo renova o prazo</small></div>
+            </div>
+            <button class="btn btn-primary" type="submit">Salvar cashback</button>
+          </form>
+          <div class="cb-stats" id="cb-stats"></div>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Recuperar clientes</h2></div>
+          <p class="adm-muted">Clientes que sumiram há um tempo. Mande uma mensagem no WhatsApp, de preferência com um cupom, para trazer eles de volta.</p>
+          <div class="row2">
+            <div class="field"><label for="rc-days">Sem pedir há</label><select id="rc-days"><option value="15">15 dias ou mais</option><option value="30" selected>30 dias ou mais</option><option value="60">60 dias ou mais</option><option value="90">90 dias ou mais</option></select></div>
+            <div class="field"><label for="rc-cp">Cupom na mensagem (opcional)</label><select id="rc-cp"><option value="">Sem cupom</option></select></div>
+          </div>
+          <div class="field"><label for="rc-msg">Mensagem</label><textarea id="rc-msg" rows="3" maxlength="600"></textarea><small class="adm-muted">Use {nome} para o primeiro nome e {cupom} para o código. {link} vira o link do seu cardápio.</small></div>
+          <div id="rc-list" class="rx-list"></div>
+        </div>
+      </div>
     </section>
 
     <!-- MESAS E GARÇOM -->
@@ -294,6 +319,7 @@
         <button type="button" role="tab" data-rt="entregas" aria-selected="false">Entregas</button>
         <button type="button" role="tab" data-rt="equipe" aria-selected="false">Garçons e cupons</button>
         <button type="button" role="tab" data-rt="funil" aria-selected="false">Funil do cardápio</button>
+        <button type="button" role="tab" data-rt="avaliacoes" aria-selected="false">Avaliações</button>
       </nav>
       <div id="rep-body"><p class="adm-empty">Carregando…</p></div>
     </section>
@@ -706,13 +732,14 @@
 <script defer src="assets/horario.js?v=5"></script>
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
-<script defer src="assets/painel.js?v=20"></script>
+<script defer src="assets/painel.js?v=21"></script>
 <script defer src="assets/robo.js?v=2"></script>
 <script defer src="assets/recursos.js?v=3"></script>
 <script defer src="assets/pdv.js?v=2"></script>
 <script defer src="assets/desempenho.js?v=1"></script>
 <script defer src="assets/cardapio-extra.js?v=1"></script>
-<script defer src="assets/relatorios.js?v=1"></script>
+<script defer src="assets/relatorios.js?v=2"></script>
+<script defer src="assets/marketing.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 <script defer src="/assets/olhinho.js?v=1"></script>
 </body>

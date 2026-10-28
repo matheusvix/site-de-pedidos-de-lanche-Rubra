@@ -410,3 +410,15 @@ s.old{color:var(--muted);font-weight:500;font-size:.85em;text-decoration-thickne
 @media (max-width:520px){.again{flex-direction:column;align-items:stretch}}
 label.check{display:flex;align-items:center;gap:10px;min-height:44px;font-weight:600;cursor:pointer}
 label.check input{width:20px;height:20px;accent-color:var(--red)}
+
+/* nota da loja e avaliação do pedido */
+.rate-chip{background:#FFF3D6;color:#7A4E00;font-weight:700}
+.rate-chip small{font-weight:600;opacity:.8}
+.rate h2{font-size:19px}
+.rate-hint{margin:0;color:var(--muted)}
+.rate-stars{display:flex;gap:6px;margin:4px 0}
+.rate-stars button{width:48px;height:48px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:26px;line-height:1;color:#D9C7C8;transition:transform .1s,color .1s}
+.rate-stars button.on{color:#F2A900;border-color:#F2C14E;background:#FFF8E6}
+.rate-stars button:active{transform:scale(.92)}
+.rate-stars.done{font-size:28px;color:#F2A900;letter-spacing:4px}
+#rate-txt{font:inherit;font-size:15px;width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4}

@@ -188,6 +188,7 @@ function selectTab(t) {
   if (window.BoraRecursos) window.BoraRecursos.onTab(t);
   if (t === 'desempenho' && window.BoraDesempenho) window.BoraDesempenho.load();
   if (t === 'relatorios' && window.BoraRelatorios) window.BoraRelatorios.load();
+  if (t === 'cupons' && window.BoraMarketing) window.BoraMarketing.load();
 }
 $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 

@@ -23,6 +23,8 @@ let GEO = null;           // localização do cliente {lat,lng}
 let MESA = null;          // pedido na mesa pelo QR Code {token,label}
 let CP = null;            // cupom aplicado {code,kind,value,label}
 let LOY = { enabled: false }; // fidelidade da loja e do cliente
+let CB = { enabled: false, balance: 0, use: false }; // cashback
+let RATING = null;
 const MESA_TOKEN = new URLSearchParams(location.search).get('mesa');
 const plano = (f) => !!(R && window.BoraPlanos && window.BoraPlanos.has(R.plan, f));
 const isOpen = () => H.openNow(R);
@@ -72,6 +74,8 @@ async function load() {
     else toast('Este QR Code de mesa não está ativo. Você pode pedir normalmente.');
   }
   if (plano('cupons') && !MESA) { try { const s0 = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); const { data } = await sb.rpc('loyalty_status', { p_slug: slug, p_phone: s0.tel || '' }); if (data) LOY = data; } catch (_) {} }
+  if (plano('cupons') && !MESA) { try { const s0 = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); const { data } = await sb.rpc('cashback_status', { p_slug: slug, p_phone: s0.tel || '' }); if (data) CB = { ...data, use: false }; } catch (_) {} }
+  try { const { data } = await sb.rpc('store_rating', { p_slug: slug }); RATING = data || null; } catch (_) {}
   if (plano('inbox')) initChat();
   renderHeader();
   renderMenu();
@@ -112,6 +116,8 @@ function renderHeader() {
   if (Number(R.min_order) > 0) tags.push(`<span class="chip">Pedido mínimo ${brl(R.min_order)}</span>`);
   if (R.accepts_pickup) tags.push('<span class="chip">Retirada no balcão</span>');
   if (LOY.enabled && Number(LOY.reward) > 0) tags.push(`<span class="chip loyal-chip">🎁 A cada ${LOY.goal} pedidos, ganhe ${brl(LOY.reward)}</span>`);
+  if (CB.enabled) tags.push(`<span class="chip loyal-chip">💰 ${String(CB.pct).replace('.', ',')}% de volta em cashback</span>`);
+  if (RATING && RATING.count) tags.unshift(`<span class="chip rate-chip">★ ${String(RATING.avg).replace('.', ',')} <small>(${RATING.count} avaliações)</small></span>`);
   const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>Mesa ${esc(MESA.label)}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.`;
   $('#s-tags').innerHTML = tags.join('');
   const n = $('#s-notice');
@@ -437,6 +443,7 @@ function discountOf(t) {
   let d = 0;
   if (CP) d = CP.kind === 'percent' ? Math.round(t.sub * CP.value) / 100 : CP.kind === 'fixed' ? Math.min(CP.value, t.sub) : (t.fee || 0);
   if (LOY.useReward && LOY.rewards > 0) d += Math.min(Number(LOY.reward), t.sub + (t.fee || 0) - d);
+  if (CB.use && !CP && Number(CB.balance) > 0) d += Math.min(Number(CB.balance), t.sub + (t.fee || 0) - d);
   return Math.max(0, Math.min(d, t.sub + (t.fee || 0)));
 }
 function syncCheckout() {
@@ -465,7 +472,7 @@ function syncCheckout() {
   $('#resumo').innerHTML = cart.map((l) => { const ol = optLabels(l.pid, l.opts); return `<div><span>${l.qty}× ${esc(P[l.pid].name)}${ol.length ? `<small>${ol.map(esc).join(' · ')}</small>` : ''}</span><span class="price">${brl(lineTotal(l))}</span></div>`; }).join('')
     + `<div><span>Subtotal</span><span class="price">${brl(t.sub)}</span></div>`
     + (ent ? `<div><span>Taxa de entrega</span><span class="price">${q.out || (q.pending && R.delivery_mode === 'bairro') ? '—' : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : '')
-    + (disc > 0 ? `<div class="disc"><span>Desconto${CP ? ` (${esc(CP.code)})` : ''}${LOY.useReward ? ' · prêmio fidelidade' : ''}</span><span class="price">− ${brl(disc)}</span></div>` : '')
+    + (disc > 0 ? `<div class="disc"><span>Desconto${CP ? ` (${esc(CP.code)})` : ''}${LOY.useReward ? ' · prêmio fidelidade' : ''}${CB.use && !CP && CB.balance > 0 ? ' · cashback' : ''}</span><span class="price">− ${brl(disc)}</span></div>` : '')
     + `<div style="font-weight:800;font-size:16px"><span style="color:var(--ink)">Total</span><span class="price">${brl(total)}</span></div>`;
   $('#confirm-total').textContent = brl(total);
   $('#confirm span').textContent = co.pag.value === 'pix' && R.pix_key && total > 0 ? 'Ir para o pagamento' : 'Confirmar pedido';
@@ -483,6 +490,7 @@ function renderCoupon() {
   $('#cp-ok').hidden = !CP; $('#cp-err').textContent = '';
   if (CP) $('#cp-ok').innerHTML = `🎟️ Cupom <b>${esc(CP.code)}</b> aplicado: ${esc(CP.label)} <button class="link" type="button" id="cp-rm">remover</button>`;
   $('#cp-apply').textContent = CP ? 'Trocar' : 'Aplicar';
+  if (CB.enabled && !MESA && !$('#cb-box').hidden) { if (CP) CB.use = false; renderCashback(co.tel.value.replace(/\D/g, '').length >= 10); }
 }
 $('#cp-apply').addEventListener('click', async () => {
   const code = $('#c-cupom').value.trim().toUpperCase(); $('#cp-err').textContent = '';
@@ -499,6 +507,7 @@ $('#c-cupom').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.pr
 $('#cp-ok').addEventListener('click', (e) => { if (e.target.id === 'cp-rm') { CP = null; $('#c-cupom').value = ''; renderCoupon(); syncCheckout(); } });
 let lyTimer = null;
 function checkLoyalty() {
+  checkCashback();
   if (!LOY.enabled || MESA) { $('#ly-box').hidden = true; return; }
   clearTimeout(lyTimer);
   lyTimer = setTimeout(async () => {
@@ -516,6 +525,29 @@ function renderLoyalty(known) {
     <small class="loyal-txt">A cada ${goal} pedidos entregues${Number(LOY.min) > 0 ? ` (a partir de ${brl(LOY.min)})` : ''}, você ganha ${brl(LOY.reward)} de desconto.</small>
     ${LOY.rewards > 0 ? `<label class="loyal-use"><input type="checkbox" id="ly-use" ${LOY.useReward ? 'checked' : ''}> <span>Usar meu prêmio de <b>${brl(LOY.reward)}</b> neste pedido${LOY.rewards > 1 ? ` (você tem ${LOY.rewards})` : ''}</span></label>` : ''}`;
   const u = $('#ly-use'); if (u) u.onchange = () => { LOY.useReward = u.checked; syncCheckout(); };
+  syncCheckout();
+}
+
+/* cashback do cliente */
+let cbTimer = null;
+function checkCashback() {
+  const box = $('#cb-box');
+  if (!CB.enabled || MESA) { box.hidden = true; return; }
+  clearTimeout(cbTimer);
+  cbTimer = setTimeout(async () => {
+    const tel = co.tel.value.replace(/\D/g, '');
+    if (tel.length >= 10) { const { data } = await sb.rpc('cashback_status', { p_slug: slug, p_phone: tel }); if (data && data.enabled) CB = { ...data, use: CB.use && Number(data.balance) > 0 }; }
+    renderCashback(tel.length >= 10);
+  }, 350);
+}
+function renderCashback(known) {
+  const box = $('#cb-box'); box.hidden = false;
+  const bal = Number(CB.balance) || 0;
+  const exp = CB.expires_at ? new Date(CB.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+  box.innerHTML = `<div class="loyal-head"><b>💰 Cashback</b><small>${known ? (bal > 0 ? `Saldo: ${brl(bal)}${exp ? ` · vale até ${exp}` : ''}` : 'Você ainda não tem saldo') : 'Informe seu WhatsApp para ver seu saldo'}</small></div>
+    <small class="loyal-txt">Cada pedido entregue devolve ${String(CB.pct).replace('.', ',')}% em saldo para o próximo pedido (vale ${CB.days} dias). Não dá para usar junto com cupom.</small>
+    ${bal > 0 ? `<label class="loyal-use"><input type="checkbox" id="cb-use" ${CB.use ? 'checked' : ''} ${CP ? 'disabled' : ''}> <span>Usar meu saldo de <b>${brl(bal)}</b> neste pedido${CP ? ' (tire o cupom para usar)' : ''}</span></label>` : ''}`;
+  const u = $('#cb-use'); if (u) u.onchange = () => { CB.use = u.checked; syncCheckout(); };
   syncCheckout();
 }
 
@@ -580,6 +612,7 @@ co.addEventListener('submit', async (e) => {
   if (!MESA && CP) customer.coupon = CP.code;
   if (when) customer.scheduled_for = when;
   if (!MESA && LOY.useReward && LOY.rewards > 0) customer.use_reward = 'true';
+  if (!MESA && CB.use && !CP && Number(CB.balance) > 0) customer.use_cashback = 'true';
   if (ent && byZone) customer.zone = co.zone.value;
   if (ent && GEO) { customer.lat = GEO.lat.toFixed(6); customer.lng = GEO.lng.toFixed(6); }
   const { data, error } = await sb.rpc('place_order', {
@@ -589,7 +622,7 @@ co.addEventListener('submit', async (e) => {
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
   const order = { ...data, cart: cart.map((l) => ({ pid: l.pid, qty: l.qty, note: l.note || '', opts: l.opts || [] })), scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
-  CP = null; LOY.useReward = false; $('#c-cupom').value = '';
+  CP = null; LOY.useReward = false; CB.use = false; CB.balance = 0; $('#c-cupom').value = '';
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';
   if (data.status === 'pagamento') { showPay(data.public_id, order); return; }
@@ -639,6 +672,7 @@ async function showTrack(publicId, order) {
       $('#t-sub').textContent = `Para ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}. A loja já recebeu.`;
     }
     $('#steps').innerHTML = STEPS.map((s, i) => `<li class="${i < k ? 'done' : i === k ? 'now done' : ''}"><span class="dot">${i <= k ? '<svg width="16" height="16"><use href="#i-check"/></svg>' : ''}</span><div><b>${s[1]}</b><small>${s[2]}</small></div></li>`).join('');
+    if (st === 'entregue') showRate(publicId);
     return st === 'entregue';
   };
   render('novo');
@@ -656,6 +690,36 @@ async function showTrack(publicId, order) {
   };
   tick();
 }
+/* ---------- avaliação do pedido ---------- */
+async function showRate(publicId) {
+  const box = $('#t-rate'); if (!box || box.dataset.id === publicId) return;
+  box.dataset.id = publicId; box.hidden = true;
+  let done = null; try { done = JSON.parse(localStorage.getItem('bora-rated-' + publicId) || 'null'); } catch (_) {}
+  if (!done) { try { const { data } = await sb.rpc('order_rated', { p_public_id: publicId }); done = data; } catch (_) {} }
+  box.hidden = false;
+  if (done) { box.innerHTML = `<h2>Obrigado pela avaliação!</h2><p class="rate-stars done" aria-label="${done.stars} de 5 estrelas">${'★'.repeat(done.stars)}${'☆'.repeat(5 - done.stars)}</p>`; return; }
+  let stars = 0;
+  box.innerHTML = `<h2>Como foi o seu pedido?</h2><p class="rate-hint">Sua opinião ajuda a ${esc(R.name)} a melhorar.</p>
+    <div class="rate-stars" role="radiogroup" aria-label="Nota de 1 a 5">${[1, 2, 3, 4, 5].map((n) => `<button type="button" role="radio" aria-checked="false" data-star="${n}" aria-label="${n} estrela${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+    <textarea id="rate-txt" rows="2" maxlength="500" placeholder="Quer contar algo? (opcional)" hidden></textarea>
+    <p class="err" id="rate-err"></p>
+    <button class="btn btn-primary btn-block" type="button" id="rate-send" hidden>Enviar avaliação</button>`;
+  box.querySelectorAll('[data-star]').forEach((b) => b.addEventListener('click', () => {
+    stars = +b.dataset.star;
+    box.querySelectorAll('[data-star]').forEach((x) => { const on = +x.dataset.star <= stars; x.classList.toggle('on', on); x.setAttribute('aria-checked', String(+x.dataset.star === stars)); });
+    $('#rate-txt').hidden = false; $('#rate-send').hidden = false;
+    $('#rate-txt').placeholder = stars <= 3 ? 'O que podemos melhorar?' : 'Quer deixar um elogio? (opcional)';
+  }));
+  $('#rate-send').onclick = async () => {
+    const b = $('#rate-send'); b.disabled = true;
+    const { error } = await sb.rpc('rate_order', { p_public_id: publicId, p_stars: stars, p_comment: $('#rate-txt').value.trim() || null });
+    b.disabled = false;
+    if (error && !/já foi avaliado/.test(error.message || '')) { $('#rate-err').textContent = (error.message || 'Não foi possível enviar.').replace(/^.*?:\s*/, ''); return; }
+    try { localStorage.setItem('bora-rated-' + publicId, JSON.stringify({ stars })); } catch (_) {}
+    box.dataset.id = ''; showRate(publicId); toast('Obrigado! Sua avaliação foi enviada.');
+  };
+}
+
 /* ---------- motoboy ao vivo no mapa ---------- */
 let LIVE = null;
 async function live(d) {
