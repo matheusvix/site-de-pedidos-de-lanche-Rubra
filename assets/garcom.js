@@ -14,7 +14,8 @@ const slug = (new URLSearchParams(location.search).get('loja') || '').toLowerCas
 const SKEY = 'bora-garcom-' + slug;
 
 let S = null;            // sessão {token, name, restaurant}
-let TABLES = [], TABLE = null, CATS = [], P = {}, cart = [], tick = null;
+let TABLES = [], TABLE = null, CATS = [], P = {}, cart = [], tick = null, KIND = 'mesa', RS = { service_pct: 10, couvert: 0 };
+const tName = (t) => (t.kind === 'comanda' ? `Comanda ${t.label}` : `Mesa ${t.label}`);
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
 function view(id) { ['v-login', 'v-tables', 'v-table', 'v-state'].forEach((v) => { $('#' + v).hidden = v !== id; }); window.scrollTo(0, 0); }
@@ -53,19 +54,49 @@ async function loadTables() {
   if (TABLE) { const t = TABLES.find((x) => x.id === TABLE.id); if (t) { TABLE = t; $('#tb-total').textContent = t.bill ? brl(t.bill.total) : ''; } }
 }
 function renderTables() {
-  $('#t-grid').innerHTML = TABLES.map((t) => {
+  const hasC = TABLES.some((t) => t.kind === 'comanda');
+  $('#g-kind').hidden = !hasC; if (!hasC) KIND = 'mesa';
+  $$('#g-kind [data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === KIND)));
+  $('#tp-title').textContent = KIND === 'comanda' ? 'Comandas' : 'Mesas';
+  $('#t-grid').innerHTML = TABLES.filter((t) => (t.kind || 'mesa') === KIND).map((t) => {
     const b = t.bill;
     return `<button type="button" class="t-card ${b ? 'busy' : ''} ${b && b.ready ? 'ready' : ''}" data-t="${t.id}">
-      <b>${esc(t.label)}</b>${b ? `<span>${brl(b.total)}</span>${b.ready ? `<em>${b.ready} pronto(s)</em>` : `<small>${b.orders} pedido(s)</small>`}` : '<small>Livre</small>'}</button>`;
-  }).join('') || '<p class="g-muted">Nenhuma mesa cadastrada. Peça para o dono criar as mesas no painel.</p>';
+      <b>${esc(t.label)}</b>${b && (b.name || b.mesa) ? `<small class="t-who">${esc(b.name || '')}${b.name && b.mesa ? ' · ' : ''}${b.mesa ? 'Mesa ' + esc(b.mesa) : ''}</small>` : ''}${b ? `<span>${brl(b.total)}</span>${b.ready ? `<em>${b.ready} pronto(s)</em>` : `<small>${b.orders} pedido(s)</small>`}` : '<small>Livre</small>'}</button>`;
+  }).join('') || `<p class="g-muted">${KIND === 'comanda' ? 'Nenhuma comanda cadastrada.' : 'Nenhuma mesa cadastrada. Peça para o dono criar as mesas no painel.'}</p>`;
 }
-$('#t-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) openTable(TABLES.find((t) => t.id === +b.dataset.t)); });
+$('#g-kind').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (!b) return; KIND = b.dataset.kind; renderTables(); });
+$('#t-grid').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-t]'); if (!b) return; const t = TABLES.find((x) => x.id === +b.dataset.t);
+  if (t.kind === 'comanda' && !t.bill) return openSheet(t);
+  openTable(t);
+});
+/* ---------- abrir comanda ---------- */
+function openSheet(t) {
+  const d = $('#d-open'); const mesas = TABLES.filter((x) => x.kind !== 'comanda');
+  $('#open-form').innerHTML = `<h2>Abrir ${esc(tName(t))}</h2>
+    <label class="g-field">Nome do cliente (opcional)<input name="name" maxlength="80" placeholder="Ex.: João"></label>
+    <label class="g-field">CPF (opcional)<input name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></label>
+    <label class="g-field">Pessoas<input name="people" inputmode="numeric" value="1"></label>
+    ${mesas.length ? `<label class="g-field">Está na mesa (opcional)<select name="mesa"><option value="">Nenhuma</option>${mesas.map((m) => `<option value="${m.id}">Mesa ${esc(m.label)}</option>`).join('')}</select></label>` : ''}
+    <p class="g-err" id="open-err"></p>
+    <div class="g-acts"><button class="g-btn ghost" type="button" data-x>Voltar</button><button class="g-btn primary" type="submit">Abrir e lançar pedido</button></div>`;
+  $('#open-form [data-x]').onclick = () => d.close();
+  d.showModal();
+  $('#open-form').onsubmit = async (e) => {
+    e.preventDefault(); const f = e.target; const btn = $('[type=submit]', f); btn.disabled = true;
+    const { error } = await sb.rpc('waiter_open_bill', { p_token: S.token, p_table: t.id, p_name: f.name.value.trim() || null, p_cpf: f.cpf.value.trim() || null, p_people: parseInt(f.people.value, 10) || 1, p_mesa: f.mesa && f.mesa.value ? +f.mesa.value : null });
+    btn.disabled = false;
+    if (error) { if (expired(error)) return; $('#open-err').textContent = msg(error); return; }
+    d.close(); await loadTables(); openTable(TABLES.find((x) => x.id === t.id) || t);
+  };
+}
 $('#refresh').addEventListener('click', () => { loadTables(); toast('Mesas atualizadas.'); });
 
 /* ---------- cardápio ---------- */
 async function loadMenu() {
-  const { data: r } = await sb.from('restaurants').select('id').eq('slug', slug).maybeSingle();
+  const { data: r } = await sb.from('restaurants').select('id, service_pct, couvert').eq('slug', slug).maybeSingle();
   if (!r) return;
+  RS = { service_pct: Number(r.service_pct ?? 10), couvert: Number(r.couvert || 0) };
   const [{ data: cats }, { data: prods }] = await Promise.all([
     sb.from('categories').select('*').eq('restaurant_id', r.id).order('position').order('id'),
     sb.from('products').select('*').eq('restaurant_id', r.id).eq('available', true).order('position').order('id'),
@@ -114,7 +145,7 @@ function optionSheet(pid) {
 }
 $('#send').addEventListener('click', () => {
   const d = $('#d-send');
-  $('#send-form').innerHTML = `<h2>Mesa ${esc(TABLE.label)}</h2>
+  $('#send-form').innerHTML = `<h2>${esc(tName(TABLE))}</h2>
     <div class="g-lines">${cart.map((l) => { const lb = labels(l); return `<div><span>${l.qty}× ${esc(P[l.pid].name)}${lb.length ? `<small>${lb.map(esc).join(' · ')}</small>` : ''}${l.note ? `<small>Obs.: ${esc(l.note)}</small>` : ''}</span><b>${brl(unit(l) * l.qty)}</b></div>`; }).join('')}</div>
     <label class="g-field">Nome do cliente (opcional)<input name="name" maxlength="80" placeholder="Para saber de quem é"></label>
     <label class="g-field">Observação para a cozinha (opcional)<input name="notes" maxlength="300"></label>
@@ -128,7 +159,7 @@ $('#send-form').addEventListener('submit', async (e) => {
   const { error } = await sb.rpc('waiter_order', { p_token: S.token, p_table: TABLE.id, p_items: cart.map((l) => ({ product_id: l.pid, qty: l.qty, note: l.note, options: l.opts })), p_name: f.name.value.trim() || null, p_notes: f.notes.value.trim() || null });
   b.disabled = false;
   if (error) { if (expired(error)) return; $('#send-err').textContent = msg(error); return; }
-  $('#d-send').close(); cart = []; renderMenu(); toast(`Pedido da mesa ${TABLE.label} enviado para a cozinha!`); loadTables();
+  $('#d-send').close(); cart = []; renderMenu(); toast(`Pedido da ${tName(TABLE).toLowerCase()} enviado para a cozinha!`); loadTables();
 });
 
 /* ---------- conta da mesa ---------- */
@@ -139,7 +170,7 @@ async function loadBill() {
   const os = (data && data.orders) || []; const total = os.reduce((s, o) => s + Number(o.total), 0);
   $('#tb-total').textContent = os.length ? brl(total) : '';
   const ready = os.filter((o) => o.status === 'pronto').length;
-  $('#bill').innerHTML = !data || !data.bill ? '<div class="g-empty"><b>Mesa sem conta aberta</b><span class="g-muted">Lance o primeiro pedido na aba "Lançar pedido".</span></div>'
+  $('#bill').innerHTML = !data || !data.bill ? '<div class="g-empty"><b>Sem conta aberta</b><span class="g-muted">Lance o primeiro pedido na aba "Lançar pedido".</span></div>'
     : `${ready ? `<button class="g-btn primary block" type="button" id="serve">Marcar ${ready} pedido(s) pronto(s) como servido(s)</button>` : ''}
       ${os.map((o) => `<div class="b-ord"><div class="b-h"><b>#${o.number}${o.waiter ? ` · ${esc(o.waiter)}` : ' · pelo QR Code'}</b><span class="st st-${o.status}">${ST[o.status] || o.status}</span></div>
         ${(o.items || []).map((i) => `<div class="b-l"><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></div>`).join('')}</div>`).join('')}
@@ -149,24 +180,29 @@ async function loadBill() {
   const cl = $('#close'); if (cl) cl.onclick = () => closeSheet(total);
 }
 function closeSheet(total) {
-  const d = $('#d-close');
-  $('#close-form').innerHTML = `<h2>Fechar conta · Mesa ${esc(TABLE.label)}</h2>
+  const d = $('#d-close'); const sp = RS.service_pct, cv = RS.couvert; const people0 = (TABLE.bill && TABLE.bill.people) ?? 1;
+  const calc = (on, ppl) => { const s = on ? Math.round(total * sp) / 100 : 0; const c = cv * ppl; return { s, c, t: total + s + c }; };
+  const c0 = calc(sp > 0, people0);
+  $('#close-form').innerHTML = `<h2>Fechar conta · ${esc(tName(TABLE))}</h2>
     <div class="b-tot"><span>Consumo</span><b>${brl(total)}</b></div>
-    <label class="g-check"><input type="checkbox" name="svc" checked> <span>Taxa de serviço 10% (${brl(total * 0.1)})</span></label>
-    <div class="b-tot big"><span>Total</span><b id="cl-tot">${brl(total * 1.1)}</b></div>
+    ${sp > 0 ? `<label class="g-check"><input type="checkbox" name="svc" checked> <span>Taxa de serviço ${String(sp).replace('.', ',')}% (<span id="cl-svc">${brl(c0.s)}</span>)</span></label>` : ''}
+    ${cv > 0 ? `<label class="g-field">Couvert de ${brl(cv)} por pessoa · quantas pessoas?<input name="people" inputmode="numeric" value="${people0}"></label>` : ''}
+    <div class="b-tot big"><span>Total</span><b id="cl-tot">${brl(c0.t)}</b></div>
     <div class="g-pay">${[['pix', 'Pix'], ['cartao', 'Cartão'], ['dinheiro', 'Dinheiro']].map(([k, l], i) => `<label><input type="radio" name="pay" value="${k}" ${i === 0 ? 'checked' : ''}><span>${l}</span></label>`).join('')}</div>
     <p class="g-err" id="cl-err"></p>
     <div class="g-acts"><button class="g-btn ghost" type="button" data-x>Voltar</button><button class="g-btn primary" type="submit">Confirmar pagamento</button></div>`;
-  const f = $('#close-form'); f.svc.onchange = () => { $('#cl-tot').textContent = brl(total * (f.svc.checked ? 1.1 : 1)); };
+  const f = $('#close-form');
+  const upd = () => { const c = calc(f.svc ? f.svc.checked : false, f.people ? Math.max(0, parseInt(f.people.value, 10) || 0) : 0); if ($('#cl-svc')) $('#cl-svc').textContent = brl(c.s); $('#cl-tot').textContent = brl(c.t); };
+  if (f.svc) f.svc.onchange = upd; if (f.people) f.people.oninput = upd;
   $('#close-form [data-x]').onclick = () => d.close();
   d.showModal();
 }
 $('#close-form').addEventListener('submit', async (e) => {
   e.preventDefault(); const f = e.target; const b = $('[type=submit]', f); b.disabled = true;
-  const { data, error } = await sb.rpc('waiter_close', { p_token: S.token, p_table: TABLE.id, p_payment: f.pay.value, p_service_pct: f.svc.checked ? 10 : 0 });
+  const { data, error } = await sb.rpc('waiter_close2', { p_token: S.token, p_table: TABLE.id, p_payment: f.pay.value, p_service_pct: f.svc && f.svc.checked ? RS.service_pct : 0, p_people: f.people ? parseInt(f.people.value, 10) || 0 : null });
   b.disabled = false;
   if (error) { if (expired(error)) return; $('#cl-err').textContent = msg(error); return; }
-  $('#d-close').close(); toast(`Conta da mesa ${TABLE.label} fechada: ${brl(data.total)}.`); TABLE = null; view('v-tables'); loadTables();
+  $('#d-close').close(); toast(`Conta · ${tName(TABLE)} fechada: ${brl(data.total)}.`); TABLE = null; view('v-tables'); loadTables();
 });
 
 /* ---------- navegação ---------- */
@@ -174,7 +210,7 @@ function gtab(t) { $$('.g-tabs [data-gt]').forEach((b) => b.setAttribute('aria-s
 $$('.g-tabs [data-gt]').forEach((b) => b.addEventListener('click', () => gtab(b.dataset.gt)));
 function openTable(t) {
   if (TABLE && TABLE.id !== t.id) cart = [];
-  TABLE = t; $('#tb-title').textContent = `Mesa ${t.label}`; $('#tb-total').textContent = t.bill ? brl(t.bill.total) : ''; $('#q').value = '';
+  TABLE = t; $('#tb-title').textContent = tName(t); $('#tb-total').textContent = t.bill ? brl(t.bill.total) : ''; $('#q').value = '';
   view('v-table'); renderMenu(); gtab(t.bill && t.bill.ready ? 'conta' : 'pedir');
 }
 $('#back').addEventListener('click', () => { if (cart.length && !confirm('Sair da mesa sem enviar os itens escolhidos?')) return; cart = []; TABLE = null; view('v-tables'); loadTables(); });

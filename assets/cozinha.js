@@ -99,7 +99,11 @@ async function boot() {
   if (!sb) return state('Sistema indisponível.');
   const { data: { session } } = await sb.auth.getSession();
   if (!session) return state('Entre no painel da loja neste aparelho e depois abra a tela da cozinha de novo.', true);
-  const { data: r } = await sb.from('restaurants').select('id, name').eq('owner_id', session.user.id).maybeSingle();
+  let { data: r } = await sb.from('restaurants').select('id, name').eq('owner_id', session.user.id).maybeSingle();
+  if (!r) { // colaborador da loja
+    const { data: ms } = await sb.rpc('my_store');
+    if (ms && ms.id) r = (await sb.from('restaurants').select('id, name').eq('id', ms.id).maybeSingle()).data;
+  }
   if (!r) return state('Não encontramos a sua loja. Entre no painel primeiro.', true);
   R = r; $('#k-store').textContent = `Cozinha · ${r.name}`; document.title = `Cozinha · ${r.name}`;
   $('#k-state').hidden = true;

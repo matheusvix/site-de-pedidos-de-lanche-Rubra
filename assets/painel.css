@@ -559,3 +559,16 @@ dialog.mass{width:min(1240px,calc(100% - 24px));height:min(860px,calc(100% - 24p
 .rate-row b .adm-muted{color:#E3D7D8}
 .rate-row small{display:block}
 .rate-row.low{border-color:#F6CFD2;background:#FFF8F8}
+.ms-seg{margin:0 0 12px}
+.ms-who{display:block;font-weight:700;color:var(--ink)}
+.bill-people{width:52px;font:inherit;font-size:14px;padding:2px 6px;border-radius:8px;border:1.5px solid #E2D3D4;text-align:center}
+
+/* equipe */
+.eq-roles{display:grid;gap:10px;margin:8px 0 12px}
+.eq-roles>div{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fff}
+.eq-roles b{display:block;margin-bottom:2px}
+.staff-mode #trial-bar,.staff-mode #support-bar{display:none!important}
+.role-atendente .auto-sw,.role-atendente #pdv-plan{display:none!important}
+.rb-msgs{border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin:14px 0;background:#fff}
+.rb-msgs summary{cursor:pointer;list-style:none}.rb-msgs summary::-webkit-details-marker{display:none}
+.rb-msgs summary h3{margin:4px 0 2px}.rb-msgs summary h3::after{content:' ▾';color:var(--muted)}.rb-msgs[open] summary h3::after{content:' ▴'}

@@ -27,6 +27,7 @@
     // volta a esconder ao enviar o formulário (o navegador só salva a senha com type=password)
     if (input.form) input.form.addEventListener('submit', () => { if (input.type === 'text') b.click(); }, true);
   }
+  window.BoraOlhinho = add;
   const run = () => document.querySelectorAll('input[type="password"]').forEach(add);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
 })();

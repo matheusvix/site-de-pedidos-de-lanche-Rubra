@@ -247,7 +247,7 @@ window.BoraRecursos = (() => {
       sb.from('dining_tables').select('*').eq('restaurant_id', R.id).order('position').order('id'),
       sb.from('table_bills').select('*').eq('restaurant_id', R.id).is('closed_at', null),
       sb.from('waiters').select('id,name,active,created_at').eq('restaurant_id', R.id).order('name'),
-      sb.from('table_bills').select('*, dining_tables(label)').eq('restaurant_id', R.id).gte('closed_at', today.toISOString()).order('closed_at', { ascending: false }),
+      sb.from('table_bills').select('*, dining_tables!table_bills_table_id_fkey(label, kind)').eq('restaurant_id', R.id).gte('closed_at', today.toISOString()).order('closed_at', { ascending: false }),
     ]);
     TABLES = t.data || []; BILLS = b.data || []; WAITERS = w.data || [];
     BORD = [];
@@ -255,48 +255,92 @@ window.BoraRecursos = (() => {
     renderMesas(c.data || []); renderWaiters();
     $('#gc-link').textContent = `${SITE}/garcom.html?loja=${R.slug}`;
   }
+  const tName = (t) => (t.kind === 'comanda' ? `Comanda ${t.label}` : `Mesa ${t.label}`);
+  let MSF = 'mesa';
   function billOf(t) { const b = BILLS.find((x) => x.table_id === t.id); if (!b) return null; const os = BORD.filter((o) => o.bill_id === b.id); return { ...b, orders: os, total: os.reduce((s, o) => s + Number(o.total), 0), ready: os.filter((o) => o.status === 'pronto').length, kitchen: os.filter((o) => ['novo', 'preparo'].includes(o.status)).length }; }
   function renderMesas(closed) {
     const ready = TABLES.reduce((s, t) => { const b = billOf(t); return s + (b ? b.ready : 0); }, 0);
     $('#mesas-count').hidden = !ready; $('#mesas-count').textContent = ready;
-    $('#ms-grid').innerHTML = TABLES.map((t) => {
-      const b = billOf(t);
+    const nC = TABLES.filter((t) => t.kind === 'comanda').length;
+    $('#ms-seg').innerHTML = `<button type="button" data-msf="mesa" aria-pressed="${MSF === 'mesa'}">Mesas (${TABLES.length - nC})</button><button type="button" data-msf="comanda" aria-pressed="${MSF === 'comanda'}">Comandas (${nC})</button>`;
+    const list = TABLES.filter((t) => (t.kind || 'mesa') === MSF);
+    $('#ms-grid').innerHTML = list.map((t) => {
+      const b = billOf(t); const mesa = b && b.mesa_id ? TABLES.find((x) => x.id === b.mesa_id) : null;
       return `<div class="ms-card ${b ? 'busy' : ''} ${t.active ? '' : 'off'}" data-ms="${t.id}">
-        <div class="ms-top"><b class="ms-label">Mesa ${esc(t.label)}</b><span class="mp-state ${b ? 'warn' : 'on'}">${!t.active ? 'Desativada' : b ? 'Ocupada' : 'Livre'}</span></div>
-        ${b ? `<div class="ms-total">${brl(b.total)}</div><small class="adm-muted">${b.orders.length} pedido(s) · aberta há ${ago(b.opened_at)}</small>${b.ready ? `<span class="ms-ready">${b.ready} pronto(s) para servir</span>` : b.kitchen ? `<span class="ms-kitchen">${b.kitchen} na cozinha</span>` : ''}` : '<small class="adm-muted">Sem conta aberta</small>'}
-        <div class="ms-acts">${b ? '<button class="btn btn-primary" type="button" data-msbill>Ver conta</button>' : ''}<button class="btn btn-ghost" type="button" data-msqr>QR Code</button><button class="btn btn-ghost" type="button" data-msedit>Editar</button></div>
+        <div class="ms-top"><b class="ms-label">${esc(tName(t))}</b><span class="mp-state ${b ? 'warn' : 'on'}">${!t.active ? 'Desativada' : b ? (t.kind === 'comanda' ? 'Aberta' : 'Ocupada') : 'Livre'}</span></div>
+        ${b ? `${b.customer_name || mesa ? `<small class="ms-who">${esc(b.customer_name || '')}${b.customer_name && mesa ? ' · ' : ''}${mesa ? esc(tName(mesa)) : ''}</small>` : ''}<div class="ms-total">${brl(b.total)}</div><small class="adm-muted">${b.orders.length} pedido(s) · aberta há ${ago(b.opened_at)}</small>${b.ready ? `<span class="ms-ready">${b.ready} pronto(s) para servir</span>` : b.kitchen ? `<span class="ms-kitchen">${b.kitchen} na cozinha</span>` : ''}` : '<small class="adm-muted">Sem conta aberta</small>'}
+        <div class="ms-acts">${b ? '<button class="btn btn-primary" type="button" data-msbill>Ver conta</button>' : (t.kind === 'comanda' ? '<button class="btn btn-outline" type="button" data-msopen>Abrir comanda</button>' : '')}<button class="btn btn-ghost" type="button" data-msqr>QR Code</button><button class="btn btn-ghost" type="button" data-msedit>Editar</button></div>
       </div>`;
-    }).join('') || '<div class="p-card ms-empty"><b>Nenhuma mesa ainda</b><span class="adm-muted">Crie as mesas do salão (1, 2, 3… ou Varanda 1). Cada uma ganha o seu QR Code.</span><button class="btn btn-primary" type="button" data-msfirst>Criar mesas 1 a 10</button></div>';
+    }).join('') || (MSF === 'comanda'
+      ? '<div class="p-card ms-empty"><b>Nenhuma comanda ainda</b><span class="adm-muted">Comandas são contas individuais (cartão ou número na mão do cliente). Cada uma tem QR Code e pode ficar ligada a uma mesa.</span><button class="btn btn-primary" type="button" data-msfirst="comanda">Criar comandas 1 a 30</button></div>'
+      : '<div class="p-card ms-empty"><b>Nenhuma mesa ainda</b><span class="adm-muted">Crie as mesas do salão (1, 2, 3… ou Varanda 1). Cada uma ganha o seu QR Code.</span><button class="btn btn-primary" type="button" data-msfirst="mesa">Criar mesas 1 a 10</button></div>');
     const PG = { pix: 'Pix', cartao: 'Cartão', dinheiro: 'Dinheiro' };
-    $('#ms-closed').innerHTML = closed.map((b) => `<div class="rx-row"><div class="rx-main"><b>Mesa ${esc(b.dining_tables ? b.dining_tables.label : '')} · ${brl(b.total)}</b><small class="adm-muted">${hm(b.closed_at)} · ${PG[b.payment] || ''}${Number(b.service) > 0 ? ` · serviço ${brl(b.service)}` : ''}${b.closed_by ? ` · ${esc(b.closed_by)}` : ''}</small></div></div>`).join('') || '<p class="adm-empty">Nenhuma conta fechada hoje.</p>';
+    $('#ms-closed').innerHTML = closed.map((b) => `<div class="rx-row"><div class="rx-main"><b>${b.dining_tables ? esc(tName(b.dining_tables)) : ''} · ${brl(b.total)}</b><small class="adm-muted">${hm(b.closed_at)} · ${PG[b.payment] || ''}${Number(b.service) > 0 ? ` · serviço ${brl(b.service)}` : ''}${Number(b.couvert) > 0 ? ` · couvert ${brl(b.couvert)}` : ''}${b.customer_name ? ` · ${esc(b.customer_name)}` : ''}${b.closed_by ? ` · ${esc(b.closed_by)}` : ''}</small></div></div>`).join('') || '<p class="adm-empty">Nenhuma conta fechada hoje.</p>';
+    fillSalao();
   }
+  function fillSalao() {
+    const f = $('#sl-form'); if (!f || f.dataset.done) return; f.dataset.done = '1';
+    f.service_pct.value = String(R.service_pct ?? 10).replace('.', ','); f.couvert.value = Number(R.couvert) > 0 ? money(R.couvert) : '';
+  }
+  $('#sl-form').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target;
+    const sp = num(f.service_pct.value), cv = num(f.couvert.value);
+    if (sp < 0 || sp > 20) return toast('A taxa de serviço vai de 0% a 20% (Lei 13.419/17).');
+    const b = $('[type=submit]', f); b.disabled = true;
+    const { data, error } = await sb.from('restaurants').update({ service_pct: sp, couvert: cv }).eq('id', R.id).select('service_pct, couvert').single();
+    b.disabled = false;
+    if (error) return toast('Não foi possível salvar.');
+    R.service_pct = data.service_pct; R.couvert = data.couvert; toast('Cobranças do salão salvas.');
+  });
+  $('#ms-seg').addEventListener('click', (e) => { const b = e.target.closest('[data-msf]'); if (!b) return; MSF = b.dataset.msf; loadMesas(); });
   $('#ms-grid').addEventListener('click', async (e) => {
-    if (e.target.closest('[data-msfirst]')) {
-      const rows = Array.from({ length: 10 }, (_, i) => ({ restaurant_id: R.id, label: String(i + 1), position: i + 1 }));
-      const { error } = await sb.from('dining_tables').insert(rows); if (error) return toast('Não foi possível criar as mesas.');
-      toast('10 mesas criadas! Imprima os QR Codes.'); return loadMesas();
+    const first = e.target.closest('[data-msfirst]');
+    if (first) {
+      const kind = first.dataset.msfirst, n = kind === 'comanda' ? 30 : 10;
+      const used = new Set(TABLES.map((t) => t.label));
+      const rows = Array.from({ length: n }, (_, i) => ({ restaurant_id: R.id, label: kind === 'comanda' ? `C${i + 1}` : String(i + 1), position: i + 1, kind })).filter((r) => !used.has(r.label));
+      const { error } = await sb.from('dining_tables').insert(rows); if (error) return toast('Não foi possível criar.');
+      toast(kind === 'comanda' ? `${rows.length} comandas criadas! Imprima os QR Codes.` : `${rows.length} mesas criadas! Imprima os QR Codes.`); return loadMesas();
     }
     const card = e.target.closest('[data-ms]'); if (!card) return; const t = TABLES.find((x) => x.id === +card.dataset.ms);
     if (e.target.closest('[data-msbill]')) return billDialog(t);
+    if (e.target.closest('[data-msopen]')) return openBillDialog(t);
     if (e.target.closest('[data-msqr]')) return printQrs([t]);
     if (e.target.closest('[data-msedit]')) return tableDialog(t);
   });
   $('#ms-add').addEventListener('click', () => tableDialog(null));
-  $('#ms-print').addEventListener('click', () => { const ts = TABLES.filter((t) => t.active); if (!ts.length) return toast('Crie as mesas primeiro.'); printQrs(ts); });
-  function tableDialog(t) {
+  $('#ms-print').addEventListener('click', () => { const ts = TABLES.filter((t) => t.active && (t.kind || 'mesa') === MSF); if (!ts.length) return toast('Crie as mesas ou comandas primeiro.'); printQrs(ts); });
+  function openBillDialog(t) {
+    const mesas = TABLES.filter((x) => x.kind !== 'comanda' && x.active);
     dialog({
-      title: t ? `Mesa ${t.label}` : 'Nova mesa',
-      body: field('Nome ou número da mesa', `<input name="label" maxlength="30" required value="${esc(t ? t.label : String(TABLES.length + 1))}" placeholder="Ex.: 5 ou Varanda 2">`)
-        + (t ? `<label class="check"><input type="checkbox" name="active" ${t.active ? 'checked' : ''}> <span>Mesa ativa (aceita pedidos pelo QR Code)</span></label>
-          <button class="btn btn-ghost" type="button" data-newqr>Gerar QR Code novo (o antigo para de funcionar)</button>` : ''),
-      ok: t ? 'Salvar' : 'Criar mesa', danger: t ? 'Excluir mesa' : null,
-      onDanger: async () => { if (billOf(t)) return 'Feche a conta desta mesa antes de excluir.'; if (!confirm(`Excluir a mesa ${t.label}?`)) return 'Cancelado.'; const { error } = await sb.from('dining_tables').delete().eq('id', t.id); if (error) return 'Esta mesa já tem pedidos no histórico. Desative em vez de excluir.'; await loadMesas(); return null; },
+      title: `Abrir ${tName(t)}`, sub: 'Para o cliente que chegou. Os pedidos dele vão para esta comanda.',
+      body: field('Nome do cliente (opcional)', '<input name="name" maxlength="80" placeholder="Ex.: João">')
+        + `<div class="row2">${field('CPF (opcional)', '<input name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">')}${field('Pessoas', '<input name="people" inputmode="numeric" value="1">')}</div>`
+        + (mesas.length ? field('Está na mesa (opcional)', `<select name="mesa"><option value="">Nenhuma</option>${mesas.map((m) => `<option value="${m.id}">${esc(tName(m))}</option>`).join('')}</select>`) : ''),
+      ok: 'Abrir comanda',
       onSubmit: async (f) => {
-        const label = f.label.value.trim(); if (!label) return 'Dê um nome à mesa.';
-        const row = t ? { label, active: f.active.checked } : { label, restaurant_id: R.id, position: TABLES.length + 1 };
+        const { error } = await sb.rpc('owner_open_bill', { p_table: t.id, p_name: f.name.value.trim() || null, p_cpf: f.cpf.value.trim() || null, p_people: parseInt(f.people.value, 10) || 1, p_mesa: f.mesa && f.mesa.value ? +f.mesa.value : null });
+        if (error) return errMsg(error, 'Não foi possível abrir a comanda.');
+        toast(`${tName(t)} aberta.`); await loadMesas(); return null;
+      },
+    });
+  }
+  function tableDialog(t) {
+    const kind = t ? t.kind || 'mesa' : MSF;
+    const word = kind === 'comanda' ? 'comanda' : 'mesa';
+    dialog({
+      title: t ? tName(t) : `Nova ${word}`,
+      body: field(kind === 'comanda' ? 'Número da comanda' : 'Nome ou número da mesa', `<input name="label" maxlength="30" required value="${esc(t ? t.label : (kind === 'comanda' ? `C${TABLES.filter((x) => x.kind === 'comanda').length + 1}` : String(TABLES.filter((x) => x.kind !== 'comanda').length + 1)))}" placeholder="${kind === 'comanda' ? 'Ex.: C15' : 'Ex.: 5 ou Varanda 2'}">`)
+        + (t ? `<label class="check"><input type="checkbox" name="active" ${t.active ? 'checked' : ''}> <span>${word === 'comanda' ? 'Comanda ativa' : 'Mesa ativa'} (aceita pedidos pelo QR Code)</span></label>
+          <button class="btn btn-ghost" type="button" data-newqr>Gerar QR Code novo (o antigo para de funcionar)</button>` : ''),
+      ok: t ? 'Salvar' : `Criar ${word}`, danger: t ? `Excluir ${word}` : null,
+      onDanger: async () => { if (billOf(t)) return 'Feche a conta antes de excluir.'; if (!confirm(`Excluir ${tName(t)}?`)) return 'Cancelado.'; const { error } = await sb.from('dining_tables').delete().eq('id', t.id); if (error) return 'Já tem pedidos no histórico. Desative em vez de excluir.'; await loadMesas(); return null; },
+      onSubmit: async (f) => {
+        const label = f.label.value.trim(); if (!label) return 'Dê um nome ou número.';
+        const row = t ? { label, active: f.active.checked } : { label, restaurant_id: R.id, position: TABLES.length + 1, kind };
         const { error } = t ? await sb.from('dining_tables').update(row).eq('id', t.id) : await sb.from('dining_tables').insert(row);
-        if (error) return /duplicate|unique/i.test(error.message) ? 'Já existe uma mesa com esse nome.' : 'Não foi possível salvar a mesa.';
-        await loadMesas(); toast(t ? 'Mesa atualizada.' : `Mesa ${label} criada.`); return null;
+        if (error) return /duplicate|unique/i.test(error.message) ? 'Já existe uma mesa ou comanda com esse nome.' : 'Não foi possível salvar.';
+        await loadMesas(); toast(t ? 'Salvo.' : `${kind === 'comanda' ? 'Comanda' : 'Mesa'} ${label} criada.`); return null;
       },
     });
     const nq = $('#rx-body [data-newqr]');
@@ -304,35 +348,42 @@ window.BoraRecursos = (() => {
   }
   function printQrs(ts) {
     const w = window.open('', '_blank'); if (!w) return toast('Permita pop-ups para imprimir.');
-    const cards = ts.map((t) => { const c = window.BoraQR.canvas(tableUrl(t), 520, { color: '#1A1112', level: 'M' }); return `<div class="c"><b>${esc(R.name)}</b><img src="${c.toDataURL('image/png')}" alt=""><h2>Mesa ${esc(t.label)}</h2><p>Aponte a câmera do celular<br>e faça seu pedido</p></div>`; }).join('');
-    w.document.write(`<html><head><title>QR Codes das mesas — ${esc(R.name)}</title><style>body{font-family:system-ui,sans-serif;margin:0;padding:16px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.c{border:2px dashed #ccc;border-radius:16px;padding:16px;text-align:center;break-inside:avoid}.c img{width:100%;max-width:260px}.c h2{margin:6px 0;font-size:28px}.c p{margin:0;color:#555}.c b{font-size:16px}@media print{.no{display:none}}</style></head><body><p class="no">Imprima, recorte e deixe em cada mesa.</p><div class="g">${cards}</div><script>setTimeout(()=>print(),300)<\/script></body></html>`);
+    const cards = ts.map((t) => { const c = window.BoraQR.canvas(tableUrl(t), 520, { color: '#1A1112', level: 'M' }); return `<div class="c"><b>${esc(R.name)}</b><img src="${c.toDataURL('image/png')}" alt=""><h2>${esc(tName(t))}</h2><p>Aponte a câmera do celular<br>e faça seu pedido</p></div>`; }).join('');
+    w.document.write(`<html><head><title>QR Codes — ${esc(R.name)}</title><style>body{font-family:system-ui,sans-serif;margin:0;padding:16px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.c{border:2px dashed #ccc;border-radius:16px;padding:16px;text-align:center;break-inside:avoid}.c img{width:100%;max-width:260px}.c h2{margin:6px 0;font-size:28px}.c p{margin:0;color:#555}.c b{font-size:16px}@media print{.no{display:none}}</style></head><body><p class="no">Imprima, recorte e deixe em cada mesa ou comanda.</p><div class="g">${cards}</div><script>setTimeout(()=>print(),300)<\/script></body></html>`);
     w.document.close();
   }
   function billDialog(t) {
-    const b = billOf(t); if (!b) return toast('Esta mesa não tem conta aberta.');
+    const b = billOf(t); if (!b) return toast('Esta conta não está aberta.');
     const ST2 = { novo: 'Na cozinha', preparo: 'Em preparo', pronto: 'Pronto p/ servir', entregue: 'Servido' };
+    const sp = Number(R.service_pct ?? 10), cv = Number(R.couvert || 0);
+    const calc = (svcOn, people) => { const s = svcOn ? Math.round(b.total * sp) / 100 : 0; const c = cv * people; return { s, c, t: b.total + s + c }; };
+    const c0 = calc(sp > 0, b.people ?? 1);
     dialog({
-      title: `Conta da mesa ${t.label}`, sub: `Aberta às ${hm(b.opened_at)}`,
+      title: `Conta · ${tName(t)}`, sub: `Aberta às ${hm(b.opened_at)}${b.customer_name ? ` · ${b.customer_name}` : ''}`,
       body: `<div class="bill">${b.orders.map((o) => `<div class="bill-ord"><div class="bill-h"><b>#${o.number}${o.waiter ? ` · ${esc(o.waiter)}` : ''}</b><span class="ord-st ${o.status}">${ST2[o.status] || o.status}</span></div>
           ${(o.items || []).map((i) => `<div class="bill-l"><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small>${i.opts.map(esc).join(' · ')}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></div>`).join('')}</div>`).join('')}
           <div class="bill-l bill-sub"><span>Consumo</span><span>${brl(b.total)}</span></div>
-          <label class="check"><input type="checkbox" name="svc" checked> <span>Taxa de serviço de 10% (${brl(b.total * 0.1)})</span></label>
-          <div class="bill-l bill-tot"><span>Total</span><span id="bill-tot">${brl(b.total * 1.1)}</span></div></div>`
+          ${sp > 0 ? `<label class="check"><input type="checkbox" name="svc" checked> <span>Taxa de serviço de ${String(sp).replace('.', ',')}% (<span id="bill-svc">${brl(c0.s)}</span>)</span></label>` : ''}
+          ${cv > 0 ? `<div class="bill-l"><span>Couvert ${brl(cv)} × <input class="bill-people" name="people" inputmode="numeric" value="${b.people ?? 1}" aria-label="Pessoas"> pessoa(s)</span><span id="bill-cv">${brl(c0.c)}</span></div>` : ''}
+          <div class="bill-l bill-tot"><span>Total</span><span id="bill-tot">${brl(c0.t)}</span></div></div>`
         + field('Forma de pagamento', `<select name="pay"><option value="pix">Pix</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option></select>`)
         + '<button class="btn btn-ghost" type="button" data-billprint>Imprimir conta</button>',
       ok: 'Fechar conta',
       onSubmit: async (f) => {
-        if (!confirm(`Fechar a conta da mesa ${t.label}?`)) return 'Cancelado.';
-        const { error } = await sb.rpc('owner_close_bill', { p_bill: b.id, p_payment: f.pay.value, p_service_pct: f.svc.checked ? 10 : 0 });
+        if (!confirm(`Fechar a conta · ${tName(t)}?`)) return 'Cancelado.';
+        const { error } = await sb.rpc('owner_close_bill2', { p_bill: b.id, p_payment: f.pay.value, p_service_pct: f.svc && f.svc.checked ? sp : 0, p_people: f.people ? parseInt(f.people.value, 10) || 0 : null });
         if (error) return errMsg(error, 'Não foi possível fechar a conta.');
-        toast(`Conta da mesa ${t.label} fechada.`); await loadMesas(); if (typeof loadOrders === 'function') loadOrders(); return null;
+        toast(`Conta · ${tName(t)} fechada.`); await loadMesas(); if (typeof loadOrders === 'function') loadOrders(); return null;
       },
     });
-    const svc = $('#rx-body [name=svc]'); svc.addEventListener('change', () => { $('#bill-tot').textContent = brl(b.total * (svc.checked ? 1.1 : 1)); });
+    const form = $('#rx-form');
+    const cur = () => calc(form.svc ? form.svc.checked : false, form.people ? Math.max(0, parseInt(form.people.value, 10) || 0) : 0);
+    const upd = () => { const c = cur(); if ($('#bill-svc')) $('#bill-svc').textContent = brl(c.s); if ($('#bill-cv')) $('#bill-cv').textContent = brl(c.c); $('#bill-tot').textContent = brl(c.t); };
+    if (form.svc) form.svc.addEventListener('change', upd); if (form.people) form.people.addEventListener('input', upd);
     $('#rx-body [data-billprint]').onclick = () => {
-      const s = svc.checked ? b.total * 0.1 : 0; const w = window.open('', '_blank', 'width=380,height=600'); if (!w) return;
+      const c = cur(); const w = window.open('', '_blank', 'width=380,height=600'); if (!w) return;
       const lines = b.orders.flatMap((o) => o.items || []).map((i) => `<tr><td>${i.qty}x ${esc(i.name)}</td><td style="text-align:right">${brl(i.price * i.qty)}</td></tr>`).join('');
-      w.document.write(`<html><head><title>Conta mesa ${esc(t.label)}</title><style>body{font:14px monospace;padding:12px;width:300px}hr{border:0;border-top:1px dashed #000}</style></head><body><b>${esc(R.name)}</b><br>Mesa ${esc(t.label)} · ${new Date().toLocaleString('pt-BR')}<hr><table style="width:100%">${lines}</table><hr>Consumo: ${brl(b.total)}<br>${s ? `Serviço (10%): ${brl(s)}<br>` : ''}<b>TOTAL: ${brl(b.total + s)}</b><hr>Obrigado e volte sempre!<script>print()<\/script></body></html>`);
+      w.document.write(`<html><head><title>Conta ${esc(tName(t))}</title><style>body{font:14px monospace;padding:12px;width:300px}hr{border:0;border-top:1px dashed #000}</style></head><body><b>${esc(R.name)}</b><br>${esc(tName(t))}${b.customer_name ? ` · ${esc(b.customer_name)}` : ''} · ${new Date().toLocaleString('pt-BR')}<hr><table style="width:100%">${lines}</table><hr>Consumo: ${brl(b.total)}<br>${c.s ? `Serviço (${String(sp).replace('.', ',')}%): ${brl(c.s)}<br>` : ''}${c.c ? `Couvert: ${brl(c.c)}<br>` : ''}<b>TOTAL: ${brl(c.t)}</b><hr>Obrigado e volte sempre!<script>print()<\/script></body></html>`);
       w.document.close();
     };
   }

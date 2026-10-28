@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=19">
+<link rel="stylesheet" href="assets/painel.css?v=20">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -99,6 +99,7 @@
     <button role="tab" aria-selected="false" data-tab="estoque" data-feat="estoque">Estoque <b class="p-count" id="estoque-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="financeiro" data-feat="estoque">Financeiro</button>
     <button role="tab" aria-selected="false" data-tab="robo" data-feat="robo">Robô WhatsApp <b class="p-count" id="robo-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="equipe">Equipe</button>
     <button role="tab" aria-selected="false" data-tab="loja">Minha loja</button>
   </nav>
 
@@ -225,8 +226,9 @@
     <section data-panel="mesas" data-feat="mesas" hidden>
       <div class="adm-head">
         <div><h1>Mesas</h1><p class="adm-muted">Cada mesa tem o seu QR Code: o cliente pede pelo celular e o pedido chega aqui marcado com a mesa. O garçom também lança pedidos pelo app dele e fecha a conta.</p></div>
-        <div class="adm-actions"><button class="btn btn-outline" type="button" id="ms-print">Imprimir QR Codes</button><button class="btn btn-primary" type="button" id="ms-add">Nova mesa</button></div>
+        <div class="adm-actions"><button class="btn btn-outline" type="button" id="ms-print">Imprimir QR Codes</button><button class="btn btn-primary" type="button" id="ms-add">Nova mesa ou comanda</button></div>
       </div>
+      <div class="adm-seg ms-seg" id="ms-seg" role="group" aria-label="Mostrar"></div>
       <div class="ms-grid" id="ms-grid"></div>
       <div class="rx-grid">
         <div class="p-card">
@@ -239,6 +241,17 @@
         <div class="p-card">
           <div class="rx-card-head"><h2>Contas fechadas hoje</h2></div>
           <div id="ms-closed" class="rx-list"></div>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Cobranças do salão</h2></div>
+          <p class="adm-muted">Valem na hora de fechar a conta da mesa ou comanda, no painel e no app do garçom.</p>
+          <form class="form" id="sl-form" novalidate>
+            <div class="row2">
+              <div class="field"><label for="sl-svc">Taxa de serviço (%)</label><input id="sl-svc" name="service_pct" inputmode="decimal" placeholder="10"><small class="adm-muted">De 0 a 20%. Use 0 para não cobrar.</small></div>
+              <div class="field"><label for="sl-cv">Couvert por pessoa (R$)</label><input id="sl-cv" name="couvert" inputmode="decimal" placeholder="0,00"><small class="adm-muted">Ex.: música ao vivo. Deixe vazio para não cobrar.</small></div>
+            </div>
+            <button class="btn btn-primary" type="submit">Salvar cobranças</button>
+          </form>
         </div>
       </div>
     </section>
@@ -379,6 +392,25 @@
       <div class="p-card">
         <div class="rx-card-head"><h2>Despesas</h2><button class="btn btn-outline" type="button" id="ex-add">Lançar despesa</button></div>
         <div id="ex-list" class="rx-list"></div>
+      </div>
+    </section>
+
+    <!-- EQUIPE -->
+    <section data-panel="equipe" hidden>
+      <div class="adm-head">
+        <div><h1>Equipe</h1><p class="adm-muted">Cada funcionário entra no painel com o próprio e-mail e senha e vê só o que precisa. Você pode tirar o acesso a qualquer momento.</p></div>
+        <div class="adm-actions"><button class="btn btn-primary" type="button" id="eq-add">Novo colaborador</button></div>
+      </div>
+      <div class="rx-grid">
+        <div class="p-card"><h2>Colaboradores</h2><div id="eq-list" class="rx-list"></div></div>
+        <div class="p-card"><h2>O que cada um vê</h2>
+          <div class="eq-roles">
+            <div><b>Gerente</b><span class="adm-muted">Todo o painel: pedidos, cardápio, mesas, estoque, financeiro, relatórios, cupons e robô. Não mexe na assinatura, nos dados da loja nem na equipe.</span></div>
+            <div><b>Atendente</b><span class="adm-muted">Pedidos, novo pedido no balcão, tela da cozinha e entregas.</span></div>
+            <div><b>Cozinha</b><span class="adm-muted">Só a tela da cozinha, para marcar o que está pronto.</span></div>
+          </div>
+          <p class="adm-muted">O funcionário entra em <b id="eq-link"></b> com o e-mail e a senha que você criar aqui.</p>
+        </div>
       </div>
     </section>
 
@@ -632,6 +664,11 @@
             <div class="field"><label for="rb-human">Quando o cliente chamar um atendente, o robô fica em silêncio por</label>
               <select id="rb-human" name="human_minutes"><option value="30">30 minutos</option><option value="60">1 hora</option><option value="120">2 horas</option><option value="240">4 horas</option><option value="720">12 horas</option></select></div>
 
+            <details class="rb-msgs"><summary><h3>Respostas personalizadas</h3><span class="adm-muted">Troque o texto que o robô manda em cada momento. Deixe em branco para usar o padrão.</span></summary>
+              <p class="adm-muted">Você pode usar <code>{nome}</code>, <code>{loja}</code>, <code>{numero}</code>, <code>{total}</code> e <code>{link}</code>.</p>
+              <div id="rb-msgs"></div>
+            </details>
+
             <div class="biz-save"><button class="btn btn-primary btn-lg btn-block" type="submit">Salvar mensagens</button></div>
           </form>
         </div>
@@ -732,15 +769,16 @@
 <script defer src="assets/horario.js?v=5"></script>
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
-<script defer src="assets/painel.js?v=21"></script>
-<script defer src="assets/robo.js?v=2"></script>
-<script defer src="assets/recursos.js?v=3"></script>
+<script defer src="assets/painel.js?v=22"></script>
+<script defer src="assets/robo.js?v=3"></script>
+<script defer src="assets/recursos.js?v=4"></script>
 <script defer src="assets/pdv.js?v=2"></script>
 <script defer src="assets/desempenho.js?v=1"></script>
 <script defer src="assets/cardapio-extra.js?v=1"></script>
 <script defer src="assets/relatorios.js?v=2"></script>
 <script defer src="assets/marketing.js?v=1"></script>
+<script defer src="assets/equipe.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
-<script defer src="/assets/olhinho.js?v=1"></script>
+<script defer src="/assets/olhinho.js?v=2"></script>
 </body>
 </html>

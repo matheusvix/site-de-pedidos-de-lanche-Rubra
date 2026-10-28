@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<link rel="stylesheet" href="/assets/garcom.css?v=1">
+<link rel="stylesheet" href="/assets/garcom.css?v=2">
 </head>
 <body>
 
@@ -38,7 +38,8 @@
     <button class="g-btn ghost" type="button" id="logout">Sair</button>
   </header>
   <main class="g-main">
-    <div class="g-head"><h1>Mesas</h1><button class="g-btn ghost" type="button" id="refresh">Atualizar</button></div>
+    <div class="g-head"><h1 id="tp-title">Mesas</h1><button class="g-btn ghost" type="button" id="refresh">Atualizar</button></div>
+    <div class="g-kind" id="g-kind" role="group" aria-label="Mostrar" hidden><button type="button" data-kind="mesa" aria-pressed="true">Mesas</button><button type="button" data-kind="comanda" aria-pressed="false">Comandas</button></div>
     <div class="t-grid" id="t-grid"></div>
   </main>
 </section>
@@ -46,7 +47,7 @@
 <!-- MESA -->
 <section id="v-table" hidden>
   <header class="g-top">
-    <button class="g-btn ghost" type="button" id="back" aria-label="Voltar para as mesas">← Mesas</button>
+    <button class="g-btn ghost" type="button" id="back" aria-label="Voltar para as mesas">← Voltar</button>
     <b id="tb-title"></b>
     <span></span>
   </header>
@@ -71,10 +72,11 @@
 <dialog id="d-opt"><form method="dialog" class="g-sheet" id="opt-form"></form></dialog>
 <dialog id="d-send"><form class="g-sheet" id="send-form" novalidate></form></dialog>
 <dialog id="d-close"><form class="g-sheet" id="close-form" novalidate></form></dialog>
+<dialog id="d-open"><form class="g-sheet" id="open-form" novalidate></form></dialog>
 <div class="toast" role="status" aria-live="polite"></div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="/assets/config.js"></script>
-<script defer src="/assets/garcom.js?v=1"></script>
+<script defer src="/assets/garcom.js?v=2"></script>
 </body>
 </html>

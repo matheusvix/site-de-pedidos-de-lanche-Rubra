@@ -77,6 +77,17 @@ window.BoraRobo = (() => {
 
   /* ---------- mensagens e perguntas frequentes ---------- */
   const rf = () => $('#robo-form');
+  const MSGS = [
+    ['novo', 'Pedido recebido', 'Oi, {nome}! 🧾 Recebemos seu pedido #{numero} na {loja} ({total}). Já já a loja confirma!'],
+    ['preparo', 'Pedido aceito / em preparo', '👨‍🍳 Seu pedido #{numero} foi aceito e já está em preparo na {loja}.'],
+    ['pronto', 'Pedido pronto', '✅ Seu pedido #{numero} está pronto!'],
+    ['saiu', 'Saiu para entrega', '🛵 Seu pedido #{numero} saiu para entrega. Já já chega aí!'],
+    ['entregue', 'Pedido entregue', '😋 Pedido #{numero} entregue. Obrigado por pedir na {loja}!'],
+    ['cancelado', 'Pedido cancelado', 'Seu pedido #{numero} na {loja} foi cancelado.'],
+    ['humano', 'Cliente pediu atendente (loja aberta)', 'Certo! 🙋 Já chamei alguém da loja para falar com você.'],
+    ['humano_fechado', 'Cliente pediu atendente (loja fechada)', 'Certo! 🙋 Deixei seu recado para a equipe.'],
+    ['nao_entendi', 'Quando o robô não entende', 'Desculpe, não entendi bem 🤔'],
+  ];
   function fillForm() {
     const f = rf();
     f.greeting.value = BOT.greeting || ''; f.away_text.value = BOT.away_text || '';
@@ -86,6 +97,8 @@ window.BoraRobo = (() => {
     f.human_minutes.value = String(BOT.human_minutes || 120);
     if (!f.human_minutes.value) f.human_minutes.value = '120';
     FAQ = JSON.parse(JSON.stringify(BOT.faq || []));
+    const M = BOT.messages || {};
+    $('#rb-msgs').innerHTML = MSGS.map(([k, l, ph]) => `<div class="field"><label for="rbm-${k}">${l}</label><textarea id="rbm-${k}" data-msg="${k}" rows="2" maxlength="600" placeholder="${esc(ph)}">${esc(M[k] || '')}</textarea></div>`).join('');
     renderFaq(); renderPreview();
   }
   function renderFaq() {
@@ -107,6 +120,8 @@ window.BoraRobo = (() => {
     if (tpl && !/^[a-z0-9_]{1,60}$/.test(tpl)) return toast('O nome do modelo usa só letras minúsculas, números e _ (igual na Meta).');
     const faq = FAQ.map((q) => ({ keys: String(q.keys || '').trim().slice(0, 150), answer: String(q.answer || '').trim().slice(0, 800) })).filter((q) => q.keys && q.answer);
     const patch = { greeting: f.greeting.value.trim() || null, away_text: f.away_text.value.trim() || null, faq, notify_status: f.notify_status.checked, template_name: tpl || null, human_minutes: +f.human_minutes.value || 120 };
+    const messages = {}; $$('#rb-msgs [data-msg]').forEach((t) => { const v = t.value.trim().slice(0, 600); if (v) messages[t.dataset.msg] = v; });
+    patch.messages = messages;
     const btn = $('#robo-form button[type=submit]'); btn.disabled = true;
     const { data, error } = await sb.from('whatsapp_bots').update(patch).eq('restaurant_id', R.id).select().single();
     btn.disabled = false;

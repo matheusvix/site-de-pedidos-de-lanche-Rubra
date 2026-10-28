@@ -88,6 +88,7 @@ $('#logout').addEventListener('click', async () => { if (SUPPORT) { location.hre
 // Modo suporte: o admin do BoraLanchar! abre o painel de uma loja (painel.html?suporte=<id>)
 const SUPPORT_ID = new URLSearchParams(location.search).get('suporte');
 let SUPPORT = false;
+let ROLE = 'dono', STAFF_NAME = '';
 async function loadRestaurant() {
   if (SUPPORT_ID) {
     const { data: isAdm } = await sb.rpc('is_admin');
@@ -102,6 +103,15 @@ async function loadRestaurant() {
   // conta de administrador sempre vai para o admin (para mexer numa loja, use Suporte › Entrar no painel da loja)
   { const { data: isAdm } = await sb.rpc('is_admin'); if (isAdm) { location.replace('admin.html'); return; } }
   let { data, error } = await sb.from('restaurants').select('*').eq('owner_id', user.id).maybeSingle();
+  // colaborador (gerente, atendente ou cozinha) entra na loja do dono
+  if (!error && !data) {
+    const { data: ms } = await sb.rpc('my_store');
+    if (ms && ms.role && ms.role !== 'dono') {
+      if (ms.role === 'cozinha') { location.replace('cozinha.html'); return; }
+      const st = await sb.from('restaurants').select('*').eq('id', ms.id).maybeSingle();
+      if (st.data) { R = st.data; ROLE = ms.role; STAFF_NAME = ms.name || ''; startApp(); return; }
+    }
+  }
   if (error) return message('Não foi possível carregar', 'Tente novamente em instantes. Se continuar, fale com o suporte.', [['Tentar de novo', () => location.reload()]]);
   if (!data) {
     const m = user.user_metadata || {};
@@ -154,7 +164,8 @@ function startApp() {
   loadOrders();
   subscribe();
   if (window.BoraRecursos) window.BoraRecursos.start(); // recursos por plano (assets/recursos.js)
-  if (window.BoraRobo && window.BoraPlanos.has(R.plan, 'robo')) window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
+  if (window.BoraRobo && window.BoraPlanos.has(R.plan, 'robo') && ROLE !== 'atendente') window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
+  if (window.BoraEquipe) window.BoraEquipe.start(ROLE, STAFF_NAME);
   const aba = new URLSearchParams(location.search).get('aba');
   if (aba && document.querySelector(`.p-tabs [data-tab="${CSS.escape(aba)}"]`)) selectTab(aba);
   if (new URLSearchParams(location.search).has('bemvindo')) {

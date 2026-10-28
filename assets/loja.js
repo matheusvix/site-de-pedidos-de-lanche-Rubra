@@ -29,6 +29,7 @@ const MESA_TOKEN = new URLSearchParams(location.search).get('mesa');
 const plano = (f) => !!(R && window.BoraPlanos && window.BoraPlanos.has(R.plan, f));
 const isOpen = () => H.openNow(R);
 const canSchedule = () => !!R.schedule_enabled && !MESA;
+const mesaTxt = () => (MESA && MESA.kind === 'comanda' ? `Comanda ${MESA.label}` : `Mesa ${MESA ? MESA.label : ''}`);
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
@@ -70,7 +71,7 @@ async function load() {
   if (!sellable) return state(`${r.name}`, 'Este cardápio está temporariamente indisponível. Fale direto com a loja.');
   if (MESA_TOKEN) {
     const { data: t } = await sb.rpc('table_info', { p_slug: slug, p_token: MESA_TOKEN });
-    if (t) { MESA = { token: MESA_TOKEN, label: t.label }; KEY = 'bora-cart-' + slug + '-mesa'; LAST = 'bora-last-' + slug + '-mesa'; try { cart = (JSON.parse(localStorage.getItem(KEY) || '[]') || []).filter((l) => P[l.pid] && P[l.pid].available); } catch (_) { cart = []; } }
+    if (t) { MESA = { token: MESA_TOKEN, label: t.label, kind: t.kind || 'mesa' }; KEY = 'bora-cart-' + slug + '-mesa'; LAST = 'bora-last-' + slug + '-mesa'; try { cart = (JSON.parse(localStorage.getItem(KEY) || '[]') || []).filter((l) => P[l.pid] && P[l.pid].available); } catch (_) { cart = []; } }
     else toast('Este QR Code de mesa não está ativo. Você pode pedir normalmente.');
   }
   if (plano('cupons') && !MESA) { try { const s0 = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); const { data } = await sb.rpc('loyalty_status', { p_slug: slug, p_phone: s0.tel || '' }); if (data) LOY = data; } catch (_) {} }
@@ -118,7 +119,7 @@ function renderHeader() {
   if (LOY.enabled && Number(LOY.reward) > 0) tags.push(`<span class="chip loyal-chip">🎁 A cada ${LOY.goal} pedidos, ganhe ${brl(LOY.reward)}</span>`);
   if (CB.enabled) tags.push(`<span class="chip loyal-chip">💰 ${String(CB.pct).replace('.', ',')}% de volta em cashback</span>`);
   if (RATING && RATING.count) tags.unshift(`<span class="chip rate-chip">★ ${String(RATING.avg).replace('.', ',')} <small>(${RATING.count} avaliações)</small></span>`);
-  const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>Mesa ${esc(MESA.label)}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.`;
+  const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>${esc(mesaTxt())}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.`;
   $('#s-tags').innerHTML = tags.join('');
   const n = $('#s-notice');
   n.hidden = st.open;
@@ -409,7 +410,7 @@ function prepareCheckout() {
   $('#f-cutlery').hidden = !R.ask_cutlery || !!MESA;
   // mesa: só nome; sem entrega e sem pagamento agora
   $('#box-mesa').hidden = !MESA; $('#box-pag').hidden = !!MESA;
-  if (MESA) { $('#h-mesa').textContent = `Mesa ${MESA.label}`; $('#box-modo').hidden = true; $('#box-end').hidden = true; $('#box-ret').hidden = true; }
+  if (MESA) { $('#h-mesa').textContent = mesaTxt(); $('#box-modo').hidden = true; $('#box-end').hidden = true; $('#box-ret').hidden = true; }
   co.tel.required = !MESA; co.tel.closest('.field').querySelector('label').textContent = MESA ? 'WhatsApp (opcional)' : 'WhatsApp';
   $('#box-promo').hidden = !(plano('cupons') && !MESA);
   $('#ly-box').hidden = true; renderCoupon(); checkLoyalty();
@@ -621,7 +622,7 @@ co.addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
-  const order = { ...data, cart: cart.map((l) => ({ pid: l.pid, qty: l.qty, note: l.note || '', opts: l.opts || [] })), scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  const order = { ...data, cart: cart.map((l) => ({ pid: l.pid, qty: l.qty, note: l.note || '', opts: l.opts || [] })), scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? mesaTxt() : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
   CP = null; LOY.useReward = false; CB.use = false; CB.balance = 0; $('#c-cupom').value = '';
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';
@@ -653,7 +654,7 @@ async function showTrack(publicId, order) {
   waBtn.hidden = !wa || order.mode === 'mesa';
   if (wa) waBtn.href = `https://wa.me/${waNum(wa)}?text=${encodeURIComponent(waText(order))}`;
   const ent = order.mode === 'entrega', mesa = order.mode === 'mesa';
-  const STEPS = [['novo', 'Pedido enviado', mesa ? `A cozinha já recebeu o pedido da mesa ${order.mesa || ''}.` : 'A loja já recebeu seu pedido.'], ['preparo', 'Em preparo', 'Seu pedido está sendo feito.'],
+  const STEPS = [['novo', 'Pedido enviado', mesa ? `A cozinha já recebeu o pedido${order.mesa ? ` (${/^(Mesa|Comanda) /.test(order.mesa) ? order.mesa : 'Mesa ' + order.mesa})` : ''}.` : 'A loja já recebeu seu pedido.'], ['preparo', 'Em preparo', 'Seu pedido está sendo feito.'],
     ent ? ['saiu', 'Saiu para entrega', 'O entregador está a caminho.'] : mesa ? ['pronto', 'Pronto', 'Já já chega na sua mesa.'] : ['pronto', 'Pronto para retirar', 'Pode vir buscar no balcão.'],
     ['entregue', ent ? 'Entregue' : mesa ? 'Servido' : 'Retirado', 'Bom apetite!']];
   $('#again').textContent = mesa ? 'Pedir mais alguma coisa' : 'Fazer outro pedido';

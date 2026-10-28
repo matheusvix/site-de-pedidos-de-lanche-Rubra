@@ -32,6 +32,11 @@ const brl = (n: unknown) => Number(n || 0).toLocaleString("pt-BR", { style: "cur
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\w\s?]/g, " ").replace(/\s+/g, " ").trim();
 const first = (name: unknown) => String(name || "").trim().split(/\s+/)[0] || "";
 const fill = (tpl: string, v: Record<string, string>) => tpl.replace(/\{(\w+)\}/g, (m, k) => (k in v ? v[k] : m));
+// texto que a loja personalizou no painel (whatsapp_bots.messages) ou o padrão
+const say = (bot: Row, key: string, def: string, v: Record<string, string>) => {
+  const t = bot && bot.messages && typeof bot.messages[key] === "string" ? bot.messages[key].trim() : "";
+  return fill(t || def, v);
+};
 
 async function hmacHex(secret: string, body: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -315,8 +320,8 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
       const until = new Date(Date.now() + (bot.human_minutes || 120) * 60000).toISOString();
       await admin.from("wa_conversations").update({ human_until: until }).eq("id", conv.id);
       await sendText(bot, token, conv, st.open
-        ? "Certo! 🙋 Já chamei alguém da loja para falar com você. Pode mandar sua mensagem aqui que logo te respondemos."
-        : `Certo! 🙋 Deixei seu recado para a equipe.${away} Assim que possível alguém te responde por aqui.`);
+        ? say(bot, "humano", "Certo! 🙋 Já chamei alguém da loja para falar com você. Pode mandar sua mensagem aqui que logo te respondemos.", vars)
+        : say(bot, "humano_fechado", "Certo! 🙋 Deixei seu recado para a equipe." + away + " Assim que possível alguém te responde por aqui.", vars));
       return;
     }
     case "m_oi":
@@ -324,7 +329,7 @@ async function handleMessage(bot: Row, R: Row, token: string, msg: Row, contact:
       await sendMenu(bot, token, conv, intent === "m_oi" || isNewSession ? `${greeting}${away}` : "Como posso te ajudar? 😊");
       return;
     default:
-      await sendMenu(bot, token, conv, isNewSession ? `${greeting}${away}` : "Desculpe, não entendi bem 🤔");
+      await sendMenu(bot, token, conv, isNewSession ? `${greeting}${away}` : say(bot, "nao_entendi", "Desculpe, não entendi bem 🤔", vars));
   }
 }
 
@@ -391,13 +396,14 @@ async function notify(orderId: number, status: string) {
     conv = ins.data; if (!conv) return { skipped: "conversa" };
   }
   const nm = first(o.customer_name);
+  const v = { nome: nm || "", loja: R.name, numero: String(o.number || ""), total: brl(o.total), link: link(R) };
   const msg: Record<string, string> = {
-    novo: `Oi${nm ? `, ${nm}` : ""}! 🧾 Recebemos seu pedido *#${o.number}* na *${R.name}* (${brl(o.total)}). Já já a loja confirma!`,
-    preparo: `👨‍🍳 Seu pedido *#${o.number}* foi aceito e já está em preparo na *${R.name}*.`,
-    pronto: `✅ Seu pedido *#${o.number}* está pronto! Pode vir retirar na *${R.name}*.`,
-    saiu: `🛵 Seu pedido *#${o.number}* saiu para entrega. Já já chega aí!`,
-    entregue: `😋 Pedido *#${o.number}* entregue. Obrigado por pedir na *${R.name}*! Bom apetite.`,
-    cancelado: `Seu pedido *#${o.number}* na *${R.name}* foi cancelado. Se tiver dúvida, responda esta mensagem com *6* para falar com a loja.`,
+    novo: say(bot, "novo", `Oi${nm ? ", {nome}" : ""}! 🧾 Recebemos seu pedido *#{numero}* na *{loja}* ({total}). Já já a loja confirma!`, v),
+    preparo: say(bot, "preparo", "👨‍🍳 Seu pedido *#{numero}* foi aceito e já está em preparo na *{loja}*.", v),
+    pronto: say(bot, "pronto", o.mode === "entrega" ? "✅ Seu pedido *#{numero}* está pronto e já vai sair para entrega." : "✅ Seu pedido *#{numero}* está pronto! Pode vir retirar na *{loja}*.", v),
+    saiu: say(bot, "saiu", "🛵 Seu pedido *#{numero}* saiu para entrega. Já já chega aí!", v),
+    entregue: say(bot, "entregue", "😋 Pedido *#{numero}* entregue. Obrigado por pedir na *{loja}*! Bom apetite.", v),
+    cancelado: say(bot, "cancelado", "Seu pedido *#{numero}* na *{loja}* foi cancelado. Se tiver dúvida, responda esta mensagem com *6* para falar com a loja.", v),
   };
   const inWindow = conv.last_inbound_at && Date.now() - new Date(conv.last_inbound_at).getTime() < 23.5 * 3600e3;
   if (inWindow) { await sendText(bot, sec.wa_token, conv, msg[status], "aviso"); return { sent: "texto" }; }
@@ -420,7 +426,12 @@ async function ownerRestaurant(req: Request) {
   const { data: u } = await admin.auth.getUser(jwt);
   if (!u?.user) return null;
   const { data: rest } = await admin.from("restaurants").select("*").eq("owner_id", u.user.id).maybeSingle();
-  return rest;
+  if (rest) return rest;
+  // gerente da loja (colaborador) também cuida do WhatsApp
+  const { data: st } = await admin.from("restaurant_staff").select("restaurant_id").eq("user_id", u.user.id).eq("active", true).eq("role", "gerente").maybeSingle();
+  if (!st) return null;
+  const { data: r2 } = await admin.from("restaurants").select("*").eq("id", st.restaurant_id).maybeSingle();
+  return r2;
 }
 
 async function ownerAction(req: Request, action: string, body: Row) {
