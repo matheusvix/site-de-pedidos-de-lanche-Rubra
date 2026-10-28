@@ -29,7 +29,7 @@ const MESA_TOKEN = new URLSearchParams(location.search).get('mesa');
 const plano = (f) => !!(R && window.BoraPlanos && window.BoraPlanos.has(R.plan, f));
 const isOpen = () => H.openNow(R);
 const canSchedule = () => !!R.schedule_enabled && !MESA;
-const mesaTxt = () => (MESA && MESA.kind === 'comanda' ? `Comanda ${MESA.label}` : `Mesa ${MESA ? MESA.label : ''}`);
+const mesaTxt = () => { const k = MESA && MESA.kind === 'comanda' ? 'Comanda' : 'Mesa'; const l = String(MESA ? MESA.label : '').trim(); return new RegExp(`^${k}\\b`, 'i').test(l) ? l : `${k} ${l}`; };
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }

@@ -255,7 +255,7 @@ window.BoraRecursos = (() => {
     renderMesas(c.data || []); renderWaiters();
     $('#gc-link').textContent = `${SITE}/garcom.html?loja=${R.slug}`;
   }
-  const tName = (t) => (t.kind === 'comanda' ? `Comanda ${t.label}` : `Mesa ${t.label}`);
+  const tName = (t) => { const k = t.kind === 'comanda' ? 'Comanda' : 'Mesa'; const l = String(t.label || '').trim(); return new RegExp(`^${k}\\b`, 'i').test(l) ? l : `${k} ${l}`; };
   let MSF = 'mesa';
   function billOf(t) { const b = BILLS.find((x) => x.table_id === t.id); if (!b) return null; const os = BORD.filter((o) => o.bill_id === b.id); return { ...b, orders: os, total: os.reduce((s, o) => s + Number(o.total), 0), ready: os.filter((o) => o.status === 'pronto').length, kitchen: os.filter((o) => ['novo', 'preparo'].includes(o.status)).length }; }
   function renderMesas(closed) {
@@ -559,7 +559,8 @@ window.BoraRecursos = (() => {
     if (period === 'hoje') { const map = Object.fromEntries((r.by_hour || []).map((x) => [x.h, x.n])); const hs = (r.by_hour || []).map((x) => x.h); const a = Math.min(11, ...hs, 18), b = Math.max(23, ...hs); bars = []; for (let h = a; h <= b; h++) bars.push({ k: `${h}h`, v: map[h] || 0, t: `${map[h] || 0} pedido(s)` }); }
     else { const map = Object.fromEntries((r.by_day || []).map((x) => [x.d, Number(x.v)])); bars = []; for (let d = new Date(from); d < to; d = new Date(d.getTime() + 86400000)) { const k = ymd(d); bars.push({ k: k.slice(8, 10) + '/' + k.slice(5, 7), v: map[k] || 0, t: brl(map[k] || 0) }); } }
     const max = Math.max(1, ...bars.map((x) => x.v));
-    $('#fin-days').innerHTML = bars.map((x) => `<div class="fb" title="${x.k}: ${x.t}"><i style="height:${Math.round(x.v / max * 100)}%"></i><small>${x.k}</small></div>`).join('');
+    const step = Math.max(1, Math.ceil(bars.length / 8));
+    $('#fin-days').innerHTML = bars.map((x, i) => `<div class="fb" title="${x.k}: ${x.t}"><i style="height:${Math.round(x.v / max * 100)}%"></i><small>${i % step === 0 || i === bars.length - 1 ? x.k : '&nbsp;'}</small></div>`).join('');
     $('#fin-days').classList.toggle('many', bars.length > 16);
     const split = (arr, L) => { const tot = arr.reduce((s, x) => s + Number(x.v), 0) || 1; return arr.map((x) => `<div class="fs"><span>${L[x.k] || x.k} <small class="adm-muted">${x.n} pedido(s)</small></span><b>${brl(x.v)}</b><i style="--w:${Math.round(Number(x.v) / tot * 100)}%"></i></div>`).join('') || '<p class="adm-muted">Sem vendas no período.</p>'; };
     $('#fin-pay').innerHTML = split(r.by_payment || [], PAYL); $('#fin-mode').innerHTML = split(r.by_mode || [], MODEL);
@@ -716,7 +717,7 @@ window.BoraRecursos = (() => {
     const el = $('#en-map'); if (!el || el.closest('[hidden]')) return;
     try {
       if (!EN) EN = await window.BoraMapa.create(el, { scroll: true });
-      EN.resize();
+      EN.resize(); setTimeout(() => EN && EN.resize(), 400); // o mapa só sabe o tamanho certo depois que a aba aparece
       EN.set({ store: R.lat != null ? { lat: R.lat, lng: R.lng } : null, couriers: POS.map((p) => ({ id: p.courier_id, lat: p.lat, lng: p.lng, name: cName(p.courier_id).split(' ')[0], stale: secAgo(p.at) > 120 })) });
     } catch (_) { el.innerHTML = '<p class="adm-empty">Não foi possível carregar o mapa agora.</p>'; }
   }

@@ -15,7 +15,7 @@ const SKEY = 'bora-garcom-' + slug;
 
 let S = null;            // sessão {token, name, restaurant}
 let TABLES = [], TABLE = null, CATS = [], P = {}, cart = [], tick = null, KIND = 'mesa', RS = { service_pct: 10, couvert: 0 };
-const tName = (t) => (t.kind === 'comanda' ? `Comanda ${t.label}` : `Mesa ${t.label}`);
+const tName = (t) => { const k = t.kind === 'comanda' ? 'Comanda' : 'Mesa'; const l = String(t.label || '').trim(); return new RegExp(`^${k}\\b`, 'i').test(l) ? l : `${k} ${l}`; };
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
 function view(id) { ['v-login', 'v-tables', 'v-table', 'v-state'].forEach((v) => { $('#' + v).hidden = v !== id; }); window.scrollTo(0, 0); }
@@ -77,7 +77,7 @@ function openSheet(t) {
     <label class="g-field">Nome do cliente (opcional)<input name="name" maxlength="80" placeholder="Ex.: João"></label>
     <label class="g-field">CPF (opcional)<input name="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00"></label>
     <label class="g-field">Pessoas<input name="people" inputmode="numeric" value="1"></label>
-    ${mesas.length ? `<label class="g-field">Está na mesa (opcional)<select name="mesa"><option value="">Nenhuma</option>${mesas.map((m) => `<option value="${m.id}">Mesa ${esc(m.label)}</option>`).join('')}</select></label>` : ''}
+    ${mesas.length ? `<label class="g-field">Está na mesa (opcional)<select name="mesa"><option value="">Nenhuma</option>${mesas.map((m) => `<option value="${m.id}">${esc(tName(m))}</option>`).join('')}</select></label>` : ''}
     <p class="g-err" id="open-err"></p>
     <div class="g-acts"><button class="g-btn ghost" type="button" data-x>Voltar</button><button class="g-btn primary" type="submit">Abrir e lançar pedido</button></div>`;
   $('#open-form [data-x]').onclick = () => d.close();

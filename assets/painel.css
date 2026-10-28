@@ -382,7 +382,7 @@
 .fin-bars .fb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
 .fin-bars .fb i{width:100%;max-width:36px;background:var(--red);border-radius:6px 6px 2px 2px;min-height:2px}
 .fin-bars .fb small{font-size:10px;color:var(--muted);white-space:nowrap}
-.fin-bars.many .fb small{writing-mode:vertical-rl;transform:rotate(180deg);font-size:9px}
+.fin-bars.many .fb small{font-size:10px;overflow:visible}
 .fin-split{display:flex;flex-direction:column;gap:10px}
 .fs{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:14px}
 .fs i{grid-column:1/-1;height:8px;border-radius:999px;background:#F1EEEE;position:relative;overflow:hidden}
@@ -599,3 +599,65 @@ dialog.mass{width:min(1240px,calc(100% - 24px));height:min(860px,calc(100% - 24p
 .robo-meta>*+*{margin-top:12px}
 #qr-code.old{opacity:.35;text-decoration:line-through}
 #qr-num{white-space:nowrap}
+
+/* ============================================================
+   Ajustes do painel no celular (28/10)
+   ============================================================ */
+/* filtros em pílula: uma linha só, com rolagem lateral (nunca quebram em várias linhas) */
+.adm-main .adm-seg{display:flex;flex-wrap:nowrap;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.adm-main .adm-seg::-webkit-scrollbar{display:none}
+.adm-main .adm-seg button{flex-shrink:0;white-space:nowrap}
+/* botões "fantasma" do painel: com fundo leve para parecerem botão, não texto solto */
+.adm-main .btn-ghost{background:#F6EEEE;border-color:transparent}
+.adm-main .btn-ghost:hover{background:#EFE3E3}
+.adm-main .btn-ghost.adm-danger{background:#FDECEE}
+.adm-main .btn-ghost:disabled{opacity:.4}
+/* categoria do cardápio: ações quebram linha em vez de sair da tela */
+.cat-head .acts{flex-wrap:wrap}
+.mini-switch{white-space:nowrap}
+/* números grandes nunca saem do cartão */
+.adm-kpi b{overflow-wrap:anywhere}
+.p-tabs [data-tab]{scroll-margin-inline:24px}
+
+@media (max-width:640px){
+  /* linha de produto: foto | nome | Editar  /  foto | preço | À venda */
+  .p-row{display:grid;grid-template-columns:56px minmax(0,1fr) auto;grid-template-areas:"img info edit" "img price avail";column-gap:12px;row-gap:6px;align-items:center}
+  .p-row img,.p-row .ph{grid-area:img;align-self:start}
+  .p-row .info{grid-area:info}
+  .p-row .info b{overflow-wrap:anywhere;line-height:1.25}
+  .p-row .price{grid-area:price;white-space:normal}
+  .p-row .mini-switch{grid-area:avail;justify-self:end}
+  .p-row .row-btn{grid-area:edit;justify-self:end}
+  .cat-head{align-items:flex-start}
+  .cat-head .acts{width:100%}
+  .cat-head .acts button{flex:0 0 auto}
+  .cat-head .acts [data-cmd="add"]{margin-left:auto}
+  .adm-kpi b{font-size:clamp(22px,7.2vw,34px)}
+  .fin-kpis .adm-kpi b{font-size:clamp(20px,6.6vw,28px)}
+  /* tabelas mais compactas */
+  .rep-table table,.adm-table{font-size:13px}
+  .rep-table th,.rep-table td{padding:8px 5px}
+  .adm-table{min-width:520px}
+  .rep-acts{display:flex;flex-wrap:wrap;gap:8px;width:100%}
+  .rep-acts input{flex:1 1 100%;min-width:0}
+  .rep-acts .btn{flex:1 1 auto}
+  /* cabeçalhos com ações */
+  .adm-head .adm-actions,.adm-head .ord-tools{width:100%}
+  .robo-conn-head{flex-wrap:wrap}
+  .robo-conn-head #robo-state{margin-left:auto}
+  #robo-form textarea{min-height:110px}
+}
+@media (max-width:640px){
+  .adm-main .adm-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .adm-main .adm-kpis .adm-kpi{padding:14px}
+  .adm-main .adm-kpi b{font-size:clamp(19px,5.8vw,30px)}
+  .adm-head .adm-actions .btn{flex:1 1 auto}
+  .ms-acts .btn{padding:6px 10px}
+  .ms-acts .btn-ghost{flex:1 1 0;min-width:0}
+}
+@media (max-width:640px){
+  .adm-main .adm-seg{gap:2px;padding:4px}
+  .adm-main .adm-seg button{padding:8px 11px;font-size:13px;min-height:40px}
+  .ord-tools{display:flex;gap:8px}
+  .ord-tools .btn{flex:1 1 auto}
+}

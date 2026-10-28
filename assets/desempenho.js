@@ -14,7 +14,7 @@ window.BoraDesempenho = (() => {
     const p = Math.round((a - b) / b * 100);
     return `<span class="${p >= 0 ? 'up' : 'down'}">${p >= 0 ? '▲' : '▼'} ${Math.abs(p)}% vs. ${days} dias antes</span>`;
   };
-  const bars = (el, list) => { const max = Math.max(1, ...list.map((x) => x.v)); el.innerHTML = list.map((x) => `<div class="fb" title="${esc(x.k)}: ${esc(x.t)}"><i style="height:${Math.round(x.v / max * 100)}%"></i><small>${esc(x.k)}</small></div>`).join(''); el.classList.toggle('many', list.length > 16); };
+  const bars = (el, list) => { const max = Math.max(1, ...list.map((x) => x.v)); const step = Math.max(1, Math.ceil(list.length / (innerWidth < 640 ? 9 : 24))); el.innerHTML = list.map((x, i) => `<div class="fb" title="${esc(x.k)}: ${esc(x.t)}"><i style="height:${Math.round(x.v / max * 100)}%"></i><small>${i % step === 0 || i === list.length - 1 ? esc(x.k) : '&nbsp;'}</small></div>`).join(''); el.classList.toggle('many', list.length > 16); };
   const split = (arr, L) => { const tot = arr.reduce((s, x) => s + Number(x.v), 0) || 1; return arr.map((x) => `<div class="fs"><span>${esc(L[x.k] || x.k)} <small class="adm-muted">${x.n} pedido(s)</small></span><b>${brl(x.v)}</b><i style="--w:${Math.round(Number(x.v) / tot * 100)}%"></i></div>`).join('') || '<p class="adm-muted">Sem vendas no período.</p>'; };
   function now() {
     const os = typeof ORDERS !== 'undefined' ? ORDERS : [];

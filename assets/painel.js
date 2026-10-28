@@ -149,7 +149,11 @@ function renderTrial() {
   else { bar.className = 'trial-bar warn'; bar.innerHTML = `Seu teste grátis terminou e o cardápio está pausado. <a href="${ask}">Ative seu plano para voltar a vender</a>.`; }
 }
 
+let DOM_READY = false; // DOMContentLoaded só dispara depois de todos os scripts "defer" (robo.js, equipe.js…)
+document.addEventListener('DOMContentLoaded', () => { DOM_READY = true; }, { once: true });
 function startApp() {
+  // espera os outros módulos do painel (robo.js, equipe.js…) terminarem de carregar
+  if (!DOM_READY) { document.addEventListener('DOMContentLoaded', startApp, { once: true }); return; }
   show('v-app');
   if (SUPPORT) {
     $('#support-bar').hidden = false; $('#sup-store').textContent = R.name;
@@ -196,6 +200,8 @@ $('#pdv-open').addEventListener('click', () => { if (window.BoraPDV) window.Bora
 function selectTab(t) {
   $$('.p-tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== t; });
+  const tb = document.querySelector(`.p-tabs [data-tab="${t}"]`); // no celular, a aba escolhida fica visível na barra
+  if (tb && tb.scrollIntoView) tb.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   if (window.BoraRecursos) window.BoraRecursos.onTab(t);
   if (t === 'desempenho' && window.BoraDesempenho) window.BoraDesempenho.load();
   if (t === 'relatorios' && window.BoraRelatorios) window.BoraRelatorios.load();
