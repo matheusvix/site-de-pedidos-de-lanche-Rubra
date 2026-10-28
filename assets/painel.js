@@ -172,10 +172,21 @@ $('#open-toggle').addEventListener('change', async (e) => {
   toast(!v ? 'Loja fechada: o cardápio fica visível, mas sem pedidos.' : H.status(R).open ? 'Loja aberta: os pedidos estão liberados.' : 'Chave ligada. A loja abre sozinha no próximo horário de funcionamento.');
 });
 
+$('#store-form').schedule_enabled.addEventListener('change', (e) => { $('#sched-box').hidden = !e.target.checked; });
+$('#auto-accept').addEventListener('change', async (e) => {
+  const v = e.target.checked;
+  const { error } = await sb.from('restaurants').update({ auto_accept: v }).eq('id', R.id);
+  if (error) { e.target.checked = !v; toast('Não foi possível mudar agora.'); return; }
+  R.auto_accept = v;
+  toast(v ? 'Pronto: os pedidos novos já entram em preparo sozinhos.' : 'Agora você aceita cada pedido novo manualmente.');
+});
+$('#pdv-open').addEventListener('click', () => { if (window.BoraPDV) window.BoraPDV.open(); });
+
 function selectTab(t) {
   $$('.p-tabs [data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
   $$('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== t; });
   if (window.BoraRecursos) window.BoraRecursos.onTab(t);
+  if (t === 'desempenho' && window.BoraDesempenho) window.BoraDesempenho.load();
 }
 $$('.p-tabs [data-tab]').forEach((b) => b.addEventListener('click', () => selectTab(b.dataset.tab)));
 
@@ -225,7 +236,10 @@ async function loadOrders() {
 }
 function renderOrders(freshId) {
   const act = ['novo', 'preparo', 'pronto', 'saiu'];
-  const list = ORDERS.filter((o) => (filter === 'ativos' ? act.includes(o.status) : !act.includes(o.status)));
+  const later = (o) => o.scheduled_for && act.includes(o.status) && new Date(o.scheduled_for) - Date.now() > 3600e3;
+  const list = ORDERS.filter((o) => (filter === 'agendados' ? later(o) : filter === 'ativos' ? act.includes(o.status) && !later(o) : !act.includes(o.status)))
+    .sort((a, b) => (filter === 'agendados' ? new Date(a.scheduled_for) - new Date(b.scheduled_for) : 0));
+  const sc = ORDERS.filter(later).length; $('#sched-count').hidden = !sc; $('#sched-count').textContent = sc;
   const news = ORDERS.filter((o) => o.status === 'novo').length;
   $('#new-count').hidden = !news; $('#new-count').textContent = news;
   titleAlert(news);
@@ -234,7 +248,7 @@ function renderOrders(freshId) {
   empty.hidden = list.length > 0;
   empty.textContent = filter === 'ativos'
     ? (canSell() ? 'Nenhum pedido em andamento. Divulgue seu link na aba "Minha loja"!' : 'Seu cardápio está pausado. Ative o plano para voltar a receber pedidos.')
-    : 'Nenhum pedido finalizado nos últimos 3 dias.';
+    : filter === 'agendados' ? 'Nenhum pedido agendado para mais tarde.' : 'Nenhum pedido finalizado nos últimos 3 dias.';
 }
 function orderCard(o, fresh) {
   const t = new Date(o.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -242,12 +256,16 @@ function orderCard(o, fresh) {
   const next = {
     novo: [['preparo', 'Aceitar e preparar', 'btn-primary'], ['cancelado', 'Recusar', 'btn-ghost']],
     preparo: [ent ? ['saiu', 'Saiu para entrega', 'btn-primary'] : ['pronto', mesa ? 'Pronto para servir' : 'Pronto para retirar', 'btn-primary']],
-    pronto: [['entregue', mesa ? 'Servido' : 'Retirado', 'btn-primary']],
+    pronto: [ent ? ['saiu', 'Saiu para entrega', 'btn-primary'] : ['entregue', mesa ? 'Servido' : 'Retirado', 'btn-primary']],
     saiu: [['entregue', 'Entregue', 'btn-primary']],
   }[o.status] || [];
   const how = mesa ? `<b class="ord-mesa">${esc(o.delivery_info || 'Mesa')}</b>` : ent ? 'Entrega' : 'Retirada';
+  const SRC = { balcao: 'Balcão', garcom: 'Garçom', qrcode: 'QR da mesa', whatsapp: 'WhatsApp', instagram: 'Instagram' };
+  const sched = o.scheduled_for ? new Date(o.scheduled_for) : null;
+  const tags = (SRC[o.source] && !mesa ? `<span class="ord-tag">${SRC[o.source]}</span>` : '')
+    + (sched ? `<span class="ord-tag sched">Agendado ${sched.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : '');
   return `<article class="ord st-${o.status} ${mesa ? 'is-mesa' : ''} ${fresh ? 'fresh' : ''}" data-id="${o.id}">
-    <div class="ord-head"><div><h3>#${o.number} · ${esc(o.customer_name)}</h3><small>${t} · ${how}</small></div><span class="ord-st ${o.status}">${mesa && o.status === 'pronto' ? 'Pronto p/ servir' : mesa && o.status === 'entregue' ? 'Servido' : ST[o.status]}</span></div>
+    <div class="ord-head"><div><h3>#${o.number} · ${esc(o.customer_name)}</h3><small>${t} · ${how}${tags}</small></div><span class="ord-st ${o.status}">${mesa && o.status === 'pronto' ? 'Pronto p/ servir' : mesa && o.status === 'entregue' ? 'Servido' : ST[o.status]}</span></div>
     <ul class="ord-items">${(o.items || []).map((i) => `<li><span>${i.qty}× ${esc(i.name)}${(i.opts || []).length ? `<small class="ord-opts">${i.opts.map(esc).join(' · ')}</small>` : ''}${i.note ? `<small>Obs.: ${esc(i.note)}</small>` : ''}</span><span>${brl(i.price * i.qty)}</span></li>`).join('')}</ul>
     <div class="ord-info">
       ${ent ? `<span><b>Endereço:</b> ${esc(o.address)}${o.geo ? ` · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.geo)}" target="_blank" rel="noopener">ver no mapa</a>` : ''}</span>` : ''}
@@ -333,6 +351,7 @@ function subscribe() {
         if ('Notification' in window && Notification.permission === 'granted') new Notification(`Pedido novo #${p.new.number}`, { body: `${p.new.customer_name} · ${brl(p.new.total)}` });
       } else if (p.eventType === 'UPDATE') {
         const i = ORDERS.findIndex((o) => o.id === p.new.id); if (i >= 0) ORDERS[i] = p.new; renderOrders();
+        if (window.BoraDesempenho && !$('[data-panel="desempenho"]').hidden) window.BoraDesempenho.now();
       }
     })
     .subscribe();
@@ -585,6 +604,9 @@ function fillStore() {
   f.accepts_delivery.checked = R.accepts_delivery; f.accepts_pickup.checked = R.accepts_pickup;
   f.delivery_mode.value = R.delivery_mode || 'fixa';
   f.delivery_fee.value = money(R.delivery_fee); f.delivery_time.value = R.delivery_time || ''; f.min_order.value = money(R.min_order);
+  f.schedule_enabled.checked = !!R.schedule_enabled; f.schedule_days.value = String(R.schedule_days ?? 2); f.schedule_step.value = String(R.schedule_step ?? 30);
+  $('#sched-box').hidden = !f.schedule_enabled.checked;
+  $('#auto-accept').checked = !!R.auto_accept;
   ZONES = JSON.parse(JSON.stringify(R.delivery_zones || []));
   f.hours_mode.value = R.opening_hours ? 'normal' : 'livre';
   WEEK = R.opening_hours ? JSON.parse(JSON.stringify(R.opening_hours))
@@ -837,6 +859,7 @@ function buildPatch() {
     delivery_mode: mode, delivery_zones: zones,
     delivery_fee: num(f.delivery_fee.value), delivery_time: f.delivery_time.value.trim() || '30–45 min', min_order: num(f.min_order.value),
     opening_hours: hours, hours: null,
+    schedule_enabled: f.schedule_enabled.checked, schedule_days: +f.schedule_days.value || 0, schedule_step: +f.schedule_step.value || 30,
     payment_methods: pay, pix_key: pixKey, pix_key_type: pixKey ? f.pix_key_type.value : null,
     pix_name: pixKey ? window.BoraPix.plain(f.pix_name.value).slice(0, 25) : null, pix_city: pixKey ? window.BoraPix.plain(f.pix_city.value).slice(0, 15) : null,
     pix_bank: f.pix_bank.value.trim().slice(0, 40) || null,

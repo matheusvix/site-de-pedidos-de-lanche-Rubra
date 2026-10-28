@@ -26,6 +26,7 @@ let LOY = { enabled: false }; // fidelidade da loja e do cliente
 const MESA_TOKEN = new URLSearchParams(location.search).get('mesa');
 const plano = (f) => !!(R && window.BoraPlanos && window.BoraPlanos.has(R.plan, f));
 const isOpen = () => H.openNow(R);
+const canSchedule = () => !!R.schedule_enabled && !MESA;
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
@@ -285,7 +286,7 @@ function cartHTML() {
       <div class="sum"><span>Subtotal</span><span class="price">${brl(t.sub)}</span></div>
       ${R.accepts_delivery && !MESA ? `<div class="sum"><span>Taxa de entrega</span><span class="price">${t.fee == null ? `<small>${esc(feeSummary())}</small>` : t.fee > 0 ? brl(t.fee) : 'Grátis'}</span></div>` : ''}
       <div class="sum total"><span>Total${t.fee == null ? ' sem entrega' : ''}</span><span class="price">${brl(t.total)}</span></div>
-      <button class="btn btn-primary btn-block" type="button" data-checkout ${!open || (min > 0 && t.sub < min) ? 'disabled' : ''}>${open ? 'Continuar' : 'Loja fechada agora'}</button>
+      <button class="btn btn-primary btn-block" type="button" data-checkout ${(!open && !canSchedule()) || (min > 0 && t.sub < min) ? 'disabled' : ''}>${open ? 'Continuar' : canSchedule() ? 'Agendar pedido' : 'Loja fechada agora'}</button>
     </div>`;
 }
 function renderCart() {
@@ -316,6 +317,47 @@ function go(view) {
 }
 document.addEventListener('click', (e) => { const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go); });
 
+/* ---------- agendamento ---------- */
+// horários de São Paulo em que a loja está aberta, de agora até schedule_days dias
+function slots() {
+  const step = Number(R.schedule_step) || 30, lead = Math.max(step, 15) + 5, days = Number(R.schedule_days) || 0;
+  const now = H.spNow(); const nowAbs = Date.now();
+  const sp = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const out = [];
+  for (let k = 0; k <= days; k++) {
+    const date = sp.format(new Date(nowAbs + k * 86400000)); // AAAA-MM-DD em Brasília
+    const d = (now.d + k) % 7;
+    const times = [];
+    for (let m = 0; m < 1440; m += step) {
+      if (k === 0 && m < now.m + lead) continue;
+      if (!H.openNow({ is_open: true, opening_hours: R.opening_hours }, { d, m })) continue;
+      times.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+    }
+    if (times.length) out.push({ date, label: k === 0 ? 'Hoje' : k === 1 ? 'Amanhã' : `${H.DIAS[d].split('-')[0]} ${date.slice(8, 10)}/${date.slice(5, 7)}`, times });
+  }
+  return out;
+}
+let SLOTS = [];
+function prepareWhen() {
+  const box = $('#box-when');
+  if (!canSchedule()) { box.hidden = true; co.quando.value = 'agora'; return; }
+  SLOTS = slots();
+  box.hidden = false;
+  const open = isOpen();
+  $('#opt-now').hidden = !open;
+  if (!open) co.quando.value = 'agendar';
+  $('#c-dia').innerHTML = SLOTS.map((s, i) => `<option value="${i}">${esc(s.label)}</option>`).join('') || '<option value="">Sem horários disponíveis</option>';
+  fillHours(); syncWhen();
+}
+function fillHours() { const s = SLOTS[+co.dia.value || 0]; $('#c-hora').innerHTML = s ? s.times.map((t) => `<option value="${t}">${t}</option>`).join('') : ''; }
+function syncWhen() { $('#when-pick').hidden = co.quando.value !== 'agendar'; }
+co.addEventListener('change', (e) => { if (e.target.name === 'quando') syncWhen(); if (e.target.name === 'dia') fillHours(); });
+function scheduledFor() {
+  if (!canSchedule() || co.quando.value !== 'agendar') return null;
+  const s = SLOTS[+co.dia.value || 0]; const t = co.hora.value;
+  return s && t ? `${s.date}T${t}:00-03:00` : '';
+}
+
 /* ---------- checkout ---------- */
 const co = $('#checkout');
 const modo = () => (MESA ? 'mesa' : co.modo.value || (R.accepts_delivery ? 'entrega' : 'retirada'));
@@ -327,6 +369,7 @@ function prepareCheckout() {
   $('#box-promo').hidden = !(plano('cupons') && !MESA);
   $('#ly-box').hidden = true; renderCoupon(); checkLoyalty();
   if (MESA) { try { const s = JSON.parse(localStorage.getItem('bora-cliente') || '{}'); if (s.nome && !co.nome.value) co.nome.value = s.nome; if (s.tel && !co.tel.value) co.tel.value = s.tel; } catch (_) {} syncCheckout(); return; }
+  prepareWhen();
   $('#opt-ent').hidden = !R.accepts_delivery; $('#opt-ret').hidden = !R.accepts_pickup;
   if (!R.accepts_delivery) co.modo.value = 'retirada';
   if (!R.accepts_pickup) co.modo.value = 'entrega';
@@ -482,6 +525,9 @@ co.addEventListener('submit', async (e) => {
   });
   if (bad) { bad.focus(); return; }
   if (!cart.length) { go('menu'); return; }
+  const when = scheduledFor();
+  if (when === '') { $('#co-err').textContent = 'Escolha o dia e o horário do agendamento.'; return; }
+  if (when === null && !MESA && !isOpen()) { $('#co-err').textContent = 'A loja está fechada agora. Escolha "Agendar".'; return; }
   const ent = modo() === 'entrega';
   const byZone = R.delivery_mode === 'bairro' && zones().length;
   const bairro = byZone ? co.zone.value : co.bairro.value.trim();
@@ -492,6 +538,7 @@ co.addEventListener('submit', async (e) => {
   const customer = MESA ? { table: MESA.token, name: co.nome.value.trim(), phone: co.tel.value, notes: co.obs.value.trim() }
     : { name: co.nome.value.trim(), phone: co.tel.value, mode: modo(), address: addr, payment: co.pag.value, change_for: Number.isFinite(troco) ? String(troco) : '', notes: co.obs.value.trim() };
   if (!MESA && CP) customer.coupon = CP.code;
+  if (when) customer.scheduled_for = when;
   if (!MESA && LOY.useReward && LOY.rewards > 0) customer.use_reward = 'true';
   if (ent && byZone) customer.zone = co.zone.value;
   if (ent && GEO) { customer.lat = GEO.lat.toFixed(6); customer.lng = GEO.lng.toFixed(6); }
@@ -501,7 +548,7 @@ co.addEventListener('submit', async (e) => {
   });
   btn.disabled = false;
   if (error) { $('#co-err').textContent = (error.message || 'Não foi possível enviar o pedido.').replace(/^.*?:\s*/, ''); return; }
-  const order = { ...data, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
+  const order = { ...data, scheduled_for: data.scheduled_for || when || null, ts: Date.now(), customer: co.nome.value.trim(), phone: co.tel.value, mode: MESA ? 'mesa' : modo(), mesa: MESA ? MESA.label : null, address: addr, payment: MESA ? 'mesa' : co.pag.value, change_for: troco, notes: co.obs.value.trim() };
   CP = null; LOY.useReward = false; $('#c-cupom').value = '';
   try { localStorage.setItem(LAST, data.public_id); localStorage.setItem('bora-order-' + data.public_id, JSON.stringify(order)); } catch (_) {}
   location.hash = 'pedido';
@@ -543,9 +590,14 @@ async function showTrack(publicId, order) {
       $('#t-title').textContent = 'Pedido cancelado'; $('#t-sub').textContent = 'Fale com a loja pelo WhatsApp se tiver dúvidas.';
       $('#steps').innerHTML = ''; return true;
     }
-    const k = ORDER[st] ?? 0;
+    const k = ent && st === 'pronto' ? 1 : ORDER[st] ?? 0;
     $('#t-title').textContent = STEPS[k][1] + (k === 0 ? '!' : '');
-    $('#t-sub').textContent = STEPS[k][2];
+    $('#t-sub').textContent = ent && st === 'pronto' ? 'Pronto! Esperando o entregador sair.' : STEPS[k][2];
+    if (order.scheduled_for && k === 0) {
+      const d = new Date(order.scheduled_for);
+      $('#t-title').textContent = 'Pedido agendado!';
+      $('#t-sub').textContent = `Para ${d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}. A loja já recebeu.`;
+    }
     $('#steps').innerHTML = STEPS.map((s, i) => `<li class="${i < k ? 'done' : i === k ? 'now done' : ''}"><span class="dot">${i <= k ? '<svg width="16" height="16"><use href="#i-check"/></svg>' : ''}</span><div><b>${s[1]}</b><small>${s[2]}</small></div></li>`).join('');
     return st === 'entregue';
   };

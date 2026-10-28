@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Cozinha · BoraLanchar!</title>
+<meta name="theme-color" content="#120B0C">
+<link rel="icon" href="/assets/brand/boralanchar-icone-app.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<link rel="stylesheet" href="/assets/cozinha.css?v=1">
+</head>
+<body>
+<header class="k-top">
+  <div class="k-brand"><b id="k-store">Cozinha</b><small id="k-clock"></small></div>
+  <div class="k-filters" role="group" aria-label="Mostrar">
+    <button type="button" data-kf="todos" aria-pressed="true">Todos</button>
+    <button type="button" data-kf="entrega" aria-pressed="false">Entrega</button>
+    <button type="button" data-kf="retirada" aria-pressed="false">Balcão</button>
+    <button type="button" data-kf="mesa" aria-pressed="false">Mesas</button>
+  </div>
+  <div class="k-acts">
+    <button type="button" class="k-btn" id="k-sound">🔇 Ativar som</button>
+    <button type="button" class="k-btn" id="k-full">Tela cheia</button>
+  </div>
+</header>
+<main class="k-board" id="k-board">
+  <section class="k-col" data-col="novo"><h2>Novos <b id="c-novo">0</b></h2><div class="k-list" id="l-novo"></div></section>
+  <section class="k-col" data-col="preparo"><h2>Em preparo <b id="c-preparo">0</b></h2><div class="k-list" id="l-preparo"></div></section>
+  <section class="k-col" data-col="pronto"><h2>Prontos <b id="c-pronto">0</b></h2><div class="k-list" id="l-pronto"></div></section>
+</main>
+<div class="k-state" id="k-state"><p id="k-msg">Carregando…</p><a class="k-btn" id="k-login" href="painel.html" hidden>Entrar no painel</a></div>
+<div class="k-toast" role="status" aria-live="polite"></div>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script defer src="/assets/config.js"></script>
+<script defer src="/assets/cozinha.js?v=1"></script>
+</body>
+</html>

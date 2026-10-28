@@ -27,6 +27,12 @@
     Cache-Control = "no-store"
 
 [[headers]]
+  for = "/cozinha.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+[[headers]]
   for = "/motoboy.html"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
@@ -67,6 +73,11 @@
 [[redirects]]
   from = "/garcom"
   to = "/garcom.html"
+  status = 200
+
+[[redirects]]
+  from = "/cozinha"
+  to = "/cozinha.html"
   status = 200
 
 [[redirects]]

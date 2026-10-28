@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=16">
+<link rel="stylesheet" href="assets/painel.css?v=17">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,6 +28,7 @@
   <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
   <symbol id="i-pix" viewBox="0 0 24 24"><path fill="currentColor" d="M17.6 17.3a2.9 2.9 0 0 1-2-.8l-2.9-2.9a.6.6 0 0 0-.8 0l-2.9 2.9a2.9 2.9 0 0 1-2 .8h-.6l3.7 3.7a3 3 0 0 0 4.2 0l3.7-3.7zM7 6.7a2.9 2.9 0 0 1 2 .8l2.9 2.9a.6.6 0 0 0 .8 0l2.9-2.9a2.9 2.9 0 0 1 2-.8h.4L14.3 3a3 3 0 0 0-4.2 0L6.4 6.7zm14 3.2-2.2-2.2h-1.2a2 2 0 0 0-1.4.6l-2.9 2.9a1.4 1.4 0 0 1-2 0L8.4 8.3A2 2 0 0 0 7 7.7H5.6L3.4 9.9a3 3 0 0 0 0 4.2l2.2 2.2H7a2 2 0 0 0 1.4-.6l2.9-2.9a1.4 1.4 0 0 1 2 0l2.9 2.9a2 2 0 0 0 1.4.6h1.2l2.2-2.2a3 3 0 0 0 0-4.2z"/></symbol>
   <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
 </svg>
 
 <!-- ===== LOGIN ===== -->
@@ -88,6 +89,7 @@
 
   <nav class="p-tabs" role="tablist" aria-label="Seções do painel">
     <button role="tab" aria-selected="true" data-tab="pedidos">Pedidos <b class="p-count" id="new-count" hidden>0</b></button>
+    <button role="tab" aria-selected="false" data-tab="desempenho">Desempenho</button>
     <button role="tab" aria-selected="false" data-tab="entregas" data-feat="entregas">Entregas <b class="p-count" id="entregas-count" hidden>0</b></button>
     <button role="tab" aria-selected="false" data-tab="cardapio">Cardápio</button>
     <button role="tab" aria-selected="false" data-tab="mesas" data-feat="mesas">Mesas <b class="p-count" id="mesas-count" hidden>0</b></button>
@@ -104,10 +106,18 @@
     <section data-panel="pedidos">
       <div class="adm-head">
         <div><h1>Pedidos</h1><p class="adm-muted">Os pedidos novos aparecem aqui na hora, com som. Deixe esta tela aberta no celular ou no computador do balcão.</p></div>
+        <div class="ord-tools">
+          <button class="btn btn-primary" type="button" id="pdv-open"><svg width="18" height="18" aria-hidden="true"><use href="#i-plus"/></svg>Novo pedido</button>
+          <a class="btn btn-ghost" href="cozinha.html" target="_blank" rel="noopener">Tela da cozinha</a>
+        </div>
+      </div>
+      <div class="ord-bar">
         <div class="adm-seg" role="group" aria-label="Filtro">
           <button type="button" data-of="ativos" aria-pressed="true">Em andamento</button>
+          <button type="button" data-of="agendados" aria-pressed="false">Agendados <b class="p-count" id="sched-count" hidden>0</b></button>
           <button type="button" data-of="finalizados" aria-pressed="false">Finalizados</button>
         </div>
+        <label class="open-switch auto-sw" for="auto-accept"><input type="checkbox" id="auto-accept" role="switch"><span class="sw" aria-hidden="true"></span><span>Aceitar pedidos automaticamente</span></label>
       </div>
       <p class="sound-hint" id="sound-hint"><svg width="18" height="18"><use href="#i-bell"/></svg> Toque em qualquer lugar da tela para ativar o som de pedido novo.</p>
       <div class="pending" id="pending" hidden></div>
@@ -229,6 +239,39 @@
           <div id="cr-list" class="rx-list"></div>
         </div>
       </div>
+    </section>
+
+    <!-- DESEMPENHO -->
+    <section data-panel="desempenho" hidden>
+      <div class="adm-head">
+        <div><h1>Desempenho</h1><p class="adm-muted">Como a loja está indo: vendas, ticket médio e de onde vêm os pedidos. Os números comparam com o período anterior de mesmo tamanho.</p></div>
+        <div class="adm-seg" role="group" aria-label="Período">
+          <button type="button" data-dp="7" aria-pressed="true">7 dias</button>
+          <button type="button" data-dp="15" aria-pressed="false">15 dias</button>
+          <button type="button" data-dp="30" aria-pressed="false">30 dias</button>
+        </div>
+      </div>
+      <section class="adm-kpis" aria-label="Agora">
+        <div class="adm-kpi"><span>Vendido hoje</span><b id="dk-today">R$ 0,00</b><small id="dk-today-n">0 pedidos</small></div>
+        <div class="adm-kpi"><span>Novos agora</span><b id="dk-novo">0</b></div>
+        <div class="adm-kpi"><span>Em preparo</span><b id="dk-prep">0</b></div>
+        <div class="adm-kpi"><span>Prontos / em rota</span><b id="dk-ready">0</b></div>
+      </section>
+      <section class="adm-kpis" aria-label="Período">
+        <div class="adm-kpi"><span>Faturamento</span><b id="dk-total">R$ 0,00</b><small id="dk-total-d"></small></div>
+        <div class="adm-kpi"><span>Pedidos</span><b id="dk-orders">0</b><small id="dk-orders-d"></small></div>
+        <div class="adm-kpi"><span>Ticket médio</span><b id="dk-ticket">R$ 0,00</b><small id="dk-ticket-d"></small></div>
+        <div class="adm-kpi"><span>Cancelados</span><b id="dk-cancel">0</b></div>
+      </section>
+      <div class="rx-grid">
+        <div class="p-card"><h2>Vendas por dia</h2><div class="fin-bars" id="dp-days"></div></div>
+        <div class="p-card"><h2>Horários com mais pedidos</h2><div class="fin-bars" id="dp-hours"></div><p class="adm-muted" id="dp-peak"></p></div>
+      </div>
+      <div class="rx-grid">
+        <div class="p-card"><h2>Pedidos por modalidade</h2><div id="dp-mode" class="fin-split"></div></div>
+        <div class="p-card"><h2>De onde vêm os pedidos</h2><div id="dp-source" class="fin-split"></div></div>
+      </div>
+      <div class="p-card"><h2>Melhores dias da semana</h2><div class="fin-bars" id="dp-week"></div></div>
     </section>
 
     <!-- ESTOQUE -->
@@ -383,6 +426,12 @@
               </div>
               <div id="week"></div>
               <button class="btn btn-ghost" type="button" id="copy-week">Copiar o horário de segunda para os outros dias abertos</button>
+              <h3 style="margin-top:8px">Pedidos agendados</h3>
+              <label class="check"><input type="checkbox" name="schedule_enabled"> <span>O cliente pode agendar o pedido para outro horário (inclusive com a loja fechada)</span></label>
+              <div class="row2" id="sched-box">
+                <div class="field"><label for="f-sdays">Até quando dá para agendar</label><select id="f-sdays" name="schedule_days"><option value="0">Só para hoje</option><option value="1">Até amanhã</option><option value="2">Até 2 dias</option><option value="3">Até 3 dias</option><option value="7">Até 7 dias</option></select></div>
+                <div class="field"><label for="f-sstep">Intervalo entre os horários</label><select id="f-sstep" name="schedule_step"><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option></select></div>
+              </div>
               <p class="adm-muted">Turno que passa da meia-noite? Coloque, por exemplo, 18:00 até 02:00. A chave <b>Aberta/Fechada</b> no topo continua valendo para fechar a loja num dia de folga.</p>
             </div>
 
@@ -625,9 +674,11 @@
 <script defer src="assets/horario.js?v=5"></script>
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
-<script defer src="assets/painel.js?v=18"></script>
+<script defer src="assets/painel.js?v=19"></script>
 <script defer src="assets/robo.js?v=2"></script>
 <script defer src="assets/recursos.js?v=3"></script>
+<script defer src="assets/pdv.js?v=1"></script>
+<script defer src="assets/desempenho.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 <script defer src="/assets/olhinho.js?v=1"></script>
 </body>
