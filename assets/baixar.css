@@ -2,7 +2,7 @@
 .dl{background:var(--paper)}
 .dl-top{position:sticky;top:0;z-index:10;background:rgba(251,247,246,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .dl-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px}
-.dl-nav .wordmark{height:34px;width:auto;display:block}
+.dl-nav .wordmark{height:29px;width:auto;display:block}
 .dl-web{font-weight:700;color:var(--ink);font-size:15px;padding:10px 4px}
 .dl-hero{padding:56px 0 40px;background:radial-gradient(900px 420px at 85% 20%,var(--red-soft),transparent 70%)}
 .dl-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
@@ -62,5 +62,5 @@
   .container{padding:0 16px}
   .dl-main{width:100%}
   .dl-web{font-size:14px}
-  .dl-nav .wordmark{height:30px}
+  .dl-nav .wordmark{height:26px}
 }
