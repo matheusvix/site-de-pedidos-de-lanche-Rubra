@@ -1,7 +1,7 @@
 /* BoraLanchar! — service worker do app (painel instalável)
    Sempre busca a versão nova na internet; só usa o que está guardado quando estiver sem conexão. */
-const CACHE = 'bora-app-v3';
-const SHELL = ['/painel.html', '/baixar.html', '/assets/app/icone-192.png', '/assets/brand/confirmado-logo.svg'];
+const CACHE = 'bora-app-v4';
+const SHELL = ['/painel.html', '/baixar.html', '/assets/app/icone-192.png', '/assets/brand/campainha-logo.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
