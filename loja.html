@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="/assets/loja.css?v=12">
+<link rel="stylesheet" href="/assets/loja.css?v=13">
 </head>
 <body>
 
@@ -212,6 +212,11 @@
       <h2 id="h-st">Acompanhe seu pedido</h2>
       <ol class="steps" id="steps"></ol>
     </section>
+    <section class="card game-card" id="t-game" hidden aria-labelledby="h-game">
+      <div class="game-ic" aria-hidden="true">🛵</div>
+      <div class="game-txt"><h2 id="h-game">Jogue enquanto espera</h2><p>Corrida da Entrega: desvie dos carros e pegue os lanches no caminho. Te avisamos aqui quando o pedido mudar.</p></div>
+      <button class="btn btn-primary" type="button" id="t-play">Jogar</button>
+    </section>
     <section class="card rate" id="t-rate" hidden></section>
     <section class="card live" id="t-live" hidden aria-labelledby="h-live">
       <div class="live-head"><h2 id="h-live">Seu pedido no mapa</h2><span class="live-dot" id="t-live-st">Ao vivo</span></div>
@@ -250,6 +255,6 @@
 <script defer src="/assets/pix.js?v=6"></script>
 <script defer src="/assets/planos.js?v=2"></script>
 <script defer src="/assets/mapa.js?v=1"></script>
-<script defer src="/assets/loja.js?v=17"></script>
+<script defer src="/assets/loja.js?v=18"></script>
 </body>
 </html>

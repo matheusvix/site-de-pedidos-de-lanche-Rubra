@@ -659,7 +659,14 @@ async function showTrack(publicId, order) {
     ['entregue', ent ? 'Entregue' : mesa ? 'Servido' : 'Retirado', 'Bom apetite!']];
   $('#again').textContent = mesa ? 'Pedir mais alguma coisa' : 'Fazer outro pedido';
   const ORDER = { novo: 0, preparo: 1, pronto: 2, saiu: 2, entregue: 3 };
+  let lastSt = null;
   const render = (st) => {
+    $('#t-game').hidden = st === 'entregue' || st === 'cancelado';
+    if (lastSt && st !== lastSt && window.BoraJogo && window.BoraJogo.isOpen()) {
+      const k2 = st === 'cancelado' ? -1 : ent && st === 'pronto' ? 1 : ORDER[st] ?? 0;
+      window.BoraJogo.notify(st === 'cancelado' ? '⚠️ Seu pedido foi cancelado' : st === 'entregue' ? '😋 Pedido entregue! Bom apetite' : st === 'saiu' ? '🛵 Seu pedido saiu para entrega!' : `🔔 ${STEPS[k2][1]}`);
+    }
+    lastSt = st;
     if (st === 'cancelado') {
       $('#t-title').textContent = 'Pedido cancelado'; $('#t-sub').textContent = 'Fale com a loja pelo WhatsApp se tiver dúvidas.';
       $('#steps').innerHTML = ''; return true;
@@ -893,3 +900,14 @@ $('#ch-form').addEventListener('submit', async (e) => {
 $('#ch-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#ch-form').requestSubmit(); } });
 
 load();
+
+/* ---------- joguinho enquanto espera (assets/jogo.js, carrega só quando o cliente toca em Jogar) ---------- */
+$('#t-play').addEventListener('click', () => {
+  const go2 = () => window.BoraJogo.open({ store: R && R.name });
+  if (window.BoraJogo) return go2();
+  const b = $('#t-play'); b.disabled = true;
+  const sc = document.createElement('script'); sc.charset = 'utf-8'; sc.src = '/assets/jogo.js?v=1';
+  sc.onload = () => { b.disabled = false; go2(); };
+  sc.onerror = () => { b.disabled = false; toast('Não foi possível abrir o jogo agora.'); };
+  document.head.appendChild(sc);
+});

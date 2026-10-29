@@ -422,3 +422,11 @@ label.check input{width:20px;height:20px;accent-color:var(--red)}
 .rate-stars button:active{transform:scale(.92)}
 .rate-stars.done{font-size:28px;color:#F2A900;letter-spacing:4px}
 #rate-txt{font:inherit;font-size:15px;width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4}
+/* joguinho enquanto espera */
+.game-card{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,#FFF1E6,#FFE3E5);border-color:#F8C9CD}
+.game-card .game-ic{font-size:34px;width:56px;height:56px;border-radius:16px;background:#fff;display:grid;place-items:center;flex-shrink:0;box-shadow:0 6px 16px -10px rgba(163,16,27,.5)}
+.game-card .game-txt{flex:1;min-width:0}
+.game-card h2{margin:0 0 2px;font-size:18px}
+.game-card p{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.game-card .btn{flex-shrink:0;min-height:44px;padding:10px 18px}
+@media (max-width:420px){.game-card{flex-wrap:wrap}.game-card .btn{width:100%}}
