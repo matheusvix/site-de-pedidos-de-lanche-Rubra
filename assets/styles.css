@@ -326,8 +326,8 @@ dialog.wide{width:min(960px,calc(100% - 32px))}
 }
 
 /* logotipo e foco em fundos escuros */
-.brand .wordmark{display:block;height:30px;width:auto}
-.footer .brand .wordmark{height:34px}
+.brand .wordmark{display:block;height:40px;width:auto}
+.footer .brand .wordmark{height:44px}
 .footer,.section-dark,.plan.featured,.band-red,.cta-box,.marquee{--focus:#FFFFFF}
 
 /* Planos reativos: o cartão ativo assume a cor do seu plano.
@@ -389,7 +389,7 @@ dialog.wide{width:min(960px,calc(100% - 32px))}
 .hero::before{right:-260px;top:-240px;width:900px;height:900px;background:repeating-conic-gradient(var(--red-soft) 0 7.5deg,#fff 7.5deg 15deg);-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent)}
 .pill{border:2px solid var(--ink);color:var(--ink);font-weight:700;box-shadow:3px 3px 0 var(--ink)}
 .hero h1 em{color:var(--red)}
-.hero-sticker{position:absolute;left:8px;bottom:18px;width:190px;height:auto;z-index:3;transform:rotate(-9deg);filter:drop-shadow(4px 5px 0 rgba(26,17,18,.85))}
+.hero-sticker{position:absolute;left:4px;bottom:10px;width:170px;height:auto;z-index:3;transform:rotate(-8deg);filter:drop-shadow(0 6px 10px rgba(26,17,18,.35))}
 @media (max-width:640px){.hero-sticker{width:128px;left:-4px;bottom:4px}}
 
 /* botões com sombra de adesivo */
@@ -422,7 +422,7 @@ dialog.wide{width:min(960px,calc(100% - 32px))}
 /* chamada final */
 .cta-box::before{content:"";position:absolute;inset:-60%;background:repeating-conic-gradient(rgba(255,255,255,.06) 0 8deg,transparent 8deg 16deg)}
 .cta-box::after{display:none}
-.cta-seal{flex:0 0 auto;width:170px;height:auto;transform:rotate(-7deg);filter:drop-shadow(4px 5px 0 rgba(26,17,18,.55))}
+.cta-seal{flex:0 0 auto;width:170px;height:auto;transform:rotate(-7deg)}
 .cta-kicker{display:block;font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.01em;margin-bottom:8px;color:#fff}
 .cta-box p{color:#fff}
 @media (max-width:640px){.cta-seal{width:120px}}

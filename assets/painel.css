@@ -285,7 +285,7 @@
 .robo-reply textarea{flex:1;font:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:1.5px solid #E2D3D4;resize:vertical;min-height:48px}
 @media (max-width:900px){.robo-grid{grid-template-columns:1fr}}
 @media (max-width:640px){.faq-row{grid-template-columns:minmax(0,1fr) 36px}.faq-row textarea{grid-column:1}.faq-row .opt-x{grid-row:1;grid-column:2}}
-@media (max-width:640px){.adm-top{gap:8px}.adm-top .brand .wordmark{height:20px}.adm-top-right .btn{padding:8px 10px}.adm-top .adm-tag{max-width:26vw}}
+@media (max-width:640px){.adm-top{gap:8px}.adm-top .brand .wordmark{height:30px}.adm-top-right .btn{padding:8px 10px}.adm-top .adm-tag{max-width:26vw}}
 
 /* ============ recursos por plano ============ */
 .p-tabs button.locked{color:#A99596}

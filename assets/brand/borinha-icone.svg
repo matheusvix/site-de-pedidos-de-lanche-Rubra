@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024.0 1024.0"><defs><radialGradient id="iconeapparredondado-head" cx="0.38" cy="0.32" r="0.75"><stop offset="0" stop-color="#FFFFFF"/><stop offset="0.6" stop-color="#F7ECEC"/><stop offset="1" stop-color="#D9C3C5"/></radialGradient>
+<linearGradient id="iconeapparredondado-cap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A3A3B"/><stop offset="1" stop-color="#1A1112"/></linearGradient>
+<radialGradient id="iconeapparredondado-floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#1A1112" stop-opacity="0.5"/><stop offset="1" stop-color="#1A1112" stop-opacity="0"/></radialGradient>
+<linearGradient id="iconeapparredondado-tile" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0" stop-color="#EE3340"/><stop offset="0.55" stop-color="#E01E2D"/><stop offset="1" stop-color="#B8141F"/></linearGradient>
+<filter id="iconeapparredondado-soft" x="-20%" y="-20%" width="140%" height="160%"><feGaussianBlur stdDeviation="6"/></filter></defs><rect width="1024" height="1024" rx="230" fill="url(#iconeapparredondado-tile)"/><g transform="translate(122.8 81.2) scale(3.7790)">
+
+<circle cx="92" cy="110" r="68" fill="url(#iconeapparredondado-head)"/>
+<path d="M28 98 A64 64 0 0 1 156 98 Z" fill="url(#iconeapparredondado-cap)"/>
+<path d="M44 70 Q70 44 104 44 Q70 52 52 80 Z" fill="#FFFFFF" opacity="0.25"/>
+<path d="M120 86 H178 A8 8 0 0 1 178 102 H120 Z" fill="#1A1112"/>
+<path d="M120 86 H176 A6 6 0 0 1 176 92 H120 Z" fill="#4A3A3B"/>
+<path transform="translate(78.16 88)" d="M15.16 0L2.76 0L2.76-26.40L14.16-26.40Q16.64-26.40 18.62-25.98Q20.60-25.56 22-24.70Q23.40-23.84 24.14-22.50Q24.88-21.16 24.88-19.32L24.88-19.32Q24.88-17.76 24.22-16.60Q23.56-15.44 22.16-14.72Q20.76-14 18.44-13.76L18.44-13.76L18.44-13.08Q22.28-12.84 24.12-11.24Q25.96-9.64 25.96-6.92L25.96-6.92Q25.96-4.60 24.72-3.08Q23.48-1.56 21.08-0.78Q18.68 0 15.16 0L15.16 0ZM8.92-11.40L8.92-5.12L14.92-5.12Q17.36-5.12 18.52-5.82Q19.68-6.52 19.68-8.04L19.68-8.04Q19.68-9.72 18.28-10.56Q16.88-11.40 14-11.40L14-11.40L8.92-11.40ZM8.92-21.36L8.92-15.32L13.12-15.32Q15.96-15.32 17.28-16.10Q18.60-16.88 18.60-18.44L18.60-18.44Q18.60-19.96 17.38-20.66Q16.16-21.36 13.68-21.36L13.68-21.36L8.92-21.36Z" fill="#E01E2D"/>
+<ellipse cx="70" cy="124" rx="8" ry="10.5" fill="#1A1112"/><ellipse cx="114" cy="124" rx="8" ry="10.5" fill="#1A1112"/>
+<circle cx="73" cy="120" r="3" fill="#FFFFFF"/><circle cx="117" cy="120" r="3" fill="#FFFFFF"/>
+<path d="M64 146 Q92 170 120 146" fill="none" stroke="#1A1112" stroke-width="8" stroke-linecap="round"/>
+<circle cx="50" cy="142" r="9" fill="#FF8A93" opacity="0.8"/><circle cx="134" cy="142" r="9" fill="#FF8A93" opacity="0.8"/></g></svg>

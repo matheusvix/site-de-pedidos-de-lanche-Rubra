@@ -1,7 +1,7 @@
 /* BoraLanchar! — página de assinatura */
 .as-body{background:var(--paper,#FFF6F4);min-height:100vh}
 .as-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:#fff;border-bottom:1px solid var(--line)}
-.as-top .wordmark{height:26px;width:auto}
+.as-top .wordmark{height:36px;width:auto}
 .as-back{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;color:var(--ink);text-decoration:none;min-height:44px}
 .as-back:hover{color:var(--red)}
 .as-wrap{max-width:1120px;margin:0 auto;padding:32px 24px 64px;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:28px;align-items:start}
