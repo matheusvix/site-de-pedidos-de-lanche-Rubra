@@ -70,13 +70,64 @@ window.BoraMarketing = (() => {
   });
   $('#rc-msg').addEventListener('input', (e) => { try { localStorage.setItem(MKEY(), e.target.value); } catch (_) {} });
 
+  /* ---------- jogo do pedido (Corrida da Entrega) ---------- */
+  const gf = () => $('#gm-form');
+  function fillGame() {
+    const f = gf();
+    f.game_enabled.checked = R.game_enabled !== false;
+    f.game_reward_enabled.checked = !!R.game_reward_enabled;
+    f.game_reward_score.value = R.game_reward_score ?? 2000;
+    f.game_reward_kind.value = R.game_reward_kind || 'percent';
+    f.game_reward_value.value = String(R.game_reward_value ?? 10).replace('.', ',');
+    f.game_reward_days.value = R.game_reward_days ?? 7;
+    syncGame();
+    const st = $('#gm-state'); const on = R.game_enabled !== false;
+    st.textContent = !on ? 'Desligado' : R.game_reward_enabled ? 'Com prêmio' : 'Ligado'; st.classList.toggle('on', on);
+  }
+  function syncGame() {
+    const f = gf(); const k = f.game_reward_kind.value;
+    $('#gm-val-box').hidden = k === 'frete';
+    $('#gm-val-box label').textContent = k === 'percent' ? 'Desconto (%)' : 'Desconto (R$)';
+    [f.game_reward_score, f.game_reward_kind, f.game_reward_value, f.game_reward_days].forEach((i) => { i.disabled = !f.game_reward_enabled.checked; });
+  }
+  gf().addEventListener('change', syncGame);
+  gf().addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = gf(); const k = f.game_reward_kind.value;
+    const score = parseInt(String(f.game_reward_score.value).replace(/\D/g, ''), 10), val = num(f.game_reward_value.value), days = parseInt(f.game_reward_days.value, 10);
+    if (f.game_reward_enabled.checked) {
+      if (!(score >= 100 && score <= 1000000)) return toast('A meta de pontos vai de 100 a 1.000.000.');
+      if (k !== 'frete' && !(val > 0 && val <= (k === 'percent' ? 100 : 1000))) return toast(k === 'percent' ? 'O desconto vai de 1 a 100%.' : 'O desconto vai de R$ 0,01 a R$ 1.000.');
+      if (!(days >= 1 && days <= 60)) return toast('A validade vai de 1 a 60 dias.');
+    }
+    const row = { game_enabled: f.game_enabled.checked, game_reward_enabled: f.game_reward_enabled.checked };
+    if (f.game_reward_enabled.checked) Object.assign(row, { game_reward_score: score, game_reward_kind: k, game_reward_value: k === 'frete' ? 0 : val, game_reward_days: days });
+    const b = $('#gm-form button[type=submit]'); b.disabled = true;
+    const { data, error } = await sb.from('restaurants').update(row).eq('id', R.id).select().single();
+    b.disabled = false;
+    if (error) return toast('Não foi possível salvar agora.');
+    Object.assign(R, data); fillGame();
+    toast(!data.game_enabled ? 'Jogo desligado.' : data.game_reward_enabled ? `Pronto! Quem fizer ${Number(data.game_reward_score).toLocaleString('pt-BR')} pontos ganha o cupom.` : 'Jogo ligado, sem prêmio.');
+  });
+  async function gameRank() {
+    const day = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const [{ data: top }, { count: plays }, { count: prizes }] = await Promise.all([
+      sb.from('game_scores').select('name, score').eq('restaurant_id', R.id).eq('day', day).gt('score', 0).order('score', { ascending: false }).limit(10),
+      sb.from('game_scores').select('id', { count: 'exact', head: true }).eq('restaurant_id', R.id).gte('day', new Date(Date.now() - 30 * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })),
+      sb.from('game_scores').select('id', { count: 'exact', head: true }).eq('restaurant_id', R.id).not('reward_coupon_id', 'is', null).gte('day', new Date(Date.now() - 30 * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })),
+    ]);
+    $('#gm-rank').innerHTML = (top || []).map((g, i) => `<li><span class="gm-pos">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span><b>${esc(g.name)}</b><span>${Number(g.score).toLocaleString('pt-BR')} pts</span></li>`).join('')
+      || '<li class="gm-empty">Ninguém jogou hoje ainda.</li>';
+    $('#gm-stats').textContent = plays ? `Últimos 30 dias: ${plays} pedido(s) com partida${prizes ? ` · ${prizes} cupom(ns) de prêmio` : ''}.` : '';
+  }
+
   async function load() {
     if (typeof R === 'undefined' || !R || !has()) return;
-    fillCb(); cbStats();
+    fillCb(); cbStats(); fillGame(); gameRank();
     const [rep, sent, cps] = await Promise.all([
       sb.rpc('reports_data', { p_rid: R.id, p_days: 365 }),
       sb.from('recover_sends').select('phone, sent_at').eq('restaurant_id', R.id).gte('sent_at', new Date(Date.now() - 60 * 86400000).toISOString()).order('sent_at'),
-      sb.from('coupons').select('code, active, expires_at').eq('restaurant_id', R.id).eq('active', true),
+      sb.from('coupons').select('code, active, expires_at').eq('restaurant_id', R.id).eq('active', true).is('source', null),
     ]);
     CLIENTS = (rep.data && rep.data.clients) || [];
     SENT = {}; (sent.data || []).forEach((s) => { SENT[s.phone] = s.sent_at; });

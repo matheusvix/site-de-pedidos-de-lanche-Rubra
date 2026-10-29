@@ -72,7 +72,7 @@ window.BoraRecursos = (() => {
   const KIND = { percent: '% de desconto', fixed: 'R$ de desconto', frete: 'Entrega grátis' };
   const cpLabel = (c) => (c.kind === 'percent' ? `${String(c.value).replace('.', ',')}% de desconto` : c.kind === 'fixed' ? `${brl(c.value)} de desconto` : 'Entrega grátis');
   async function loadCupons() {
-    const { data } = await sb.from('coupons').select('*').eq('restaurant_id', R.id).order('created_at', { ascending: false });
+    const { data } = await sb.from('coupons').select('*').eq('restaurant_id', R.id).is('source', null).order('created_at', { ascending: false }); // cupons de prêmio do jogo ficam fora da lista
     COUPONS = data || []; renderCupons(); fillLoyalty(); loadLoyalCustomers();
   }
   function renderCupons() {

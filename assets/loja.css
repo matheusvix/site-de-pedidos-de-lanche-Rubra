@@ -430,3 +430,6 @@ label.check input{width:20px;height:20px;accent-color:var(--red)}
 .game-card p{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
 .game-card .btn{flex-shrink:0;min-height:44px;padding:10px 18px}
 @media (max-width:420px){.game-card{flex-wrap:wrap}.game-card .btn{width:100%}}
+.game-card .game-prize,.game-card .game-lead,.game-card .game-won{margin:6px 0 0;font-size:13px;color:var(--ink)}
+.game-card .game-prize{background:#fff;border-radius:10px;padding:6px 10px;display:inline-block}
+.game-card .game-won{background:#E6F4EA;color:#1E6B3A;border-radius:10px;padding:6px 10px;display:inline-block}

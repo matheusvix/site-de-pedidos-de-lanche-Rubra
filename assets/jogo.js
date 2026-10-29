@@ -9,7 +9,7 @@
 window.BoraJogo = (() => {
   const RED = '#E01E2D', INK = '#1A1112', CREAM = '#FFF6F1';
   const CAR_COLORS = ['#2D6CDF', '#F2B705', '#1E8A4C', '#7A3EC8', '#FF7A1A', '#3A3A3A', '#0FA3B1', '#C2185B'];
-  let root, cv, ctx, raf = 0, last = 0, S = null, store = '', dpr = 1, W = 0, H = 0, msgT = 0, msg = '';
+  let root, cv, ctx, raf = 0, last = 0, S = null, store = '', dpr = 1, W = 0, H = 0, msgT = 0, msg = '', OPTS = {};
   const rnd = (a, b) => a + Math.random() * (b - a);
   const best = () => { try { return +localStorage.getItem('bora-jogo-best') || 0; } catch (_) { return 0; } };
   const saveBest = (v) => { try { localStorage.setItem('bora-jogo-best', String(v)); } catch (_) {} };
@@ -23,10 +23,33 @@ window.BoraJogo = (() => {
       .bj-root canvas{display:block;height:100%;max-width:520px;width:100%;touch-action:none}
       .bj-x{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(26,17,18,.75);color:#fff;font-size:22px;line-height:1;cursor:pointer;z-index:2}
       .bj-x:focus-visible{outline:3px solid #fff}
-    </style><canvas aria-label="Jogo Corrida da Entrega"></canvas><button class="bj-x" type="button" aria-label="Fechar o jogo">✕</button>`;
+      .bj-over{position:absolute;inset:0;touch-action:pan-y;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(26,17,18,.6);z-index:1;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+      .bj-over[hidden]{display:none}
+      .bj-card{width:100%;max-width:380px;max-height:100%;overflow:auto;background:#FFF6F1;border-radius:24px;padding:22px 20px;color:#1A1112;text-align:center;box-shadow:0 20px 50px -20px rgba(0,0,0,.6)}
+      .bj-card h2{margin:0;color:#E01E2D;font-size:26px;font-style:italic;font-weight:900}
+      .bj-pts{font-size:34px;font-weight:900;margin:6px 0 0;letter-spacing:-.02em}
+      .bj-sub{margin:2px 0 0;color:#6B5A5B;font-size:14px}
+      .bj-prize{margin:14px 0 0;border:2px dashed #E01E2D;background:#fff;border-radius:16px;padding:12px}
+      .bj-prize b{display:block;font-size:15px}
+      .bj-code{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:8px}
+      .bj-code code{font-size:22px;font-weight:900;letter-spacing:.08em;background:#FFE3E5;border-radius:10px;padding:6px 12px;color:#A3101B}
+      .bj-code button,.bj-btns button{border:0;border-radius:999px;font-weight:800;font-size:15px;cursor:pointer;min-height:44px;padding:10px 16px}
+      .bj-code button{background:#1A1112;color:#fff}
+      .bj-goal{margin:12px 0 0;background:#fff;border-radius:14px;padding:10px 12px;font-size:14px}
+      .bj-rank{list-style:none;margin:14px 0 0;padding:0;text-align:left;display:flex;flex-direction:column;gap:5px}
+      .bj-rank li{display:flex;gap:8px;align-items:center;background:#fff;border-radius:12px;padding:7px 10px;font-size:14px}
+      .bj-rank li.me{outline:2px solid #E01E2D}
+      .bj-rank li span:first-child{width:24px;text-align:center;font-weight:800;color:#6B5A5B}
+      .bj-rank li b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .bj-rank h3{margin:0 0 2px;font-size:15px}
+      .bj-btns{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+      .bj-btns .bj-again{background:#E01E2D;color:#fff}
+      .bj-btns .bj-back{background:transparent;color:#1A1112}
+    </style><canvas aria-label="Jogo Corrida da Entrega"></canvas><div class="bj-over" hidden></div><button class="bj-x" type="button" aria-label="Fechar o jogo">✕</button>`;
     document.body.appendChild(root);
     cv = root.querySelector('canvas'); ctx = cv.getContext('2d');
     root.querySelector('.bj-x').addEventListener('click', close);
+    root.querySelector('.bj-over').addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
     // controle: arrastar o dedo (ou o mouse) para os lados; tocar para começar
     const pos = (e) => { const r = cv.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return (p.clientX - r.left) / r.width * W; };
     const down = (e) => {
@@ -148,9 +171,49 @@ window.BoraJogo = (() => {
     if (S.fuel <= 0) {
       S.fuel = 0; S.mode = 'over'; S.overAt = performance.now();
       const sc = score(); S.record = sc > best(); if (S.record) saveBest(sc);
+      over(sc, S.record);
     }
   }
   const score = () => Math.floor(S.dist / 12) + S.bonus;
+  const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+  const escH = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /* ---------- fim da partida: placar, ranking do dia e prêmio ---------- */
+  async function over(sc, record) {
+    const box = root.querySelector('.bj-over');
+    const card = (inner) => { box.innerHTML = `<div class="bj-card" role="dialog" aria-label="Fim da corrida">${inner}<div class="bj-btns"><button type="button" class="bj-again">Jogar de novo</button><button type="button" class="bj-back">Voltar ao pedido</button></div></div>`;
+      box.querySelector('.bj-again').onclick = () => { box.hidden = true; start(); };
+      box.querySelector('.bj-back').onclick = close; };
+    const head = `<h2>${record ? 'Novo recorde! 🏆' : 'Acabou o tanque!'}</h2><p class="bj-pts">${fmt(sc)} pontos</p><p class="bj-sub">Seu recorde: ${fmt(best())}</p>`;
+    card(head + (OPTS.onEnd ? '<p class="bj-sub" style="margin-top:12px">Salvando no ranking…</p>' : ''));
+    box.hidden = false;
+    if (!OPTS.onEnd) return;
+    let r = null; try { r = await OPTS.onEnd(sc); } catch (_) {}
+    if (!root || !S || S.mode !== 'over') return;
+    if (!r) { card(head + '<p class="bj-sub" style="margin-top:12px">Não deu para salvar no ranking agora.</p>'); return; }
+    if (r.top) OPTS.top = r.top;
+    if (r.rule) OPTS.rule = r.rule;
+    let mid = '';
+    if (r.reward) {
+      const until = r.reward.expires_at ? new Date(r.reward.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+      mid += `<div class="bj-prize"><b>🎁 Você ganhou ${escH(r.rule ? r.rule.label : 'um cupom')}!</b><span class="bj-sub">Use no próximo pedido${until ? ` até ${until}` : ''}${r.reward.used ? ' (já usado)' : ''}.</span>
+        <div class="bj-code"><code>${escH(r.reward.code)}</code><button type="button" class="bj-copy">Copiar</button></div></div>`;
+    } else if (r.rule) {
+      const falta = Math.max(0, r.rule.score - (r.best || 0));
+      mid += `<p class="bj-goal">🎁 Faça <b>${fmt(r.rule.score)}</b> pontos e ganhe <b>${escH(r.rule.label)}</b> no próximo pedido.${falta ? ` Faltam ${fmt(falta)}!` : ''}</p>`;
+    }
+    const top = (r.top || []).slice(0, 5);
+    if (top.length) {
+      let meDone = false;
+      mid += `<ol class="bj-rank"><h3>Ranking de hoje${store ? ` · ${escH(store)}` : ''}</h3>${top.map((t, i) => {
+        const me = !meDone && t.score === r.best && i + 1 === r.rank; if (me) meDone = true;
+        return `<li class="${me ? 'me' : ''}"><span>${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span><b>${escH(t.name)}${me ? ' (você)' : ''}</b><strong>${fmt(t.score)}</strong></li>`;
+      }).join('')}</ol>${r.rank > 5 ? `<p class="bj-sub">Você está em ${r.rank}º hoje com ${fmt(r.best)} pontos.</p>` : ''}`;
+    }
+    card(head + mid);
+    const cp = box.querySelector('.bj-copy');
+    if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(r.reward.code); cp.textContent = 'Copiado!'; } catch (_) { cp.textContent = r.reward.code; } };
+  }
   function puff(x, y, c, txt) { S.puffs.push({ x, y, c, txt, t: 0.8 }); }
 
   /* ---------- desenho ---------- */
@@ -248,14 +311,20 @@ window.BoraJogo = (() => {
     msgT = Math.max(0, msgT - dt);
     if (S.mode === 'play') update(dt);
     draw();
-    if (S.mode === 'intro') panel('Corrida da Entrega', [{ t: store ? `Leve o lanche da ${store}!` : 'Leve o lanche até o cliente!' }, { t: 'Arraste o dedo para desviar dos carros.' }, { t: '🍔 dá pontos  ·  ⛽ enche o tanque' }, { t: `Recorde: ${best().toLocaleString('pt-BR')}`, b: true }], 'Toque para começar');
+    if (S.mode === 'intro') {
+      const L = [{ t: store ? `Leve o lanche da ${store}!` : 'Leve o lanche até o cliente!' }, { t: 'Arraste o dedo para desviar dos carros.' }, { t: '🍔 dá pontos  ·  ⛽ enche o tanque' }];
+      if (OPTS.rule) L.push({ t: `🎁 ${fmt(OPTS.rule.score)} pontos = ${OPTS.rule.label}` });
+      if (OPTS.top && OPTS.top[0]) L.push({ t: `🏆 Líder hoje: ${OPTS.top[0].name} · ${fmt(OPTS.top[0].score)}` });
+      L.push({ t: `Seu recorde: ${fmt(best())}`, b: true });
+      panel('Corrida da Entrega', L, 'Toque para começar');
+    }
     else if (S.mode === 'pause') panel('Pausado', [{ t: 'Toque para continuar a corrida.' }], 'Continuar');
-    else if (S.mode === 'over') panel(S.record ? 'Novo recorde! 🏆' : 'Acabou o tanque!', [{ t: `${score().toLocaleString('pt-BR')} pontos`, b: true }, { t: `Recorde: ${best().toLocaleString('pt-BR')}` }, { t: 'Seu pedido continua a caminho 😉' }], 'Jogar de novo');
+    else if (S.mode === 'over') { ctx.fillStyle = 'rgba(26,17,18,.35)'; ctx.fillRect(0, 0, W, H); }
   }
 
   /* ---------- API ---------- */
   function open(opts = {}) {
-    store = opts.store || '';
+    store = opts.store || ''; OPTS = opts;
     if (root) return;
     build();
     fresh('intro');

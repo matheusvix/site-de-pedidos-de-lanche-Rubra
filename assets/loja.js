@@ -33,6 +33,7 @@ const mesaTxt = () => { const k = MESA && MESA.kind === 'comanda' ? 'Comanda' : 
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3200); }
+const GAME = { on: true, id: null, rule: null, top: [] }; // joguinho da tela do pedido
 function state(title, text) { $('#st-title').textContent = title; $('#st-text').textContent = text || ''; $('#v-state').hidden = false; $('#v-menu').hidden = true; }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(cart)); } catch (_) {} }
 
@@ -661,7 +662,7 @@ async function showTrack(publicId, order) {
   const ORDER = { novo: 0, preparo: 1, pronto: 2, saiu: 2, entregue: 3 };
   let lastSt = null;
   const render = (st) => {
-    $('#t-game').hidden = st === 'entregue' || st === 'cancelado';
+    $('#t-game').hidden = !GAME.on || st === 'entregue' || st === 'cancelado';
     if (lastSt && st !== lastSt && window.BoraJogo && window.BoraJogo.isOpen()) {
       const k2 = st === 'cancelado' ? -1 : ent && st === 'pronto' ? 1 : ORDER[st] ?? 0;
       window.BoraJogo.notify(st === 'cancelado' ? '⚠️ Seu pedido foi cancelado' : st === 'entregue' ? '😋 Pedido entregue! Bom apetite' : st === 'saiu' ? '🛵 Seu pedido saiu para entrega!' : `🔔 ${STEPS[k2][1]}`);
@@ -683,6 +684,7 @@ async function showTrack(publicId, order) {
     if (st === 'entregue') showRate(publicId);
     return st === 'entregue';
   };
+  GAME.id = publicId; gameInfo();
   render('novo');
   clearInterval(poll); clearTimeout(poll); live(null);
   const tick = async () => {
@@ -902,11 +904,37 @@ $('#ch-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.s
 load();
 
 /* ---------- joguinho enquanto espera (assets/jogo.js, carrega só quando o cliente toca em Jogar) ---------- */
+const fmtN = (n) => Number(n || 0).toLocaleString('pt-BR');
+function gameWon(r) { // guarda o cupom ganho para mostrar no cartão
+  const el = $('#t-game-won'); let w = r;
+  if (!w) { try { w = JSON.parse(localStorage.getItem('bora-jogo-cupom-' + GAME.id) || 'null'); } catch (_) {} }
+  else { try { localStorage.setItem('bora-jogo-cupom-' + GAME.id, JSON.stringify(w)); } catch (_) {} }
+  el.hidden = !w; if (w) el.innerHTML = `🎁 Seu cupom de prêmio: <b>${esc(w.code)}</b>`;
+}
+async function gameInfo() {
+  let d = null; try { ({ data: d } = await sb.rpc('game_ranking', { p_slug: R.slug })); } catch (_) {}
+  if (d && d.enabled === false) { GAME.on = false; $('#t-game').hidden = true; return; }
+  GAME.on = true; GAME.rule = d ? d.rule : null; GAME.top = (d && d.top) || [];
+  const pz = $('#t-game-prize'), ld = $('#t-game-lead');
+  pz.hidden = !GAME.rule; if (GAME.rule) pz.innerHTML = `🎁 Faça <b>${fmtN(GAME.rule.score)}</b> pontos e ganhe <b>${esc(GAME.rule.label)}</b> no próximo pedido`;
+  ld.hidden = !GAME.top.length; if (GAME.top.length) ld.textContent = `🏆 Líder de hoje: ${GAME.top[0].name} · ${fmtN(GAME.top[0].score)} pontos`;
+  gameWon(null);
+}
 $('#t-play').addEventListener('click', () => {
-  const go2 = () => window.BoraJogo.open({ store: R && R.name });
+  const go2 = () => window.BoraJogo.open({
+    store: R && R.name, rule: GAME.rule, top: GAME.top,
+    onEnd: async (score) => {
+      if (!GAME.id) return null;
+      const { data, error } = await sb.rpc('game_submit', { p_public_id: GAME.id, p_score: Math.round(score) });
+      if (error) return null;
+      GAME.top = data.top || GAME.top; if (data.reward) gameWon(data.reward);
+      gameInfo();
+      return data;
+    },
+  });
   if (window.BoraJogo) return go2();
   const b = $('#t-play'); b.disabled = true;
-  const sc = document.createElement('script'); sc.charset = 'utf-8'; sc.src = '/assets/jogo.js?v=1';
+  const sc = document.createElement('script'); sc.charset = 'utf-8'; sc.src = '/assets/jogo.js?v=2';
   sc.onload = () => { b.disabled = false; go2(); };
   sc.onerror = () => { b.disabled = false; toast('Não foi possível abrir o jogo agora.'); };
   document.head.appendChild(sc);

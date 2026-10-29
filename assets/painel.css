@@ -661,3 +661,14 @@ dialog.mass{width:min(1240px,calc(100% - 24px));height:min(860px,calc(100% - 24p
   .ord-tools{display:flex;gap:8px}
   .ord-tools .btn{flex:1 1 auto}
 }
+/* jogo do pedido */
+.gm-h{margin:18px 0 8px;font-size:16px}
+.gm-rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gm-rank li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff}
+.gm-rank li b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-rank li span:last-child{font-weight:800;font-variant-numeric:tabular-nums}
+.gm-pos{width:28px;text-align:center;font-weight:800;color:var(--muted)}
+.gm-rank .gm-empty{color:var(--muted);justify-content:center}
+#gm-form .rx-switch{margin-bottom:4px}
+/* no celular, só a chave do topo esconde o texto; as chaves dentro das abas mostram o rótulo */
+.adm-main .open-switch b{display:inline}
