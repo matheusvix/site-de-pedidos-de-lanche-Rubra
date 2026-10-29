@@ -19,14 +19,7 @@ $('#k-sound').addEventListener('click', () => {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (_) {}
   $('#k-sound').textContent = '🔔 Som ligado'; ding();
 });
-function ding() {
-  if (!audio) return; const now = audio.currentTime;
-  [[880, 0], [1320, 0.15], [880, 0.6], [1320, 0.75]].forEach(([f, t]) => {
-    const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = f; o.connect(g); g.connect(audio.destination);
-    g.gain.setValueAtTime(0.0001, now + t); g.gain.exponentialRampToValueAtTime(0.4, now + t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.4);
-    o.start(now + t); o.stop(now + t + 0.45);
-  });
-}
+function ding() { if (audio && window.BoraCampainha) window.BoraCampainha(audio); } // campainha de balcão (assets/campainha.js)
 $('#k-full').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.(); });
 
 /* ---------- quadro ---------- */

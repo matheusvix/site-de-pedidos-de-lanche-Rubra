@@ -29,16 +29,7 @@ const waSupport = (txt) => `https://wa.me/${SUPORTE}?text=${encodeURIComponent(t
 let audio = null;
 function unlockSound() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} } if (audio && audio.state === 'suspended') audio.resume(); setTimeout(() => { $('#sound-hint').hidden = true; }, 600); } // espera o clique terminar, senão a tela pula e o toque erra o botão
 document.addEventListener('pointerdown', unlockSound, { once: false });
-function ding() {
-  if (!audio) return;
-  const now = audio.currentTime;
-  [[1318.5, 0], [1975.5, 0.12], [1318.5, 0.5], [1975.5, 0.62]].forEach(([f, t]) => {
-    const o = audio.createOscillator(), g = audio.createGain();
-    o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(audio.destination);
-    g.gain.setValueAtTime(0.0001, now + t); g.gain.exponentialRampToValueAtTime(0.35, now + t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.45);
-    o.start(now + t); o.stop(now + t + 0.5);
-  });
-}
+function ding() { if (audio && window.BoraCampainha) window.BoraCampainha(audio); } // campainha de balcão (assets/campainha.js)
 let flash = null;
 function titleAlert(n) {
   clearInterval(flash); const base = 'Painel da loja — BoraLanchar!';
