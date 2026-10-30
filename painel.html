@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=27">
+<link rel="stylesheet" href="assets/painel.css?v=28">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/campainha-apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -102,6 +102,7 @@
     <button role="tab" aria-selected="false" data-tab="equipe">Equipe</button>
     <button role="tab" aria-selected="false" data-tab="loja">Minha loja</button>
   </nav>
+  <div class="pc-calls" id="pc-calls" role="status" aria-live="polite" hidden></div>
 
   <main class="adm-main">
     <!-- PEDIDOS -->
@@ -847,6 +848,5 @@
 <script defer src="assets/chamados.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 <script defer src="/assets/olhinho.js?v=2"></script>
-<div class="pc-calls" id="pc-calls" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

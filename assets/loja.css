@@ -486,3 +486,5 @@ label.check input{width:20px;height:20px;accent-color:var(--red)}
 .mh-acts{display:flex;gap:10px}
 .mh-acts .btn{flex:1}
 .mesa-call{display:inline-flex;margin-top:8px;border:0;background:var(--red);color:#fff;font-weight:700;border-radius:999px;padding:8px 16px;min-height:40px}
+
+body.on-mesa .chat-btn{display:none!important}

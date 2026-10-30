@@ -354,6 +354,7 @@ $('#d-bag').addEventListener('click', (e) => { if (e.target.id === 'd-bag') e.ta
 /* ---------- navegação ---------- */
 function go(view) {
   ['menu', 'checkout', 'pay', 'track', 'mesa'].forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = v !== view; });
+  document.body.classList.toggle('on-mesa', view === 'mesa');
   $('#bagbar').style.display = view === 'menu' ? '' : 'none';
   if (view === 'checkout') prepareCheckout();
   if (view === 'menu') { renderCart(); if (CATS.length) renderMenu($('#q').value || ''); }

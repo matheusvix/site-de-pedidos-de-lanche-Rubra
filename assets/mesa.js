@@ -11,8 +11,10 @@ window.BoraMesa = (() => {
 
   const ago = (t) => { const m = Math.max(0, Math.floor((Date.now() - new Date(t)) / 60000)); return m < 1 ? 'agora há pouco' : m === 1 ? 'há 1 minuto' : `há ${m} minutos`; };
 
+  let started = false;
   async function start() {
-    if (!MESA || !sb) return;
+    if (started || typeof MESA === 'undefined' || !MESA || !sb) return;
+    started = true;
     let data = null;
     try { ({ data } = await sb.rpc('table_hub', { p_slug: slug, p_token: MESA.token })); } catch (_) {}
     if (!data || !data.calls) return; // loja sem o recurso: segue direto no cardápio
@@ -58,7 +60,7 @@ window.BoraMesa = (() => {
     const g = open.find((c) => c.kind === 'garcom'), b = open.find((c) => c.kind === 'conta');
     $('#mh-call').classList.toggle('sent', !!g);
     $('#mh-call b').textContent = g ? 'Garçom chamado' : 'Chamar garçom';
-    $('#mh-call small').textContent = g ? 'Toque de novo para lembrar a equipe' : 'Ação principal';
+    $('#mh-call small').textContent = g ? 'Toque para lembrar a equipe' : 'Toque aqui';
     $('#mh-bill small').textContent = b ? 'Já avisamos o garçom' : 'Avisamos o garçom';
   }
 
@@ -83,3 +85,5 @@ window.BoraMesa = (() => {
   document.addEventListener('click', (e) => { if (e.target.closest('[data-mesa-hub]')) { history.replaceState(null, '', location.pathname + location.search); go('mesa'); refresh(); } });
   return api;
 })();
+// se o cardápio já carregou antes deste arquivo, abre a tela da mesa agora
+if (typeof MESA !== 'undefined' && MESA && !document.querySelector('#v-menu').hidden && location.hash !== '#pedido') window.BoraMesa.start();
