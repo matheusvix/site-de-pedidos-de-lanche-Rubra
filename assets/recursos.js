@@ -348,7 +348,7 @@ window.BoraRecursos = (() => {
   }
   function printQrs(ts) {
     const w = window.open('', '_blank'); if (!w) return toast('Permita pop-ups para imprimir.');
-    const cards = ts.map((t) => { const c = window.BoraQR.canvas(tableUrl(t), 520, { color: '#1A1112', level: 'M' }); return `<div class="c"><b>${esc(R.name)}</b><img src="${c.toDataURL('image/png')}" alt=""><h2>${esc(tName(t))}</h2><p>Aponte a câmera do celular<br>e faça seu pedido</p></div>`; }).join('');
+    const cards = ts.map((t) => { const c = window.BoraQR.canvas(tableUrl(t), 520, { color: '#1A1112', level: 'M' }); return `<div class="c"><b>${esc(R.name)}</b><img src="${c.toDataURL('image/png')}" alt=""><h2>${esc(tName(t))}</h2><p>${R.calls_enabled === false ? 'Aponte a câmera do celular<br>e faça seu pedido' : 'Aponte a câmera do celular para<br>chamar o garçom, ver o cardápio<br>ou pedir a conta'}</p></div>`; }).join('');
     w.document.write(`<html><head><title>QR Codes — ${esc(R.name)}</title><style>body{font-family:system-ui,sans-serif;margin:0;padding:16px}.g{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.c{border:2px dashed #ccc;border-radius:16px;padding:16px;text-align:center;break-inside:avoid}.c img{width:100%;max-width:260px}.c h2{margin:6px 0;font-size:28px}.c p{margin:0;color:#555}.c b{font-size:16px}@media print{.no{display:none}}</style></head><body><p class="no">Imprima, recorte e deixe em cada mesa ou comanda.</p><div class="g">${cards}</div><script>setTimeout(()=>print(),300)<\/script></body></html>`);
     w.document.close();
   }

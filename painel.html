@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/admin.css">
-<link rel="stylesheet" href="assets/painel.css?v=26">
+<link rel="stylesheet" href="assets/painel.css?v=27">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/assets/app/campainha-apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -273,6 +273,20 @@
             </div>
             <button class="btn btn-primary" type="submit">Salvar cobranças</button>
           </form>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Chamar garçom pela mesa</h2></div>
+          <p class="adm-muted">Ao ler o QR Code, o cliente vê "Como podemos ajudar?" com Chamar garçom, Ver cardápio e Pedir a conta. O chamado toca aqui no painel e no app do garçom.</p>
+          <form class="form" id="cg-form" novalidate>
+            <label class="check"><input type="checkbox" name="calls_enabled" id="cg-on"> <span>Mostrar a tela de chamados no QR Code das mesas</span></label>
+            <div class="field"><label for="cg-google">Link para avaliar no Google (opcional)</label><input id="cg-google" name="google_review_url" inputmode="url" maxlength="300" placeholder="https://g.page/r/…/review"><small class="adm-muted">No Perfil da Empresa no Google, toque em "Pedir avaliações" e copie o link. O Instagram usado é o que está em Minha loja.</small></div>
+            <button class="btn btn-primary" type="submit">Salvar</button>
+          </form>
+          <p class="adm-muted cg-nfc"><b>Placa por aproximação (NFC):</b> grave o mesmo link do QR Code da mesa numa etiqueta NFC (app gratuito "NFC Tools", opção Escrever → URL) e cole na placa. O cliente só encosta o celular.</p>
+        </div>
+        <div class="p-card">
+          <div class="rx-card-head"><h2>Chamados agora</h2></div>
+          <div id="cg-list" class="rx-list"></div>
         </div>
       </div>
     </section>
@@ -821,16 +835,18 @@
 <script defer src="assets/planos.js?v=2"></script>
 <script defer src="assets/mapa.js?v=1"></script>
 <script defer src="assets/campainha.js?v=1"></script>
-<script defer src="assets/painel.js?v=25"></script>
+<script defer src="assets/painel.js?v=26"></script>
 <script defer src="assets/robo.js?v=4"></script>
-<script defer src="assets/recursos.js?v=6"></script>
+<script defer src="assets/recursos.js?v=7"></script>
 <script defer src="assets/pdv.js?v=2"></script>
 <script defer src="assets/desempenho.js?v=2"></script>
 <script defer src="assets/cardapio-extra.js?v=1"></script>
 <script defer src="assets/relatorios.js?v=2"></script>
 <script defer src="assets/marketing.js?v=2"></script>
 <script defer src="assets/equipe.js?v=1"></script>
+<script defer src="assets/chamados.js?v=1"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));</script>
 <script defer src="/assets/olhinho.js?v=2"></script>
+<div class="pc-calls" id="pc-calls" role="status" aria-live="polite" hidden></div>
 </body>
 </html>

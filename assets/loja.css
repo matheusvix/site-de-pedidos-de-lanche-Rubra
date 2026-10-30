@@ -433,3 +433,56 @@ label.check input{width:20px;height:20px;accent-color:var(--red)}
 .game-card .game-prize,.game-card .game-lead,.game-card .game-won{margin:6px 0 0;font-size:13px;color:var(--ink)}
 .game-card .game-prize{background:#fff;border-radius:10px;padding:6px 10px;display:inline-block}
 .game-card .game-won{background:#E6F4EA;color:#1E6B3A;border-radius:10px;padding:6px 10px;display:inline-block}
+
+/* ---------- mesa: chamar garçom / pedir a conta ---------- */
+.mh{max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.mh-top{background:linear-gradient(160deg,var(--red),var(--red-dark));color:#fff;padding:36px 20px 64px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;border-radius:0 0 32px 32px}
+.mh-logo{width:84px;height:84px;margin:0;border:4px solid #fff;box-shadow:0 10px 24px -10px rgba(0,0,0,.5)}
+.mh-top h1{font-size:26px;color:#fff}
+.mh-chip{background:#fff;color:var(--red-dark);font-weight:800;font-size:15px;border-radius:999px;padding:6px 16px}
+.mh-body{background:var(--paper);margin:-36px 12px 24px;border-radius:28px;padding:24px 18px 20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 18px 40px -24px rgba(26,17,18,.35);border:1px solid var(--line)}
+.mh-body h2{font-size:26px;text-align:center}
+.mh-sub{color:var(--muted);text-align:center;font-size:15px}
+.mh-call{display:flex;align-items:center;gap:16px;width:100%;min-height:92px;padding:18px 22px;border:0;border-radius:22px;background:var(--red);color:#fff;text-align:left;box-shadow:0 16px 30px -14px rgba(163,16,27,.75);transition:transform .12s,background .15s}
+.mh-call:active{transform:scale(.98)}
+.mh-call span{display:flex;flex-direction:column}
+.mh-call small{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#FFE8E9}
+.mh-call b{font-family:var(--display);font-size:28px;letter-spacing:-.02em;line-height:1.1}
+.mh-call svg{flex:none;background:rgba(255,255,255,.18);border-radius:16px;padding:10px;width:56px;height:56px}
+.mh-call.sent{background:var(--ok)}
+.mh-call:disabled{opacity:.7}
+.mh-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mh-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:18px 16px;min-height:132px;border-radius:20px;border:1.5px solid var(--line);background:#fff;text-align:left;transition:border-color .15s}
+.mh-card:hover{border-color:var(--red)}
+.mh-card svg{color:var(--red);background:var(--red-soft);border-radius:12px;padding:8px;width:42px;height:42px}
+.mh-card b{font-family:var(--display);font-size:19px}
+.mh-card small{color:var(--muted);font-size:13px;line-height:1.35}
+.mh-links{display:flex;flex-direction:column;border-top:1px solid var(--line);padding-top:6px}
+.mh-link{display:flex;align-items:center;gap:14px;padding:12px 4px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.mh-link:last-child{border-bottom:0}
+.mh-link svg{color:var(--muted);flex:none}
+.mh-link span{flex:1;display:flex;flex-direction:column;min-width:0}
+.mh-link small{color:var(--muted);font-size:13px}
+.mh-link i{font-style:normal;font-size:22px;color:var(--muted)}
+.mh-status{display:flex;flex-direction:column;gap:8px}
+.mh-st{display:flex;gap:12px;align-items:flex-start;border-radius:16px;padding:12px 14px;border:1px solid}
+.mh-st p{display:flex;flex-direction:column}
+.mh-st small{font-size:13px}
+.mh-st .dot{width:12px;height:12px;border-radius:50%;margin-top:6px;flex:none}
+.mh-st.wait{background:#FFF4E0;border-color:#F3D9A6;color:#6B4200}
+.mh-st.wait .dot{background:#E8A33D;box-shadow:0 0 0 0 rgba(232,163,61,.6);animation:mh-pulse 1.6s infinite}
+.mh-st.ok{background:var(--ok-soft);border-color:#BFE3CB;color:var(--ok)}
+.mh-st.ok .dot{background:var(--ok)}
+@keyframes mh-pulse{70%{box-shadow:0 0 0 10px rgba(232,163,61,0)}100%{box-shadow:0 0 0 0 rgba(232,163,61,0)}}
+@media (prefers-reduced-motion:reduce){.mh-st.wait .dot{animation:none}}
+.mh-sheet{display:flex;flex-direction:column;gap:14px;padding:22px;min-width:min(420px,calc(100vw - 32px))}
+.mh-sheet h2{font-size:24px}
+.mh-pay{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mh-pay label{position:relative}
+.mh-pay input{position:absolute;opacity:0}
+.mh-pay span{display:flex;align-items:center;justify-content:center;min-height:56px;border-radius:14px;border:1.5px solid var(--line);font-weight:700;background:#fff}
+.mh-pay input:checked+span{border-color:var(--red);background:var(--red-soft);color:var(--red-dark)}
+.mh-pay input:focus-visible+span{outline:3px solid var(--ink);outline-offset:2px}
+.mh-acts{display:flex;gap:10px}
+.mh-acts .btn{flex:1}
+.mesa-call{display:inline-flex;margin-top:8px;border:0;background:var(--red);color:#fff;font-weight:700;border-radius:999px;padding:8px 16px;min-height:40px}

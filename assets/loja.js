@@ -87,7 +87,7 @@ async function load() {
   setInterval(() => { renderHeader(); renderCart(); }, 60000);
 
   const last = localStorage.getItem(LAST);
-  if (last && location.hash === '#pedido') showTrack(last); else renderResume();
+  if (last && location.hash === '#pedido') showTrack(last); else { renderResume(); if (MESA && window.BoraMesa) window.BoraMesa.start(); }
 }
 
 /* ---------- cabeçalho no estilo Google Meu Negócio ---------- */
@@ -120,7 +120,7 @@ function renderHeader() {
   if (LOY.enabled && Number(LOY.reward) > 0) tags.push(`<span class="chip loyal-chip">🎁 A cada ${LOY.goal} pedidos, ganhe ${brl(LOY.reward)}</span>`);
   if (CB.enabled) tags.push(`<span class="chip loyal-chip">💰 ${String(CB.pct).replace('.', ',')}% de volta em cashback</span>`);
   if (RATING && RATING.count) tags.unshift(`<span class="chip rate-chip">★ ${String(RATING.avg).replace('.', ',')} <small>(${RATING.count} avaliações)</small></span>`);
-  const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>${esc(mesaTxt())}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.`;
+  const mb = $('#s-mesa'); mb.hidden = !MESA; if (MESA) mb.innerHTML = `Você está na <b>${esc(mesaTxt())}</b>. Escolha os itens e envie: o pedido vai direto para a cozinha e você paga no final.${window.BoraMesa && window.BoraMesa.on ? ' <button class="mesa-call" type="button" data-mesa-hub>Chamar garçom ou pedir a conta</button>' : ''}`;
   $('#s-tags').innerHTML = tags.join('');
   const n = $('#s-notice');
   n.hidden = st.open;
@@ -353,7 +353,7 @@ $('#d-bag').addEventListener('click', (e) => { if (e.target.id === 'd-bag') e.ta
 
 /* ---------- navegação ---------- */
 function go(view) {
-  ['menu', 'checkout', 'pay', 'track'].forEach((v) => { $('#v-' + v).hidden = v !== view; });
+  ['menu', 'checkout', 'pay', 'track', 'mesa'].forEach((v) => { const el = $('#v-' + v); if (el) el.hidden = v !== view; });
   $('#bagbar').style.display = view === 'menu' ? '' : 'none';
   if (view === 'checkout') prepareCheckout();
   if (view === 'menu') { renderCart(); if (CATS.length) renderMenu($('#q').value || ''); }

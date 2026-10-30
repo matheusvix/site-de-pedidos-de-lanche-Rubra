@@ -43,7 +43,7 @@ async function login() {
   S = data; try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (_) {}
   start();
 }
-function logout() { S = null; clearInterval(tick); try { localStorage.removeItem(SKEY); } catch (_) {} view('v-login'); }
+function logout() { S = null; clearInterval(tick); clearInterval(callTick); callTick = null; CALLS = []; renderCalls(); try { localStorage.removeItem(SKEY); } catch (_) {} view('v-login'); }
 $('#logout').addEventListener('click', logout);
 
 /* ---------- mesas ---------- */
@@ -60,7 +60,8 @@ function renderTables() {
   $('#tp-title').textContent = KIND === 'comanda' ? 'Comandas' : 'Mesas';
   $('#t-grid').innerHTML = TABLES.filter((t) => (t.kind || 'mesa') === KIND).map((t) => {
     const b = t.bill;
-    return `<button type="button" class="t-card ${b ? 'busy' : ''} ${b && b.ready ? 'ready' : ''}" data-t="${t.id}">
+    const call = CALLS.find((c) => c.table_id === t.id);
+    return `<button type="button" class="t-card ${b ? 'busy' : ''} ${b && b.ready ? 'ready' : ''} ${call ? 'calling' : ''}" data-t="${t.id}">${call ? `<em class="t-call">${call.kind === 'conta' ? 'Pediu a conta' : 'Chamou'}</em>` : ''}
       <b>${esc(t.label)}</b>${b && (b.name || b.mesa) ? `<small class="t-who">${esc(b.name || '')}${b.name && b.mesa ? ' · ' : ''}${b.mesa ? 'Mesa ' + esc(b.mesa) : ''}</small>` : ''}${b ? `<span>${brl(b.total)}</span>${b.ready ? `<em>${b.ready} pronto(s)</em>` : `<small>${b.orders} pedido(s)</small>`}` : '<small>Livre</small>'}</button>`;
   }).join('') || `<p class="g-muted">${KIND === 'comanda' ? 'Nenhuma comanda cadastrada.' : 'Nenhuma mesa cadastrada. Peça para o dono criar as mesas no painel.'}</p>`;
 }
@@ -205,6 +206,41 @@ $('#close-form').addEventListener('submit', async (e) => {
   $('#d-close').close(); toast(`Conta · ${tName(TABLE)} fechada: ${brl(data.total)}.`); TABLE = null; view('v-tables'); loadTables();
 });
 
+/* ---------- chamados das mesas (QR Code: chamar garçom / pedir a conta) ---------- */
+let CALLS = [], callTick = null, audio = null; const seenCalls = new Set();
+const PAYN = { pix: 'Pix', cartao: 'cartão', dinheiro: 'dinheiro' };
+function unlockAudio() { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (_) {} }
+document.addEventListener('pointerdown', unlockAudio);
+const agoMin = (t) => { const m = Math.max(0, Math.floor((Date.now() - new Date(t)) / 60000)); return m < 1 ? 'agora' : `há ${m} min`; };
+async function loadCalls() {
+  if (!S) return;
+  const { data, error } = await sb.rpc('waiter_calls', { p_token: S.token });
+  if (error) { expired(error); return; }
+  CALLS = Array.isArray(data) ? data : [];
+  const fresh = CALLS.filter((c) => !seenCalls.has(c.id));
+  fresh.forEach((c) => seenCalls.add(c.id));
+  if (fresh.length && callTick) {
+    if (audio && window.BoraCampainha) window.BoraCampainha(audio);
+    try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (_) {}
+  }
+  renderCalls(); renderTables();
+}
+function renderCalls() {
+  const box = $('#calls');
+  box.innerHTML = CALLS.map((c) => `<div class="call ${c.kind}"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v1.5"/><path d="M4.5 17a7.5 7.5 0 0 1 15 0z"/><path d="M3 19.5h18"/></g></svg>
+    <p><b>${esc(tName({ kind: c.tkind, label: c.label }))}</b> ${c.kind === 'conta' ? `pediu a conta${c.pay ? ` · ${PAYN[c.pay]}` : ''}` : 'chamou o garçom'}<small>${agoMin(c.created_at)}</small></p>
+    <button type="button" class="g-btn" data-call="${c.id}">Atender</button></div>`).join('');
+  box.hidden = !CALLS.length; document.body.classList.toggle('has-calls', !!CALLS.length);
+}
+$('#calls').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-call]'); if (!b) return; b.disabled = true;
+  const id = +b.dataset.call; const c = CALLS.find((x) => x.id === id);
+  const { error } = await sb.rpc('waiter_call_done', { p_token: S.token, p_id: id });
+  if (error) { b.disabled = false; if (!expired(error)) toast(msg(error)); return; }
+  CALLS = CALLS.filter((x) => x.id !== id); renderCalls(); renderTables();
+  if (c && c.kind === 'conta') { const t = TABLES.find((x) => x.id === c.table_id); if (t && t.bill) { openTable(t); gtab('conta'); } }
+});
+
 /* ---------- navegação ---------- */
 function gtab(t) { $$('.g-tabs [data-gt]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.gt === t))); $('#p-pedir').hidden = t !== 'pedir'; $('#p-conta').hidden = t !== 'conta'; $('#bar').hidden = t !== 'pedir' || !cart.length; if (t === 'conta') loadBill(); }
 $$('.g-tabs [data-gt]').forEach((b) => b.addEventListener('click', () => gtab(b.dataset.gt)));
@@ -220,6 +256,7 @@ async function start() {
   $('#tp-store').textContent = S.restaurant.name; $('#tp-who').textContent = `Garçom: ${S.name}`;
   await Promise.all([loadTables(), loadMenu()]);
   clearInterval(tick); tick = setInterval(() => { if (document.hidden || !S) return; loadTables(); if (TABLE && !$('#p-conta').hidden) loadBill(); }, 15000);
+  seenCalls.clear(); clearInterval(callTick); callTick = null; await loadCalls(); callTick = setInterval(() => { if (S) loadCalls(); }, 6000);
 }
 async function boot() {
   if (!sb) { $('#st-text').textContent = 'Sistema indisponível.'; return; }

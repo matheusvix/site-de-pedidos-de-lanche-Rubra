@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap"></noscript>
-<link rel="stylesheet" href="/assets/loja.css?v=14">
+<link rel="stylesheet" href="/assets/loja.css?v=15">
 </head>
 <body>
 
@@ -32,6 +32,50 @@
   <h1 id="st-title">Carregando cardápio…</h1>
   <p id="st-text"></p>
 </div>
+
+<!-- MESA: chamar garçom, ver cardápio, pedir a conta -->
+<div id="v-mesa" hidden>
+  <div class="mh">
+    <div class="mh-top">
+      <div class="store-logo mh-logo"><img id="mh-logo" alt="" hidden><span class="ini" id="mh-ini"></span></div>
+      <h1 id="mh-name"></h1>
+      <span class="mh-chip" id="mh-mesa"></span>
+    </div>
+    <div class="mh-body">
+      <h2>Como podemos ajudar?</h2>
+      <p class="mh-sub">Toque em uma opção. A equipe recebe na hora.</p>
+      <div class="mh-status" id="mh-status" role="status" aria-live="polite" hidden></div>
+      <button class="mh-call" type="button" id="mh-call">
+        <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v1.5"/><path d="M4.5 17a7.5 7.5 0 0 1 15 0z"/><path d="M3 19.5h18"/></g></svg>
+        <span><small>Ação principal</small><b>Chamar garçom</b></span>
+      </button>
+      <div class="mh-grid">
+        <button class="mh-card" type="button" id="mh-menu">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h6"/></g></svg>
+          <b>Ver cardápio</b><small>Peça direto pelo celular</small>
+        </button>
+        <button class="mh-card" type="button" id="mh-bill">
+          <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></g></svg>
+          <b>Pedir a conta</b><small>Avisamos o garçom</small>
+        </button>
+      </div>
+      <div class="mh-links" id="mh-links"></div>
+    </div>
+  </div>
+</div>
+<dialog id="d-conta" aria-labelledby="dc-title">
+  <form class="mh-sheet" method="dialog" id="dc-form">
+    <h2 id="dc-title">Como você vai pagar?</h2>
+    <p class="mh-sub">O garçom já leva a maquininha ou o Pix certo.</p>
+    <div class="mh-pay">
+      <label><input type="radio" name="pay" value="pix" checked><span>Pix</span></label>
+      <label><input type="radio" name="pay" value="cartao"><span>Cartão</span></label>
+      <label><input type="radio" name="pay" value="dinheiro"><span>Dinheiro</span></label>
+    </div>
+    <p class="err" id="dc-err" role="alert"></p>
+    <div class="mh-acts"><button class="btn btn-ghost" value="cancel" formnovalidate>Voltar</button><button class="btn btn-primary" type="button" id="dc-ok">Pedir a conta</button></div>
+  </form>
+</dialog>
 
 <!-- CARDÁPIO -->
 <div id="v-menu" hidden>
@@ -256,6 +300,7 @@
 <script defer src="/assets/pix.js?v=6"></script>
 <script defer src="/assets/planos.js?v=2"></script>
 <script defer src="/assets/mapa.js?v=1"></script>
-<script defer src="/assets/loja.js?v=19"></script>
+<script defer src="/assets/loja.js?v=20"></script>
+<script defer src="/assets/mesa.js?v=1"></script>
 </body>
 </html>

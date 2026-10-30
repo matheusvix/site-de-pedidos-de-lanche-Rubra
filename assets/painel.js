@@ -161,6 +161,7 @@ function startApp() {
   if (window.BoraRecursos) window.BoraRecursos.start(); // recursos por plano (assets/recursos.js)
   if (window.BoraRobo && window.BoraPlanos.has(R.plan, 'robo') && ROLE !== 'atendente') window.BoraRobo.start(); // aba Robô WhatsApp (assets/robo.js)
   if (window.BoraEquipe) window.BoraEquipe.start(ROLE, STAFF_NAME);
+  if (window.BoraChamados) window.BoraChamados.start(); // chamar garçom / pedir a conta (assets/chamados.js)
   const aba = new URLSearchParams(location.search).get('aba');
   if (aba && document.querySelector(`.p-tabs [data-tab="${CSS.escape(aba)}"]`)) selectTab(aba);
   if (new URLSearchParams(location.search).has('bemvindo')) {
