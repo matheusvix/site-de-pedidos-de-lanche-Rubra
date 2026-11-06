@@ -40,10 +40,11 @@
         <button type="button" data-plan="Completo">Completo</button>
       </div>
       <div class="as-plan-head"><small>Plano escolhido</small><h2 id="plan-name"></h2><p id="plan-desc"></p></div>
-      <div class="as-price"><b id="plan-price"></b><span>/mês</span></div>
+      <div class="as-price"><s class="bf-old" id="plan-old" hidden></s><b id="plan-price"></b><span>/mês</span></div>
+      <span class="bf-tag" id="plan-bf" hidden></span>
       <ul class="as-feats" id="plan-feats"></ul>
       <div class="as-total"><span>Total hoje</span><b id="plan-total"></b></div>
-      <p class="as-fine">Renova a cada 30 dias. Sem fidelidade: cancele quando quiser.</p>
+      <p class="as-fine" id="plan-fine">Renova a cada 30 dias. Sem fidelidade: cancele quando quiser.</p>
     </div>
   </aside>
 
@@ -102,7 +103,7 @@
       </div>
       <p class="err" id="pay-err" role="alert"></p>
       <button class="btn btn-primary btn-lg btn-block" type="button" id="pay-btn"><svg width="18" height="18"><use href="#i-lock"/></svg><span id="pay-txt">Pagar</span></button>
-      <div class="as-or" id="trial-box"><span>ou</span><button class="btn btn-ghost btn-block" type="button" id="trial-btn">Testar 7 dias grátis antes de pagar</button></div>
+      <div class="as-or" id="trial-box"><span>ou</span><button class="btn btn-ghost btn-block" type="button" id="trial-btn">Testar <span data-trial-days>7</span> dias grátis antes de pagar</button></div>
     </section>
 
     <!-- PIX -->
@@ -141,7 +142,8 @@
 <script defer src="assets/config.js"></script>
 <script defer src="assets/vendor/qr.js"></script>
 <script defer src="assets/pix.js?v=6"></script>
-<script defer src="assets/assinar.js?v=6"></script>
+<script src="assets/blackfriday.js?v=1"></script>
+<script defer src="assets/assinar.js?v=7"></script>
 <script defer src="assets/olhinho.js?v=2"></script>
 </body>
 </html>

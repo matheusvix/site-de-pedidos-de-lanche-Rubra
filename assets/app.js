@@ -262,7 +262,7 @@ $$('form[data-form]').forEach((form) => {
     form.innerHTML = `<div class="success">
       <i><svg width="34" height="34" style="color:#2E8B57"><use href="#i-check"/></svg></i>
       <h3 style="font-size:24px">Quase lá, ${escapeHtml(first)}!</h3>
-      <p style="color:var(--muted)">Enviamos um link de confirmação para <b>${escapeHtml(data.email.trim())}</b>. Abra o e-mail e toque em <b>Confirmar e baixar o app</b>. Seu teste de 7 dias do plano ${escapeHtml(data.plano)} já está garantido.</p>
+      <p style="color:var(--muted)">Enviamos um link de confirmação para <b>${escapeHtml(data.email.trim())}</b>. Abra o e-mail e toque em <b>Confirmar e baixar o app</b>. Seu teste de ${(window.BORA_BF && window.BORA_BF.trial) || 7} dias do plano ${escapeHtml(data.plano)} já está garantido.</p>
       <a class="btn btn-outline btn-block" href="baixar.html">Baixar o app agora</a>
       <a class="btn btn-ghost btn-block" href="${waUrl}" target="_blank" rel="noopener">Não chegou? Fale com a gente no WhatsApp</a>
       <button class="btn btn-primary btn-block" type="button" data-close>Fechar</button></div>`;

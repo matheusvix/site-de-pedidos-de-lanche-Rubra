@@ -362,7 +362,7 @@
         <a class="btn btn-outline btn-lg btn-block" href="assinar.html?plano=completo">Assinar o Completo</a>
       </div>
     </div>
-    <p class="fine">Pague com Pix, cartão ou boleto, ou teste 7 dias grátis antes. Cancele quando quiser. <a href="#" data-open="consultor" data-plan="Completo">Prefere falar com um especialista?</a></p>
+    <p class="fine">Pague com Pix, cartão ou boleto, ou teste <span data-trial-days>7</span> dias grátis antes. Cancele quando quiser. <a href="#" data-open="consultor" data-plan="Completo">Prefere falar com um especialista?</a></p>
   </div>
 </section>
 
@@ -386,7 +386,7 @@
       <div style="flex:1 1 480px;min-width:0">
         <span class="cta-kicker">Bateu a fome? Bora lanchar!</span>
         <h2>Seu próximo pedido pode chegar ainda hoje.</h2>
-        <p>Teste grátis por 7 dias, sem cartão e sem compromisso.</p>
+        <p>Teste grátis por <span data-trial-days>7</span> dias, sem cartão e sem compromisso.</p>
       </div>
       <div class="ctas">
         <button class="btn btn-white btn-lg" data-open="signup">Criar minha conta</button>
@@ -428,7 +428,7 @@
 <dialog id="signup" aria-labelledby="signup-title">
   <div class="modal">
     <div class="modal-head">
-      <div><h2 id="signup-title">Comece seu teste grátis</h2><p>7 dias com tudo liberado. Sem cartão. Você já entra no seu painel.</p></div>
+      <div><h2 id="signup-title">Comece seu teste grátis</h2><p><span data-trial-days>7</span> dias com tudo liberado. Sem cartão. Você já entra no seu painel.</p></div>
       <button class="close" data-close aria-label="Fechar"><svg width="20" height="20"><use href="#i-close"/></svg></button>
     </div>
     <form class="form" novalidate data-form="signup">
@@ -519,7 +519,8 @@
 <form name="contato" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="assunto"><textarea name="mensagem"></textarea><input name="bot-field"></form>
 <form name="depoimento" data-netlify="true" netlify-honeypot="bot-field" hidden><input name="nome"><input name="loja"><input name="cidade"><input name="segmento"><textarea name="texto"></textarea><input name="bot-field"></form>
 <script defer src="assets/config.js"></script>
-<script defer src="assets/app.js?v=8"></script>
+<script src="assets/blackfriday.js?v=1"></script>
+<script defer src="assets/app.js?v=9"></script>
 <script defer src="assets/olhinho.js?v=2"></script>
 </body>
 </html>

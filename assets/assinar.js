@@ -18,6 +18,10 @@ const params = new URLSearchParams(location.search);
 const fromParam = (params.get('plano') || '').toLowerCase();
 let plan = Object.keys(PLANS).find((p) => p.toLowerCase() === fromParam) || 'Profissional';
 let user = null, R = null, SETTINGS = {}, poll = null;
+// Black Friday: quantas mensalidades com 30% OFF esta conta ainda tem (o banco confere de novo ao pagar)
+const BF = window.BORA_BF || { on: false };
+let BF_MONTHS = BF.on ? 3 : 0;
+const price = (p) => (BF_MONTHS > 0 ? BF.price(PLANS[p].price) : PLANS[p].price);
 
 const toastEl = $('.toast'); let tt;
 function toast(m) { toastEl.textContent = m; toastEl.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => toastEl.classList.remove('show'), 3500); }
@@ -27,7 +31,12 @@ function step(id) { ['step-conta', 'step-pag', 'step-pix', 'step-check', 'step-o
 function renderPlan() {
   const p = PLANS[plan];
   $('#plan-name').textContent = plan; $('#plan-desc').textContent = p.desc;
-  $('#plan-price').textContent = brl(p.price); $('#plan-total').textContent = brl(p.price);
+  $('#plan-price').textContent = brl(price(plan)); $('#plan-total').textContent = brl(price(plan));
+  const bf = BF_MONTHS > 0;
+  $('#plan-old').hidden = !bf; $('#plan-old').textContent = brl(p.price);
+  $('#plan-bf').hidden = !bf;
+  $('#plan-fine').textContent = bf ? `Renova a cada 30 dias. Depois das mensalidades com desconto, volta para ${brl(p.price)}. Sem fidelidade: cancele quando quiser.` : 'Renova a cada 30 dias. Sem fidelidade: cancele quando quiser.';
+  $('#plan-bf').textContent = BF_MONTHS >= 3 ? 'Black Friday: 30% OFF nos 3 primeiros meses' : `Black Friday: 30% OFF ${BF_MONTHS === 1 ? 'nesta mensalidade' : `nas próximas ${BF_MONTHS} mensalidades`}`;
   $('#plan-feats').innerHTML = p.feats.map((f) => `<li><svg width="18" height="18"><use href="#i-check"/></svg>${esc(f)}</li>`).join('');
   $$('.as-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.plan === plan)));
   $('#as-plan').dataset.plan = plan.toLowerCase();
@@ -49,7 +58,8 @@ function syncPay() {
   $('#m-boleto-txt').textContent = mp ? 'Libera em até 3 dias úteis após pagar' : 'Em breve';
   if ($('input[name="metodo"]:checked')?.disabled) { const first = $('input[name="metodo"]:not(:disabled)'); if (first) first.checked = true; }
   const m = method();
-  $('#pay-txt').textContent = m === 'pix' ? `Pagar ${brl(PLANS[plan].price)} com Pix` : m === 'cartao' ? `Pagar ${brl(PLANS[plan].price)} no cartão` : `Gerar boleto de ${brl(PLANS[plan].price)}`;
+  const v = brl(price(plan));
+  $('#pay-txt').textContent = m === 'pix' ? `Pagar ${v} com Pix` : m === 'cartao' ? `Pagar ${v} no cartão` : `Gerar boleto de ${v}`;
   $('#pay-btn').disabled = !$('input[name="metodo"]:not(:disabled)');
 }
 $$('input[name="metodo"]').forEach((i) => i.addEventListener('change', syncPay));
@@ -58,7 +68,7 @@ $$('input[name="metodo"]').forEach((i) => i.addEventListener('change', syncPay))
 function maskPhone(v) { const d = v.replace(/\D/g, '').slice(0, 11); return d.length > 6 ? `(${d.slice(0, 2)}) ${d.slice(2, d.length - 4)}-${d.slice(-4)}` : d.length > 2 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d; }
 $('#s-tel').addEventListener('input', (e) => { e.target.value = maskPhone(e.target.value); });
 $$('[data-acc]').forEach((b) => b.addEventListener('click', () => { const login = b.dataset.acc === 'login'; $('#acc-signup').hidden = login; $('#acc-login').hidden = !login; }));
-$('#acc-switch').addEventListener('click', async () => { await sb.auth.signOut(); user = null; R = null; renderAccount(); });
+$('#acc-switch').addEventListener('click', async () => { await sb.auth.signOut(); user = null; R = null; BF_MONTHS = BF.on ? 3 : 0; renderAccount(); renderPlan(); });
 function renderAccount() {
   const logged = !!(user && R);
   $('#acc-logged').hidden = !logged; $('#acc-signup').hidden = logged; $('#acc-login').hidden = true;
@@ -81,6 +91,7 @@ function validateSignup() {
 async function loadMine() {
   const { data } = await sb.from('restaurants').select('*').eq('owner_id', user.id).maybeSingle();
   R = data || null;
+  try { const { data: o } = await sb.rpc('my_offer'); if (o) BF_MONTHS = Number(o.months) || 0; } catch (_) {}
 }
 // garante conta + loja; devolve true quando pronto
 async function ensureAccount() {
