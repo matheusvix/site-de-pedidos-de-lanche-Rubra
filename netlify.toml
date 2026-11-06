@@ -105,3 +105,9 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
+
+[[headers]]
+  for = "/insta/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Access-Control-Allow-Origin = "*"
